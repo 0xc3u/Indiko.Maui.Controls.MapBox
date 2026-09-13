@@ -30,6 +30,15 @@ xcodebuild archive \
     -derivedDataPath "$DERIVED" \
     SKIP_INSTALL=NO CODE_SIGNING_ALLOWED=NO | tail -5
 
+# MapboxMaps is statically linked into the facade, so its SPM resource bundle
+# must live inside the facade framework — the runtime bundle accessor looks it
+# up via Bundle(for:) relative to the framework that contains the code.
+INTERMEDIATE="$DERIVED/Build/Intermediates.noindex/ArchiveIntermediates/IndikoMapboxKit/IntermediateBuildFilesPath/UninstalledProducts"
+cp -R "$INTERMEDIATE/iphoneos/MapboxMaps_MapboxMaps.bundle" \
+    archives/ios.xcarchive/Products/Library/Frameworks/IndikoMapboxKit.framework/
+cp -R "$INTERMEDIATE/iphonesimulator/MapboxMaps_MapboxMaps.bundle" \
+    archives/iossim.xcarchive/Products/Library/Frameworks/IndikoMapboxKit.framework/
+
 # The binding consumes only the generated ObjC header (IndikoMapboxKit-Swift.h).
 # Strip the Swift module folders — without BUILD_LIBRARY_FOR_DISTRIBUTION there are
 # no .swiftinterface files and -create-xcframework would refuse the frameworks.
