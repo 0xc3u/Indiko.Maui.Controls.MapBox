@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFrameworks>net10.0-ios</TargetFrameworks>
+		<SupportedOSPlatformVersion>14.2</SupportedOSPlatformVersion>
+		<IsBindingProject>true</IsBindingProject>
+		<RootNamespace>Indiko.Maui.Controls.MapBox.Bindings</RootNamespace>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<IsPackable>false</IsPackable>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ObjcBindingApiDefinition Include="ApiDefinition.cs" />
+	</ItemGroup>
+
+	<!--
+	  Artifacts are produced by scripts/build-ios-native.sh:
+	  - IndikoMapboxKit.xcframework  : our facade (statically links MapboxMaps + Turf Swift code)
+	  - MapboxCoreMaps.xcframework   : dynamic Mapbox binary, must be embedded in the app
+	  - MapboxCommon.xcframework     : dynamic Mapbox binary, must be embedded in the app
+	-->
+	<ItemGroup>
+		<NativeReference Include="Artifacts\IndikoMapboxKit.xcframework">
+			<Kind>Framework</Kind>
+			<SmartLink>false</SmartLink>
+		</NativeReference>
+		<NativeReference Include="Artifacts\MapboxCoreMaps.xcframework">
+			<Kind>Framework</Kind>
+			<SmartLink>false</SmartLink>
+		</NativeReference>
+		<NativeReference Include="Artifacts\MapboxCommon.xcframework">
+			<Kind>Framework</Kind>
+			<SmartLink>false</SmartLink>
+		</NativeReference>
+		<NativeReference Include="Artifacts\Turf.xcframework">
+			<Kind>Framework</Kind>
+			<SmartLink>false</SmartLink>
+		</NativeReference>
+	</ItemGroup>
+
+</Project>

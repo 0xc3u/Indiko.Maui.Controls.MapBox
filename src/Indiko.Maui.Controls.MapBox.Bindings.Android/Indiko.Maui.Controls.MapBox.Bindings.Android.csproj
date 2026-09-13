@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFrameworks>net10.0-android</TargetFrameworks>
+		<SupportedOSPlatformVersion>30.0</SupportedOSPlatformVersion>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<IsPackable>false</IsPackable>
+		<!-- The SDK's default globbing would add every AAR under this folder with Bind=true;
+		     we declare all AndroidLibrary items explicitly instead. -->
+		<EnableDefaultAndroidItems>false</EnableDefaultAndroidItems>
+	</PropertyGroup>
+
+	<!--
+	  Artifacts are produced by scripts/build-android-native.sh:
+	  - indikomapboxkit-release.aar : our Kotlin facade (bound to C#)
+	  - deps/*.aar|*.jar            : com.mapbox.* runtime dependencies (packaged, not bound)
+	-->
+	<ItemGroup>
+		<AndroidLibrary Include="Artifacts\indikomapboxkit-release.aar" Bind="true" />
+		<AndroidLibrary Include="Artifacts\deps\*.aar" Bind="false" />
+		<AndroidLibrary Include="Artifacts\deps\*.jar" Bind="false" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<TransformFile Include="Transforms\Metadata.xml" />
+	</ItemGroup>
+
+	<!-- Non-Mapbox Java/Kotlin dependencies mapped to their .NET binding packages. -->
+	<ItemGroup>
+		<PackageReference Include="Xamarin.Kotlin.StdLib" Version="2.0.21.1" />
+		<PackageReference Include="Xamarin.KotlinX.Coroutines.Android" Version="1.9.0.1" />
+		<PackageReference Include="Xamarin.AndroidX.AppCompat" Version="1.7.0.4" />
+		<PackageReference Include="Square.OkHttp3" Version="4.12.0.4" />
+		<PackageReference Include="GoogleGson" Version="2.11.0.2" />
+	</ItemGroup>
+
+</Project>

@@ -1,0 +1,189 @@
+using System.Collections.Specialized;
+using Indiko.Maui.Controls.MapBox.Bindings;
+using Indiko.Maui.Controls.MapBox.Handlers;
+using Indiko.Maui.Controls.MapBox.Models;
+using Microsoft.Maui.Handlers;
+
+namespace Indiko.Maui.Controls.MapBox.Platforms.Android;
+
+public class MapViewHandler : ViewHandler<MapView, IKMapView>
+{
+    private static bool tokenApplied;
+
+    private MapEventListener? listener;
+    private INotifyCollectionChanged? observedAnnotations;
+
+    public static readonly IPropertyMapper<MapView, MapViewHandler> Mapper =
+        new PropertyMapper<MapView, MapViewHandler>(ViewMapper)
+        {
+            [nameof(MapView.StyleUri)] = MapStyleUri,
+            [nameof(MapView.Camera)] = MapCamera,
+            [nameof(MapView.Annotations)] = MapAnnotations,
+            [nameof(MapView.ShowUserLocation)] = MapShowUserLocation,
+            [nameof(MapView.ScrollEnabled)] = MapGestures,
+            [nameof(MapView.ZoomEnabled)] = MapGestures,
+            [nameof(MapView.RotateEnabled)] = MapGestures,
+            [nameof(MapView.PitchEnabled)] = MapGestures,
+        };
+
+    public static readonly CommandMapper<MapView, MapViewHandler> Commands =
+        new(ViewCommandMapper)
+        {
+            [nameof(MapView.FlyTo)] = MapFlyTo,
+        };
+
+    public MapViewHandler() : base(Mapper, Commands)
+    {
+    }
+
+    protected override IKMapView CreatePlatformView()
+    {
+        EnsureAccessToken();
+
+        var camera = VirtualView.Camera ?? new MapCameraPosition(0, 0, 1);
+        return new IKMapView(
+            Context,
+            VirtualView.StyleUri ?? MapStyles.Streets,
+            camera.Latitude, camera.Longitude, camera.Zoom, camera.Bearing, camera.Pitch);
+    }
+
+    protected override void ConnectHandler(IKMapView platformView)
+    {
+        base.ConnectHandler(platformView);
+
+        listener = new MapEventListener(VirtualView);
+        platformView.Listener = listener;
+
+        ObserveAnnotations(VirtualView.Annotations);
+    }
+
+    protected override void DisconnectHandler(IKMapView platformView)
+    {
+        ObserveAnnotations(null);
+        platformView.Listener = null;
+        listener?.Dispose();
+        listener = null;
+        platformView.Destroy();
+
+        base.DisconnectHandler(platformView);
+    }
+
+    private static void EnsureAccessToken()
+    {
+        if (tokenApplied)
+            return;
+
+        if (string.IsNullOrWhiteSpace(MapboxConfig.AccessToken))
+            throw new InvalidOperationException(
+                "Mapbox access token missing. Call builder.UseMapbox(\"pk.…\") in MauiProgram.cs.");
+
+        IKMapbox.SetAccessToken(MapboxConfig.AccessToken);
+        tokenApplied = true;
+    }
+
+    /* ------------------------------ Property mappers ------------------------------ */
+
+    private static void MapStyleUri(MapViewHandler handler, MapView view)
+    {
+        handler.PlatformView.SetStyleUri(view.StyleUri ?? MapStyles.Streets);
+    }
+
+    private static void MapCamera(MapViewHandler handler, MapView view)
+    {
+        var camera = view.Camera;
+        if (camera is null)
+            return;
+
+        handler.PlatformView.SetCamera(camera.Latitude, camera.Longitude, camera.Zoom, camera.Bearing, camera.Pitch);
+    }
+
+    private static void MapAnnotations(MapViewHandler handler, MapView view)
+    {
+        handler.ObserveAnnotations(view.Annotations);
+        handler.PushAnnotations();
+    }
+
+    private static void MapShowUserLocation(MapViewHandler handler, MapView view)
+    {
+        handler.PlatformView.SetUserLocationEnabled(view.ShowUserLocation);
+    }
+
+    private static void MapGestures(MapViewHandler handler, MapView view)
+    {
+        handler.PlatformView.SetGestures(view.ScrollEnabled, view.ZoomEnabled, view.RotateEnabled, view.PitchEnabled);
+    }
+
+    /* ------------------------------ Command mappers ------------------------------- */
+
+    private static void MapFlyTo(MapViewHandler handler, MapView view, object? args)
+    {
+        if (args is not FlyToRequest request)
+            return;
+
+        handler.PlatformView.FlyTo(
+            request.Camera.Latitude, request.Camera.Longitude, request.Camera.Zoom,
+            request.Camera.Bearing, request.Camera.Pitch, request.DurationMs);
+    }
+
+    /* -------------------------------- Annotations --------------------------------- */
+
+    private void ObserveAnnotations(INotifyCollectionChanged? annotations)
+    {
+        if (ReferenceEquals(observedAnnotations, annotations))
+            return;
+
+        if (observedAnnotations is not null)
+            observedAnnotations.CollectionChanged -= OnAnnotationsChanged;
+
+        observedAnnotations = annotations;
+
+        if (observedAnnotations is not null)
+            observedAnnotations.CollectionChanged += OnAnnotationsChanged;
+    }
+
+    private void OnAnnotationsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        PushAnnotations();
+    }
+
+    private void PushAnnotations()
+    {
+        PlatformView.SetMarkersJson(AnnotationSerializer.ToJson(VirtualView.Annotations));
+    }
+
+    /* --------------------------------- Listener ----------------------------------- */
+
+    private sealed class MapEventListener : Java.Lang.Object, IKMapEventListener
+    {
+        private readonly WeakReference<MapView> virtualView;
+
+        public MapEventListener(MapView mapView)
+        {
+            virtualView = new WeakReference<MapView>(mapView);
+        }
+
+        private void Dispatch(Action<MapView> action)
+        {
+            if (virtualView.TryGetTarget(out var view))
+                view.Dispatcher.Dispatch(() => action(view));
+        }
+
+        public void OnMapReady() => Dispatch(v => v.SendMapReady());
+
+        public void OnStyleLoaded() => Dispatch(v => v.SendStyleLoaded());
+
+        public void OnMapClick(double latitude, double longitude) =>
+            Dispatch(v => v.SendMapClicked(latitude, longitude));
+
+        public void OnMapLongPress(double latitude, double longitude) =>
+            Dispatch(v => v.SendMapLongPressed(latitude, longitude));
+
+        public void OnMarkerClick(string id) => Dispatch(v => v.SendAnnotationClicked(id));
+
+        public void OnCameraChanged(IKCameraState camera)
+        {
+            var position = new MapCameraPosition(camera.Latitude, camera.Longitude, camera.Zoom, camera.Bearing, camera.Pitch);
+            Dispatch(v => v.SendCameraChanged(position));
+        }
+    }
+}

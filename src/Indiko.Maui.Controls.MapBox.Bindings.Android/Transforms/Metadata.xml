@@ -1,0 +1,9 @@
+<metadata>
+	<!--
+	  Binding fixes for the IndikoMapboxKit facade AAR.
+	  Add <attr>/<remove-node> entries here when the Kotlin-generated API
+	  produces binding errors. Keep this file minimal: the facade is designed
+	  to expose only binding-friendly signatures (primitives, String, interface).
+	-->
+	<attr path="/api/package[@name='ch.indiko.mapbox']" name="managedName">Indiko.Maui.Controls.MapBox.Bindings</attr>
+</metadata>

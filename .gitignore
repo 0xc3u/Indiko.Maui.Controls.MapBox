@@ -1,0 +1,35 @@
+# .NET
+bin/
+obj/
+*.user
+.vs/
+.idea/
+*.DotSettings.user
+
+# macOS
+.DS_Store
+
+# Xcode / native iOS build output
+native/ios/IndikoMapboxKit/*.xcodeproj
+native/ios/IndikoMapboxKit/build/
+native/ios/IndikoMapboxKit/DerivedData/
+native/ios/IndikoMapboxKit/.build/
+native/ios/IndikoMapboxKit/archives/
+
+# Android native build output
+native/android/.gradle/
+native/android/build/
+native/android/**/build/
+native/android/local.properties
+
+# Secrets — never commit tokens
+**/mapbox_token.*
+.netrc
+
+# Facade binding artifacts (IndikoMapboxKit.*) are committed on purpose.
+# The Mapbox binaries are too large for git — scripts/build-*-native.sh regenerates them.
+src/Indiko.Maui.Controls.MapBox.Bindings.iOS/Artifacts/*.zip
+src/Indiko.Maui.Controls.MapBox.Bindings.iOS/Artifacts/MapboxCommon.xcframework/
+src/Indiko.Maui.Controls.MapBox.Bindings.iOS/Artifacts/MapboxCoreMaps.xcframework/
+src/Indiko.Maui.Controls.MapBox.Bindings.iOS/Artifacts/Turf.xcframework/
+src/Indiko.Maui.Controls.MapBox.Bindings.Android/Artifacts/deps/

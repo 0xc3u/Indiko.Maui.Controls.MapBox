@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:map="clr-namespace:Indiko.Maui.Controls.MapBox;assembly=Indiko.Maui.Controls.MapBox"
+             xmlns:mapModels="clr-namespace:Indiko.Maui.Controls.MapBox.Models;assembly=Indiko.Maui.Controls.MapBox"
+             x:Class="Indiko.Maui.Controls.MapBox.Sample.MainPage"
+             Title="Indiko MapBox">
+
+    <Grid RowDefinitions="*,Auto">
+
+        <map:MapView x:Name="Map"
+                     Grid.Row="0"
+                     StyleUri="{x:Static mapModels:MapStyles.Streets}"
+                     MapReady="OnMapReady"
+                     MapClicked="OnMapClicked"
+                     MapLongPressed="OnMapLongPressed"
+                     AnnotationClicked="OnAnnotationClicked">
+            <map:MapView.Camera>
+                <mapModels:MapCameraPosition Latitude="47.3769" Longitude="8.5417" Zoom="11" />
+            </map:MapView.Camera>
+        </map:MapView>
+
+        <Label x:Name="StatusLabel"
+               Grid.Row="0"
+               VerticalOptions="Start"
+               Margin="12"
+               Padding="10,6"
+               BackgroundColor="#CC000000"
+               TextColor="White"
+               FontSize="12"
+               Text="Warte auf Karte…" />
+
+        <HorizontalStackLayout Grid.Row="1" Spacing="8" Padding="12">
+            <Button Text="Zürich" Clicked="OnFlyToZurich" />
+            <Button Text="Bern" Clicked="OnFlyToBern" />
+            <Button Text="Style" Clicked="OnToggleStyle" />
+            <Button Text="Marker löschen" Clicked="OnClearMarkers" />
+        </HorizontalStackLayout>
+
+    </Grid>
+
+</ContentPage>

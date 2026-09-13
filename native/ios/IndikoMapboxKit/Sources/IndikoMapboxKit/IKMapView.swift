@@ -1,0 +1,268 @@
+import UIKit
+import MapboxMaps
+
+/// Global Mapbox configuration. Must be called before the first IKMapView is created.
+@objc(IKMapbox)
+public class IKMapbox: NSObject
+{
+    @objc(setAccessToken:)
+    public static func setAccessToken(_ token: String)
+    {
+        MapboxOptions.accessToken = token
+    }
+}
+
+/// Immutable snapshot of the current camera, handed to the event listener.
+@objc(IKCameraState)
+public class IKCameraState: NSObject
+{
+    @objc public let latitude: Double
+    @objc public let longitude: Double
+    @objc public let zoom: Double
+    @objc public let bearing: Double
+    @objc public let pitch: Double
+
+    init(latitude: Double, longitude: Double, zoom: Double, bearing: Double, pitch: Double)
+    {
+        self.latitude = latitude
+        self.longitude = longitude
+        self.zoom = zoom
+        self.bearing = bearing
+        self.pitch = pitch
+    }
+}
+
+/// Events flowing from the native map back to the .NET handler.
+@objc(IKMapEventListener)
+public protocol IKMapEventListener
+{
+    @objc(onMapReady) func onMapReady()
+    @objc(onStyleLoaded) func onStyleLoaded()
+    @objc(onMapClick:longitude:) func onMapClick(latitude: Double, longitude: Double)
+    @objc(onMapLongPress:longitude:) func onMapLongPress(latitude: Double, longitude: Double)
+    @objc(onMarkerClick:) func onMarkerClick(id: String)
+    @objc(onCameraChanged:) func onCameraChanged(camera: IKCameraState)
+}
+
+/// Thin facade over MapboxMaps.MapView exposing exactly the surface the
+/// Indiko.Maui.Controls.MapBox handler needs. All Mapbox types stay internal
+/// so the .NET binding only ever sees this Objective-C API.
+@objc(IKMapView)
+public class IKMapView: UIView
+{
+    private var mapView: MapView!
+    private var pointManager: PointAnnotationManager?
+    private var cancelables = Set<AnyCancelable>()
+
+    @objc public weak var listener: IKMapEventListener?
+
+    @objc(initWithFrame:styleUri:latitude:longitude:zoom:bearing:pitch:)
+    public init(frame: CGRect, styleUri: String, latitude: Double, longitude: Double,
+                zoom: Double, bearing: Double, pitch: Double)
+    {
+        super.init(frame: frame)
+
+        let camera = CameraOptions(
+            center: CLLocationCoordinate2D(latitude: latitude, longitude: longitude),
+            zoom: zoom, bearing: bearing, pitch: pitch)
+
+        let options = MapInitOptions(
+            cameraOptions: camera,
+            styleURI: StyleURI(rawValue: styleUri) ?? .streets)
+
+        mapView = MapView(frame: bounds, mapInitOptions: options)
+        mapView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        addSubview(mapView)
+
+        subscribeEvents()
+    }
+
+    required init?(coder: NSCoder)
+    {
+        return nil
+    }
+
+    private func subscribeEvents()
+    {
+        mapView.mapboxMap.onMapLoaded.observeNext { [weak self] _ in
+            self?.listener?.onMapReady()
+        }.store(in: &cancelables)
+
+        mapView.mapboxMap.onStyleLoaded.observe { [weak self] _ in
+            self?.listener?.onStyleLoaded()
+        }.store(in: &cancelables)
+
+        mapView.mapboxMap.onCameraChanged.observe { [weak self] event in
+            guard let self else { return }
+            let state = event.cameraState
+            self.listener?.onCameraChanged(camera: IKCameraState(
+                latitude: state.center.latitude,
+                longitude: state.center.longitude,
+                zoom: state.zoom,
+                bearing: state.bearing,
+                pitch: state.pitch))
+        }.store(in: &cancelables)
+
+        mapView.gestures.onMapTap.observe { [weak self] context in
+            self?.listener?.onMapClick(
+                latitude: context.coordinate.latitude,
+                longitude: context.coordinate.longitude)
+        }.store(in: &cancelables)
+
+        mapView.gestures.onMapLongPress.observe { [weak self] context in
+            self?.listener?.onMapLongPress(
+                latitude: context.coordinate.latitude,
+                longitude: context.coordinate.longitude)
+        }.store(in: &cancelables)
+    }
+
+    // MARK: - Style & camera
+
+    @objc(setStyleUri:)
+    public func setStyleUri(_ uri: String)
+    {
+        mapView.mapboxMap.loadStyle(StyleURI(rawValue: uri) ?? .streets)
+    }
+
+    @objc(setCamera:longitude:zoom:bearing:pitch:)
+    public func setCamera(latitude: Double, longitude: Double, zoom: Double, bearing: Double, pitch: Double)
+    {
+        mapView.mapboxMap.setCamera(to: CameraOptions(
+            center: CLLocationCoordinate2D(latitude: latitude, longitude: longitude),
+            zoom: zoom, bearing: bearing, pitch: pitch))
+    }
+
+    @objc(flyTo:longitude:zoom:bearing:pitch:durationMs:)
+    public func flyTo(latitude: Double, longitude: Double, zoom: Double, bearing: Double,
+                      pitch: Double, durationMs: Double)
+    {
+        mapView.camera.fly(to: CameraOptions(
+            center: CLLocationCoordinate2D(latitude: latitude, longitude: longitude),
+            zoom: zoom, bearing: bearing, pitch: pitch),
+            duration: durationMs / 1000.0)
+    }
+
+    // MARK: - Markers
+
+    /// Replaces all markers. JSON: [{"id":"...","lat":..,"lng":..,"title":"...","color":"#RRGGBB"}]
+    @objc(setMarkersJson:)
+    public func setMarkers(json: String)
+    {
+        guard let data = json.data(using: .utf8),
+              let items = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
+        else { return }
+
+        if pointManager == nil
+        {
+            pointManager = mapView.annotations.makePointAnnotationManager()
+        }
+
+        var annotations: [PointAnnotation] = []
+        for item in items
+        {
+            guard let id = item["id"] as? String,
+                  let lat = item["lat"] as? Double,
+                  let lng = item["lng"] as? Double
+            else { continue }
+
+            let colorHex = item["color"] as? String ?? "#E74C3C"
+            var annotation = PointAnnotation(
+                id: id,
+                coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lng))
+            annotation.image = .init(image: Self.pinImage(hex: colorHex), name: "ik-pin-\(colorHex)")
+            annotation.iconAnchor = .bottom
+            annotation.tapHandler = { [weak self] _ in
+                self?.listener?.onMarkerClick(id: id)
+                return true
+            }
+            annotations.append(annotation)
+        }
+
+        pointManager?.annotations = annotations
+    }
+
+    @objc(clearMarkers)
+    public func clearMarkers()
+    {
+        pointManager?.annotations = []
+    }
+
+    // MARK: - Location & gestures
+
+    @objc(setUserLocationEnabled:)
+    public func setUserLocationEnabled(_ enabled: Bool)
+    {
+        mapView.location.options.puckType = enabled ? .puck2D(.makeDefault(showBearing: true)) : nil
+    }
+
+    @objc(setGesturesScroll:zoom:rotate:pitch:)
+    public func setGestures(scroll: Bool, zoom: Bool, rotate: Bool, pitch: Bool)
+    {
+        mapView.gestures.options.panEnabled = scroll
+        mapView.gestures.options.pinchZoomEnabled = zoom
+        mapView.gestures.options.doubleTapToZoomInEnabled = zoom
+        mapView.gestures.options.doubleTouchToZoomOutEnabled = zoom
+        mapView.gestures.options.quickZoomEnabled = zoom
+        mapView.gestures.options.rotateEnabled = rotate
+        mapView.gestures.options.pitchEnabled = pitch
+    }
+
+    // MARK: - Lifecycle
+
+    @objc(destroy)
+    public func destroy()
+    {
+        cancelables.removeAll()
+        listener = nil
+        pointManager = nil
+        mapView.removeFromSuperview()
+        mapView = nil
+    }
+
+    // MARK: - Helpers
+
+    private static var pinCache: [String: UIImage] = [:]
+
+    private static func pinImage(hex: String) -> UIImage
+    {
+        if let cached = pinCache[hex] { return cached }
+
+        let color = UIColor(hex: hex) ?? .systemRed
+        let size = CGSize(width: 27, height: 41)
+        let image = UIGraphicsImageRenderer(size: size).image { ctx in
+            let c = ctx.cgContext
+            // Teardrop: circle head + triangle tail
+            let headRect = CGRect(x: 1.5, y: 1.5, width: 24, height: 24)
+            c.setFillColor(color.cgColor)
+            c.addEllipse(in: headRect)
+            c.fillPath()
+            c.move(to: CGPoint(x: 4.5, y: 20))
+            c.addLine(to: CGPoint(x: 22.5, y: 20))
+            c.addLine(to: CGPoint(x: 13.5, y: 41))
+            c.closePath()
+            c.setFillColor(color.cgColor)
+            c.fillPath()
+            // White inner dot
+            c.setFillColor(UIColor.white.cgColor)
+            c.addEllipse(in: CGRect(x: 9, y: 9, width: 9, height: 9))
+            c.fillPath()
+        }
+        pinCache[hex] = image
+        return image
+    }
+}
+
+private extension UIColor
+{
+    convenience init?(hex: String)
+    {
+        var value = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+        if value.hasPrefix("#") { value.removeFirst() }
+        guard value.count == 6, let rgb = UInt64(value, radix: 16) else { return nil }
+        self.init(
+            red: CGFloat((rgb & 0xFF0000) >> 16) / 255.0,
+            green: CGFloat((rgb & 0x00FF00) >> 8) / 255.0,
+            blue: CGFloat(rgb & 0x0000FF) / 255.0,
+            alpha: 1.0)
+    }
+}
