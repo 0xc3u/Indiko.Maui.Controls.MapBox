@@ -1,4 +1,5 @@
 import UIKit
+import QuartzCore
 import MapboxMaps
 
 /// Global Mapbox configuration. Must be called before the first IKMapView is created.
@@ -64,6 +65,12 @@ public class IKMapView: UIView
     private var layerConfigs: [(id: String, config: [String: Any])] = []
     private var clusterConfigs: [String: [String: Any]] = [:]
 
+    // Click-consumed semantics: taps handled by an annotation or cluster must not
+    // surface as onMapClick. Annotation tap handlers stamp this timestamp; the
+    // (deferred) map-click dispatch skips clicks that follow within the window.
+    private var lastAnnotationTap: CFTimeInterval = 0
+    private static let annotationTapWindow: CFTimeInterval = 0.3
+
     @objc public weak var listener: IKMapEventListener?
 
     @objc(initWithFrame:styleUri:latitude:longitude:zoom:bearing:pitch:)
@@ -127,10 +134,18 @@ public class IKMapView: UIView
         }.store(in: &cancelables)
 
         mapView.gestures.onMapTap.observe { [weak self] context in
-            self?.handleClusterTap(at: context.point)
-            self?.listener?.onMapClick(
-                latitude: context.coordinate.latitude,
-                longitude: context.coordinate.longitude)
+            guard let self else { return }
+            let latitude = context.coordinate.latitude
+            let longitude = context.coordinate.longitude
+            self.resolveClusterTap(at: context.point) { [weak self] consumedByCluster in
+                guard let self else { return }
+                let annotationConsumed =
+                    CACurrentMediaTime() - self.lastAnnotationTap < Self.annotationTapWindow
+                if !consumedByCluster && !annotationConsumed
+                {
+                    self.listener?.onMapClick(latitude: latitude, longitude: longitude)
+                }
+            }
         }.store(in: &cancelables)
 
         mapView.gestures.onMapLongPress.observe { [weak self] context in
@@ -196,6 +211,7 @@ public class IKMapView: UIView
             annotation.image = .init(image: Self.pinImage(hex: colorHex), name: "ik-pin-\(colorHex)")
             annotation.iconAnchor = .bottom
             annotation.tapHandler = { [weak self] _ in
+                self?.lastAnnotationTap = CACurrentMediaTime()
                 self?.listener?.onMarkerClick(id: id)
                 return true
             }
@@ -239,6 +255,7 @@ public class IKMapView: UIView
             line.lineWidth = item["width"] as? Double ?? 4.0
             line.lineOpacity = item["opacity"] as? Double ?? 1.0
             line.tapHandler = { [weak self] _ in
+                self?.lastAnnotationTap = CACurrentMediaTime()
                 self?.listener?.onPolylineClick(id: id)
                 return true
             }
@@ -283,6 +300,7 @@ public class IKMapView: UIView
                 polygon.fillOutlineColor = StyleColor(stroke)
             }
             polygon.tapHandler = { [weak self] _ in
+                self?.lastAnnotationTap = CACurrentMediaTime()
                 self?.listener?.onPolygonClick(id: id)
                 return true
             }
@@ -491,10 +509,17 @@ public class IKMapView: UIView
         try? mapView.mapboxMap.addLayer(counts)
     }
 
-    /// Tap on a cluster circle eases the camera to the cluster's expansion zoom.
-    private func handleClusterTap(at point: CGPoint)
+    /// Determines whether the tap hit a cluster circle; if so, eases the camera to the
+    /// cluster's expansion zoom and reports the tap as consumed. The completion always
+    /// runs asynchronously on the main queue — after any synchronous annotation
+    /// tap handlers of the same gesture have stamped their timestamp.
+    private func resolveClusterTap(at point: CGPoint, completion: @escaping (Bool) -> Void)
     {
-        guard !clusterConfigs.isEmpty else { return }
+        guard !clusterConfigs.isEmpty else
+        {
+            DispatchQueue.main.async { completion(false) }
+            return
+        }
 
         let layerIds = clusterConfigs.keys.map { "\($0)-clusters" }
         let options = RenderedQueryOptions(layerIds: Array(layerIds), filter: nil)
@@ -503,7 +528,11 @@ public class IKMapView: UIView
             guard let self,
                   case let .success(features) = result,
                   let queried = features.first?.queriedFeature
-            else { return }
+            else
+            {
+                DispatchQueue.main.async { completion(false) }
+                return
+            }
 
             let feature = queried.feature
             self.mapView.mapboxMap.getGeoJsonClusterExpansionZoom(
@@ -513,11 +542,16 @@ public class IKMapView: UIView
                       case let .success(extensionValue) = zoomResult,
                       let zoom = (extensionValue.value as? NSNumber)?.doubleValue,
                       case let .point(centerPoint) = feature.geometry
-                else { return }
+                else
+                {
+                    DispatchQueue.main.async { completion(false) }
+                    return
+                }
 
                 self.mapView.camera.ease(
                     to: CameraOptions(center: centerPoint.coordinates, zoom: zoom + 0.5),
                     duration: 0.4)
+                DispatchQueue.main.async { completion(true) }
             }
         }
     }

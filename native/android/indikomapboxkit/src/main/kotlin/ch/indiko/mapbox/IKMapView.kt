@@ -113,6 +113,16 @@ class IKMapView(
     private val layerConfigs = LinkedHashMap<String, JSONObject>()
     private val clusterConfigs = LinkedHashMap<String, JSONObject>()
 
+    // Click-consumed semantics: taps handled by an annotation or cluster must not
+    // surface as onMapClick. Annotation click listeners stamp this timestamp; the
+    // (deferred) map-click dispatch skips clicks that follow within the window.
+    private var lastAnnotationTapMs = 0L
+
+    private companion object
+    {
+        const val ANNOTATION_TAP_WINDOW_MS = 300L
+    }
+
     var listener: IKMapEventListener? = null
 
     init
@@ -148,8 +158,20 @@ class IKMapView(
         }
 
         mapView.gestures.addOnMapClickListener { point ->
-            handleClusterTap(point)
-            listener?.onMapClick(point.latitude(), point.longitude())
+            val latitude = point.latitude()
+            val longitude = point.longitude()
+            resolveClusterTap(point) { consumedByCluster ->
+                // Posted to the main queue after the synchronous gesture dispatch, so
+                // annotation click listeners of the same tap have already stamped.
+                post {
+                    val annotationConsumed =
+                        android.os.SystemClock.uptimeMillis() - lastAnnotationTapMs < ANNOTATION_TAP_WINDOW_MS
+                    if (!consumedByCluster && !annotationConsumed)
+                    {
+                        listener?.onMapClick(latitude, longitude)
+                    }
+                }
+            }
             false
         }
         mapView.gestures.addOnMapLongClickListener { point ->
@@ -201,6 +223,7 @@ class IKMapView(
     {
         val manager = pointManager ?: mapView.annotations.createPointAnnotationManager().also { created ->
             created.addClickListener { annotation ->
+                lastAnnotationTapMs = android.os.SystemClock.uptimeMillis()
                 markerIdsByAnnotationId[annotation.id]?.let { listener?.onMarkerClick(it) }
                 true
             }
@@ -248,6 +271,7 @@ class IKMapView(
     {
         val manager = polylineManager ?: mapView.annotations.createPolylineAnnotationManager().also { created ->
             created.addClickListener { annotation ->
+                lastAnnotationTapMs = android.os.SystemClock.uptimeMillis()
                 polylineIdsByAnnotationId[annotation.id]?.let { listener?.onPolylineClick(it) }
                 true
             }
@@ -290,6 +314,7 @@ class IKMapView(
     {
         val manager = polygonManager ?: mapView.annotations.createPolygonAnnotationManager().also { created ->
             created.addClickListener { annotation ->
+                lastAnnotationTapMs = android.os.SystemClock.uptimeMillis()
                 polygonIdsByAnnotationId[annotation.id]?.let { listener?.onPolygonClick(it) }
                 true
             }
@@ -516,11 +541,16 @@ class IKMapView(
     }
 
     /**
-     * Tap on a cluster circle eases the camera to the cluster's expansion zoom.
+     * Determines whether the tap hit a cluster circle; if so, eases the camera to the
+     * cluster's expansion zoom and reports the tap as consumed via [completion].
      */
-    private fun handleClusterTap(point: Point)
+    private fun resolveClusterTap(point: Point, completion: (Boolean) -> Unit)
     {
-        if (clusterConfigs.isEmpty()) return
+        if (clusterConfigs.isEmpty())
+        {
+            completion(false)
+            return
+        }
 
         val layerIds = clusterConfigs.keys.map { "$it-clusters" }
         val screen = mapView.mapboxMap.pixelForCoordinate(point)
@@ -529,9 +559,14 @@ class IKMapView(
             RenderedQueryGeometry(screen),
             RenderedQueryOptions(layerIds, null)
         ) { queryResult ->
-            val queried = queryResult.value?.firstOrNull()?.queriedFeature ?: return@queryRenderedFeatures
-            val feature: Feature = queried.feature
-            val center = feature.geometry() as? Point ?: return@queryRenderedFeatures
+            val queried = queryResult.value?.firstOrNull()?.queriedFeature
+            val feature: Feature? = queried?.feature
+            val center = feature?.geometry() as? Point
+            if (queried == null || feature == null || center == null)
+            {
+                completion(false)
+                return@queryRenderedFeatures
+            }
 
             mapView.mapboxMap.getGeoJsonClusterExpansionZoom(queried.source, feature) { zoomResult ->
                 val contents = zoomResult.value?.value?.contents
@@ -540,7 +575,12 @@ class IKMapView(
                     is Double -> contents
                     is Long -> contents.toDouble()
                     else -> null
-                } ?: return@getGeoJsonClusterExpansionZoom
+                }
+                if (zoom == null)
+                {
+                    completion(false)
+                    return@getGeoJsonClusterExpansionZoom
+                }
 
                 post {
                     mapView.camera.easeTo(
@@ -548,6 +588,7 @@ class IKMapView(
                         MapAnimationOptions.mapAnimationOptions { duration(400) }
                     )
                 }
+                completion(true)
             }
         }
     }
