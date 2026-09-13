@@ -33,7 +33,11 @@ tasks.register<Copy>("exportMapboxDeps") {
     from({
         configurations.getByName("releaseRuntimeClasspath").incoming.artifactView {
             componentFilter { id ->
-                id is ModuleComponentIdentifier && id.group.startsWith("com.mapbox")
+                id is ModuleComponentIdentifier &&
+                    (id.group.startsWith("com.mapbox") ||
+                        // cronet-api classes must be present so MapboxCommon's HTTP stack can
+                        // detect that no Cronet provider is installed and fall back to OkHttp.
+                        id.group == "org.chromium.net")
             }
         }.files
     })
