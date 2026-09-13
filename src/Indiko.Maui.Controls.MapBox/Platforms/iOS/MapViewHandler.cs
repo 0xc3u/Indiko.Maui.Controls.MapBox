@@ -45,6 +45,8 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
             [nameof(MapView.RemoveLayer)] = MapRemoveLayer,
             [nameof(MapView.AddClusteredSource)] = MapAddClusteredSource,
             [nameof(MapView.RemoveClusteredSource)] = MapRemoveClusteredSource,
+            [nameof(MapView.DownloadOfflineRegion)] = MapDownloadOfflineRegion,
+            [nameof(MapView.RemoveOfflineRegion)] = MapRemoveOfflineRegion,
         };
 
     public MapViewHandler() : base(Mapper, Commands)
@@ -199,6 +201,18 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
     {
         if (args is string sourceId)
             handler.PlatformView.RemoveClusteredSource(sourceId);
+    }
+
+    private static void MapDownloadOfflineRegion(MapViewHandler handler, MapView view, object? args)
+    {
+        if (args is MapOfflineRegion region)
+            handler.PlatformView.DownloadOfflineRegionJson(AnnotationSerializer.ToOfflineRegionJson(region));
+    }
+
+    private static void MapRemoveOfflineRegion(MapViewHandler handler, MapView view, object? args)
+    {
+        if (args is string regionId)
+            handler.PlatformView.RemoveOfflineRegion(regionId);
     }
 
     /* -------------------------------- Annotations --------------------------------- */
@@ -367,5 +381,11 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
             var position = new MapCameraPosition(camera.Latitude, camera.Longitude, camera.Zoom, camera.Bearing, camera.Pitch);
             Dispatch(v => v.SendCameraChanged(position));
         }
+
+        public override void OnOfflineRegionProgress(string id, double progress) =>
+            Dispatch(v => v.SendOfflineRegionProgress(id, progress));
+
+        public override void OnOfflineRegionCompleted(string id, bool success, string? error) =>
+            Dispatch(v => v.SendOfflineRegionCompleted(id, success, error));
     }
 }

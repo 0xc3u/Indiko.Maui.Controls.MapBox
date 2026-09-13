@@ -45,6 +45,8 @@ public protocol IKMapEventListener
     @objc(onPolylineClick:) func onPolylineClick(id: String)
     @objc(onPolygonClick:) func onPolygonClick(id: String)
     @objc(onCameraChanged:) func onCameraChanged(camera: IKCameraState)
+    @objc(onOfflineRegionProgress:progress:) func onOfflineRegionProgress(id: String, progress: Double)
+    @objc(onOfflineRegionCompleted:success:error:) func onOfflineRegionCompleted(id: String, success: Bool, error: String?)
 }
 
 /// Thin facade over MapboxMaps.MapView exposing exactly the surface the
@@ -447,6 +449,91 @@ public class IKMapView: UIView
     public func removeViewAnnotation(id: String)
     {
         viewAnnotationsById.removeValue(forKey: id)?.remove()
+    }
+
+    // MARK: - Offline regions
+
+    private lazy var offlineManager = OfflineManager()
+    private var tileRegionCancelables: [String: Cancelable] = [:]
+
+    /// Downloads a style pack plus the tile region for a bounding box. JSON:
+    /// {"id","styleUri","minZoom","maxZoom","minLat","minLng","maxLat","maxLng"}
+    /// Progress and completion are reported through the listener.
+    @objc(downloadOfflineRegionJson:)
+    public func downloadOfflineRegion(json: String)
+    {
+        guard let data = json.data(using: .utf8),
+              let config = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let id = config["id"] as? String,
+              let minLat = config["minLat"] as? Double,
+              let minLng = config["minLng"] as? Double,
+              let maxLat = config["maxLat"] as? Double,
+              let maxLng = config["maxLng"] as? Double
+        else { return }
+
+        let styleUri = StyleURI(rawValue: config["styleUri"] as? String ?? "") ?? .streets
+        let minZoom = UInt8(config["minZoom"] as? Double ?? 6)
+        let maxZoom = UInt8(config["maxZoom"] as? Double ?? 14)
+
+        // 1. Style pack (style JSON, sprites, glyphs) — required for offline rendering.
+        if let stylePackOptions = StylePackLoadOptions(
+            glyphsRasterizationMode: .ideographsRasterizedLocally, metadata: nil)
+        {
+            _ = offlineManager.loadStylePack(for: styleUri, loadOptions: stylePackOptions,
+                                             completion: { _ in })
+        }
+
+        // 2. Tile region for the bounding box.
+        let descriptorOptions = TilesetDescriptorOptions(
+            styleURI: styleUri, zoomRange: minZoom...maxZoom, tilesets: nil)
+        let descriptor = offlineManager.createTilesetDescriptor(for: descriptorOptions)
+
+        let ring = Ring(coordinates: [
+            CLLocationCoordinate2D(latitude: minLat, longitude: minLng),
+            CLLocationCoordinate2D(latitude: minLat, longitude: maxLng),
+            CLLocationCoordinate2D(latitude: maxLat, longitude: maxLng),
+            CLLocationCoordinate2D(latitude: maxLat, longitude: minLng),
+            CLLocationCoordinate2D(latitude: minLat, longitude: minLng),
+        ])
+
+        guard let loadOptions = TileRegionLoadOptions(
+            geometry: .polygon(Polygon(outerRing: ring)),
+            descriptors: [descriptor],
+            acceptExpired: true)
+        else { return }
+
+        let cancelable = TileStore.default.loadTileRegion(forId: id, loadOptions: loadOptions)
+        { [weak self] progress in
+            let fraction = progress.requiredResourceCount > 0
+                ? Double(progress.completedResourceCount) / Double(progress.requiredResourceCount)
+                : 0
+            DispatchQueue.main.async
+            {
+                self?.listener?.onOfflineRegionProgress(id: id, progress: fraction)
+            }
+        }
+        completion: { [weak self] result in
+            DispatchQueue.main.async
+            {
+                self?.tileRegionCancelables.removeValue(forKey: id)
+                switch result
+                {
+                case .success:
+                    self?.listener?.onOfflineRegionCompleted(id: id, success: true, error: nil)
+                case .failure(let error):
+                    self?.listener?.onOfflineRegionCompleted(
+                        id: id, success: false, error: error.localizedDescription)
+                }
+            }
+        }
+        tileRegionCancelables[id] = cancelable
+    }
+
+    @objc(removeOfflineRegion:)
+    public func removeOfflineRegion(id: String)
+    {
+        tileRegionCancelables.removeValue(forKey: id)?.cancel()
+        TileStore.default.removeTileRegion(forId: id)
     }
 
     // MARK: - Clustering

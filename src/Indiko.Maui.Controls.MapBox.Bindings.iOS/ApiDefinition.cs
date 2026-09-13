@@ -69,6 +69,14 @@ interface IKMapEventListener
     [Abstract]
     [Export("onCameraChanged:")]
     void OnCameraChanged(IKCameraState camera);
+
+    [Abstract]
+    [Export("onOfflineRegionProgress:progress:")]
+    void OnOfflineRegionProgress(string id, double progress);
+
+    [Abstract]
+    [Export("onOfflineRegionCompleted:success:error:")]
+    void OnOfflineRegionCompleted(string id, bool success, [NullAllowed] string? error);
 }
 
 [BaseType(typeof(UIView), Name = "IKMapView")]
@@ -138,6 +146,12 @@ interface IKMapView
 
     [Export("removeClusteredSource:")]
     void RemoveClusteredSource(string id);
+
+    [Export("downloadOfflineRegionJson:")]
+    void DownloadOfflineRegionJson(string json);
+
+    [Export("removeOfflineRegion:")]
+    void RemoveOfflineRegion(string id);
 
     [Export("setUserLocationEnabled:")]
     void SetUserLocationEnabled(bool enabled);

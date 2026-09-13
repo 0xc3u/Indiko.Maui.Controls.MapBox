@@ -42,6 +42,34 @@ public class PolygonClickedEventArgs : EventArgs
     }
 }
 
+public class OfflineRegionProgressEventArgs : EventArgs
+{
+    public string RegionId { get; }
+
+    /// <summary>Download progress between 0.0 and 1.0.</summary>
+    public double Progress { get; }
+
+    public OfflineRegionProgressEventArgs(string regionId, double progress)
+    {
+        RegionId = regionId;
+        Progress = progress;
+    }
+}
+
+public class OfflineRegionCompletedEventArgs : EventArgs
+{
+    public string RegionId { get; }
+    public bool Success { get; }
+    public string? ErrorMessage { get; }
+
+    public OfflineRegionCompletedEventArgs(string regionId, bool success, string? errorMessage)
+    {
+        RegionId = regionId;
+        Success = success;
+        ErrorMessage = errorMessage;
+    }
+}
+
 public class CameraChangedEventArgs : EventArgs
 {
     public MapCameraPosition Camera { get; }

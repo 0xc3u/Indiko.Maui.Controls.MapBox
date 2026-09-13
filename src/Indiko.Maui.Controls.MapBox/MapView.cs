@@ -196,6 +196,8 @@ public class MapView : View
     public event EventHandler<PolylineClickedEventArgs>? PolylineClicked;
     public event EventHandler<PolygonClickedEventArgs>? PolygonClicked;
     public event EventHandler<CameraChangedEventArgs>? CameraChanged;
+    public event EventHandler<OfflineRegionProgressEventArgs>? OfflineRegionProgress;
+    public event EventHandler<OfflineRegionCompletedEventArgs>? OfflineRegionCompleted;
 
     /// <summary>Live camera position, updated on every camera change.</summary>
     public MapCameraPosition? CurrentCamera { get; private set; }
@@ -246,6 +248,21 @@ public class MapView : View
     public void RemoveClusteredSource(string sourceId)
     {
         Handler?.Invoke(nameof(RemoveClusteredSource), sourceId);
+    }
+
+    /// <summary>
+    /// Downloads an offline region (style pack + tiles). Progress is reported via
+    /// <see cref="OfflineRegionProgress"/> and <see cref="OfflineRegionCompleted"/>.
+    /// </summary>
+    public void DownloadOfflineRegion(MapOfflineRegion region)
+    {
+        Handler?.Invoke(nameof(DownloadOfflineRegion), region);
+    }
+
+    /// <summary>Cancels a running download and removes the region's tiles.</summary>
+    public void RemoveOfflineRegion(string regionId)
+    {
+        Handler?.Invoke(nameof(RemoveOfflineRegion), regionId);
     }
 
     /* ------------------------- Internal event dispatchers ------------------------- */
@@ -312,6 +329,17 @@ public class MapView : View
         PolygonClicked?.Invoke(this, args);
         if (PolygonClickedCommand?.CanExecute(args) == true)
             PolygonClickedCommand.Execute(args);
+    }
+
+    internal void SendOfflineRegionProgress(string regionId, double progress)
+    {
+        OfflineRegionProgress?.Invoke(this, new OfflineRegionProgressEventArgs(regionId, progress));
+    }
+
+    internal void SendOfflineRegionCompleted(string regionId, bool success, string? errorMessage)
+    {
+        OfflineRegionCompleted?.Invoke(
+            this, new OfflineRegionCompletedEventArgs(regionId, success, errorMessage));
     }
 
     internal void SendCameraChanged(MapCameraPosition camera)

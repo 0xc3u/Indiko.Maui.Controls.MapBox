@@ -75,6 +75,10 @@ Markers cross the boundary as a JSON array (see `AnnotationSerializer`). Consequ
   Measure/Arrange and syncs by id (no content updates — remove/re-add). Android facade must set
   `layoutParams` before `addViewAnnotation` (Mapbox casts them unconditionally). MAUI gesture
   recognizers inside the content keep working.
+- **Offline regions**: `DownloadOfflineRegion(MapOfflineRegion)` downloads the style pack
+  (OfflineManager) plus the bounding-box tile region (default TileStore) in one call; progress
+  and completion arrive via `OfflineRegionProgress`/`OfflineRegionCompleted`. The MapView reads
+  the default TileStore automatically, so downloaded regions render without network.
 - **Clustering**: `AddClusteredSource(MapClusterSource)` creates a clustered GeoJSON source plus
   three facade-managed layers (`<id>-clusters`, `<id>-cluster-count`, `<id>-points`); tapping a
   cluster queries the rendered feature and eases to its expansion zoom — all inside the facades.

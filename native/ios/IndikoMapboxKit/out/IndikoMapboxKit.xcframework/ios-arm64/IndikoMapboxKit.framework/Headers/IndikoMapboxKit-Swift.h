@@ -330,6 +330,8 @@ SWIFT_PROTOCOL_NAMED("IKMapEventListener")
 - (void)onPolylineClick:(NSString * _Nonnull)id;
 - (void)onPolygonClick:(NSString * _Nonnull)id;
 - (void)onCameraChanged:(IKCameraState * _Nonnull)camera;
+- (void)onOfflineRegionProgress:(NSString * _Nonnull)id progress:(double)progress;
+- (void)onOfflineRegionCompleted:(NSString * _Nonnull)id success:(BOOL)success error:(NSString * _Nullable)error;
 @end
 
 @class NSCoder;
@@ -366,6 +368,11 @@ SWIFT_CLASS_NAMED("IKMapView")
 /// fixed size in points; an existing annotation with the same id is replaced.
 - (void)addViewAnnotation:(NSString * _Nonnull)id view:(UIView * _Nonnull)view latitude:(double)latitude longitude:(double)longitude width:(double)width height:(double)height;
 - (void)removeViewAnnotation:(NSString * _Nonnull)id;
+/// Downloads a style pack plus the tile region for a bounding box. JSON:
+/// {“id”,“styleUri”,“minZoom”,“maxZoom”,“minLat”,“minLng”,“maxLat”,“maxLng”}
+/// Progress and completion are reported through the listener.
+- (void)downloadOfflineRegionJson:(NSString * _Nonnull)json;
+- (void)removeOfflineRegion:(NSString * _Nonnull)id;
 /// Adds a clustered GeoJSON source plus three managed layers
 /// (”<id>-clusters”, “<id>-cluster-count”, “<id>-points”). JSON:
 /// {“sourceId”,“geoJson”,“clusterRadius”,“clusterMaxZoom”,“clusterColor”,

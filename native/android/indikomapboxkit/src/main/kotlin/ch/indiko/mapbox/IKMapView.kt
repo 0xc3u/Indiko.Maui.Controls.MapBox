@@ -8,11 +8,19 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.widget.FrameLayout
 import com.mapbox.common.MapboxOptions
+import com.mapbox.common.NetworkRestriction
+import com.mapbox.common.TileRegionLoadOptions
+import com.mapbox.common.TileStore
 import com.mapbox.geojson.Point
 import com.mapbox.geojson.Feature
+import com.mapbox.geojson.Polygon
 import com.mapbox.maps.CameraOptions
+import com.mapbox.maps.GlyphsRasterizationMode
 import com.mapbox.maps.MapInitOptions
 import com.mapbox.maps.MapView
+import com.mapbox.maps.OfflineManager
+import com.mapbox.maps.StylePackLoadOptions
+import com.mapbox.maps.TilesetDescriptorOptions
 import com.mapbox.maps.RenderedQueryGeometry
 import com.mapbox.maps.RenderedQueryOptions
 import com.mapbox.maps.ViewAnnotationAnchor
@@ -87,6 +95,8 @@ interface IKMapEventListener
     fun onPolylineClick(id: String)
     fun onPolygonClick(id: String)
     fun onCameraChanged(camera: IKCameraState)
+    fun onOfflineRegionProgress(id: String, progress: Double)
+    fun onOfflineRegionCompleted(id: String, success: Boolean, error: String?)
 }
 
 /**
@@ -492,6 +502,94 @@ class IKMapView(
     fun removeViewAnnotation(id: String)
     {
         viewAnnotationViews.remove(id)?.let { mapView.viewAnnotationManager.removeViewAnnotation(it) }
+    }
+
+    // endregion
+
+    // region Offline regions
+
+    private val offlineManager by lazy { OfflineManager() }
+    private val tileStore by lazy { TileStore.create() }
+
+    /**
+     * Downloads a style pack plus the tile region for a bounding box. JSON:
+     * {"id","styleUri","minZoom","maxZoom","minLat","minLng","maxLat","maxLng"}
+     * Progress and completion are reported through the listener.
+     */
+    fun downloadOfflineRegionJson(json: String)
+    {
+        val config = JSONObject(json)
+        val id = config.optString("id")
+        if (id.isEmpty()) return
+
+        val styleUri = config.optString("styleUri", "mapbox://styles/mapbox/streets-v12")
+        val minZoom = config.optInt("minZoom", 6).toByte()
+        val maxZoom = config.optInt("maxZoom", 14).toByte()
+        val minLat = config.optDouble("minLat")
+        val minLng = config.optDouble("minLng")
+        val maxLat = config.optDouble("maxLat")
+        val maxLng = config.optDouble("maxLng")
+        if (minLat.isNaN() || minLng.isNaN() || maxLat.isNaN() || maxLng.isNaN()) return
+
+        // 1. Style pack (style JSON, sprites, glyphs) — required for offline rendering.
+        offlineManager.loadStylePack(
+            styleUri,
+            StylePackLoadOptions.Builder()
+                .glyphsRasterizationMode(GlyphsRasterizationMode.IDEOGRAPHS_RASTERIZED_LOCALLY)
+                .build(),
+            { /* style pack progress ignored */ },
+            { /* completion reported via the tile region below */ }
+        )
+
+        // 2. Tile region for the bounding box.
+        val descriptor = offlineManager.createTilesetDescriptor(
+            TilesetDescriptorOptions.Builder()
+                .styleURI(styleUri)
+                .minZoom(minZoom)
+                .maxZoom(maxZoom)
+                .build()
+        )
+
+        val ring = listOf(
+            com.mapbox.geojson.Point.fromLngLat(minLng, minLat),
+            com.mapbox.geojson.Point.fromLngLat(maxLng, minLat),
+            com.mapbox.geojson.Point.fromLngLat(maxLng, maxLat),
+            com.mapbox.geojson.Point.fromLngLat(minLng, maxLat),
+            com.mapbox.geojson.Point.fromLngLat(minLng, minLat),
+        )
+
+        tileStore.loadTileRegion(
+            id,
+            TileRegionLoadOptions.Builder()
+                .geometry(Polygon.fromLngLats(listOf(ring)))
+                .descriptors(listOf(descriptor))
+                .acceptExpired(true)
+                .networkRestriction(NetworkRestriction.NONE)
+                .build(),
+            { progress ->
+                val fraction =
+                    if (progress.requiredResourceCount > 0)
+                        progress.completedResourceCount.toDouble() / progress.requiredResourceCount
+                    else 0.0
+                post { listener?.onOfflineRegionProgress(id, fraction) }
+            }
+        ) { expected ->
+            post {
+                if (expected.isValue)
+                {
+                    listener?.onOfflineRegionCompleted(id, true, null)
+                }
+                else
+                {
+                    listener?.onOfflineRegionCompleted(id, false, expected.error?.message)
+                }
+            }
+        }
+    }
+
+    fun removeOfflineRegion(id: String)
+    {
+        tileStore.removeTileRegion(id)
     }
 
     // endregion

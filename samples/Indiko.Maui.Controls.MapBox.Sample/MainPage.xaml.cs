@@ -34,6 +34,8 @@ public partial class MainPage : ContentPage
 			OnToggleCluster(this, EventArgs.Empty);
 		if (Environment.GetEnvironmentVariable("DEMO_BUBBLE") == "1")
 			OnToggleBubble(this, EventArgs.Empty);
+		if (Environment.GetEnvironmentVariable("DEMO_OFFLINE") == "1")
+			OnDownloadOffline(this, EventArgs.Empty);
 
 		Map.Polylines.Add(new MapPolyline
 		{
@@ -284,5 +286,33 @@ public partial class MainPage : ContentPage
 		}
 
 		bubbleActive = !bubbleActive;
+	}
+
+	private void OnDownloadOffline(object? sender, EventArgs e)
+	{
+		Map.DownloadOfflineRegion(new MapOfflineRegion
+		{
+			Id = "zuerich-region",
+			StyleUri = MapStyles.Streets,
+			MinLatitude = 47.32,
+			MinLongitude = 8.46,
+			MaxLatitude = 47.43,
+			MaxLongitude = 8.62,
+			MinZoom = 6,
+			MaxZoom = 12,
+		});
+		StatusLabel.Text = "Offline-Download gestartet…";
+	}
+
+	private void OnOfflineProgress(object? sender, OfflineRegionProgressEventArgs e)
+	{
+		StatusLabel.Text = $"Offline-Download: {e.Progress:P0}";
+	}
+
+	private void OnOfflineCompleted(object? sender, OfflineRegionCompletedEventArgs e)
+	{
+		StatusLabel.Text = e.Success
+			? $"Offline-Region '{e.RegionId}' fertig geladen ✓"
+			: $"Offline-Download fehlgeschlagen: {e.ErrorMessage}";
 	}
 }

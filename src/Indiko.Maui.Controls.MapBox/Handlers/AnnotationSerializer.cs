@@ -119,6 +119,20 @@ internal static class AnnotationSerializer
         return builder.Append('}').ToString();
     }
 
+    public static string ToOfflineRegionJson(MapOfflineRegion region)
+    {
+        var builder = new StringBuilder("{");
+        builder.Append("\"id\":").Append(Quote(region.Id));
+        builder.Append(",\"styleUri\":").Append(Quote(region.StyleUri));
+        builder.Append(",\"minZoom\":").Append(region.MinZoom);
+        builder.Append(",\"maxZoom\":").Append(region.MaxZoom);
+        builder.Append(",\"minLat\":").Append(Invariant(region.MinLatitude));
+        builder.Append(",\"minLng\":").Append(Invariant(region.MinLongitude));
+        builder.Append(",\"maxLat\":").Append(Invariant(region.MaxLatitude));
+        builder.Append(",\"maxLng\":").Append(Invariant(region.MaxLongitude));
+        return builder.Append('}').ToString();
+    }
+
     private static void AppendPoints(StringBuilder builder, IEnumerable<MapPosition>? points)
     {
         builder.Append(",\"points\":[");
