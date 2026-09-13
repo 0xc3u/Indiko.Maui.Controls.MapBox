@@ -5,8 +5,8 @@ namespace Indiko.Maui.Controls.MapBox.Sample;
 
 public static class MauiProgram
 {
-	// TODO: Replace with your Mapbox public access token (pk.…) from https://account.mapbox.com
-	private const string MapboxAccessToken = "pk.YOUR_MAPBOX_ACCESS_TOKEN";
+	// Token lives in MapboxToken.cs (git-ignored) — copy MapboxToken.cs.template to create it.
+	private const string MapboxAccessToken = MapboxToken.Value;
 
 	public static MauiApp CreateMauiApp()
 	{

@@ -24,6 +24,7 @@ native/android/local.properties
 
 # Secrets — never commit tokens
 **/mapbox_token.*
+samples/Indiko.Maui.Controls.MapBox.Sample/MapboxToken.cs
 .netrc
 
 # Facade binding artifacts (IndikoMapboxKit.*) are committed on purpose.

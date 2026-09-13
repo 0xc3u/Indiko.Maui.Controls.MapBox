@@ -1,0 +1,8 @@
+// Copy this file to MapboxToken.cs (git-ignored) and insert your Mapbox
+// public access token (pk.…) from https://account.mapbox.com
+namespace Indiko.Maui.Controls.MapBox.Sample;
+
+internal static class MapboxToken
+{
+	public const string Value = "pk.YOUR_MAPBOX_ACCESS_TOKEN";
+}
