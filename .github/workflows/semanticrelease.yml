@@ -1,0 +1,77 @@
+name: CI with Semantic Release
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths-ignore:
+      - "**.md"
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_VERSION: 10.0.100
+
+jobs:
+  build:
+    # macOS: the git-ignored Mapbox native artifacts (XCFrameworks, AARs) are rebuilt
+    # here when native/** or scripts/** change; otherwise they come from the cache.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Install MAUI workload
+        run: dotnet workload install maui
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Cache native artifacts
+        id: native-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            src/Indiko.Maui.Controls.MapBox.Bindings.iOS/Artifacts
+            src/Indiko.Maui.Controls.MapBox.Bindings.Android/Artifacts
+          key: native-${{ runner.os }}-${{ hashFiles('native/**', 'scripts/**') }}
+
+      - name: Build native facades
+        if: steps.native-cache.outputs.cache-hit != 'true'
+        run: |
+          brew install xcodegen
+          ./scripts/build-ios-native.sh
+          ./scripts/build-android-native.sh
+
+      - name: Build
+        run: dotnet build src/Indiko.Maui.Controls.MapBox.sln -c Release
+
+  semantic-release:
+    runs-on: ubuntu-latest
+    environment:
+      name: Release
+    needs: build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Semantic Release
+        uses: cycjimmy/semantic-release-action@v4
+        with:
+          extra_plugins: |
+            @semantic-release/changelog
+            @semantic-release/git
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}

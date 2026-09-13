@@ -19,6 +19,21 @@ dotnet build samples/Indiko.Maui.Controls.MapBox.Sample.sln -c Release
 
 Running the sample requires a Mapbox public token (pk.…) in `samples/.../MauiProgram.cs`.
 
+## Releasing
+
+Semantic Release CI (like Indiko.Maui.Controls.Chat): pushes to main run
+`.github/workflows/semanticrelease.yml` (build on macOS incl. cached native artifacts, then
+semantic-release creates the version tag + CHANGELOG from conventional commits). The tag push
+triggers `.github/workflows/release-nuget.yml`, which packs and pushes to nuget.org.
+Required repo secrets: `GH_TOKEN` (environment "Release") and `NUGET_API_KEY`.
+Do not bump versions by hand — `PackageVersion` is injected from the tag at pack time.
+
+Packaging: the binding projects are IsPackable=false; `PackBindingOutputs` in the main csproj
+packs their DLLs, all native AARs and the iOS `.resources.zip` sidecar into lib/. The
+`AllowedOutputExtensionsInPackageBuildOutputFolder` override (.aar/.zip) is required for that.
+The Android binding's NuGet dependencies are mirrored in the main csproj (PrivateAssets=all on
+the ProjectReference suppresses transitive flow) — keep both lists in sync.
+
 ## Architecture
 
 .NET MAUI control library targeting `net10.0-android` and `net10.0-ios` (min Android 30, iOS 14.2),

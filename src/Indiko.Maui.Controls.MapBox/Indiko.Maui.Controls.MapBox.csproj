@@ -32,12 +32,48 @@
 		<PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
 	</ItemGroup>
 
+	<!--
+	  The binding projects are not packable — their assemblies (plus the native AARs /
+	  the iOS resources sidecar) are packed INTO this package via PackBindingOutputs
+	  below. PrivateAssets=all keeps them out of the nuspec dependency list.
+	-->
 	<ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">
-		<ProjectReference Include="..\Indiko.Maui.Controls.MapBox.Bindings.Android\Indiko.Maui.Controls.MapBox.Bindings.Android.csproj" />
+		<ProjectReference Include="..\Indiko.Maui.Controls.MapBox.Bindings.Android\Indiko.Maui.Controls.MapBox.Bindings.Android.csproj" PrivateAssets="all" />
 	</ItemGroup>
 
 	<ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">
-		<ProjectReference Include="..\Indiko.Maui.Controls.MapBox.Bindings.iOS\Indiko.Maui.Controls.MapBox.Bindings.iOS.csproj" />
+		<ProjectReference Include="..\Indiko.Maui.Controls.MapBox.Bindings.iOS\Indiko.Maui.Controls.MapBox.Bindings.iOS.csproj" PrivateAssets="all" />
 	</ItemGroup>
+
+	<!--
+	  The Android binding's Java dependencies must still flow to consumers as regular
+	  NuGet dependencies (PrivateAssets=all above suppresses the transitive flow).
+	  Keep these versions in sync with Bindings.Android.csproj.
+	-->
+	<ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">
+		<PackageReference Include="Xamarin.Kotlin.StdLib" Version="2.2.0.1" />
+		<PackageReference Include="Xamarin.KotlinX.Coroutines.Android" Version="1.10.2.1" />
+		<PackageReference Include="Xamarin.AndroidX.AppCompat" Version="1.7.1.1" />
+		<PackageReference Include="Square.OkHttp3" Version="4.12.0.4" />
+		<PackageReference Include="GoogleGson" Version="2.13.1.1" />
+	</ItemGroup>
+
+	<PropertyGroup>
+		<TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);PackBindingOutputs</TargetsForTfmSpecificBuildOutput>
+		<!-- NuGet drops non-default extensions from the lib folder — the native AARs and
+		     the iOS binding resources sidecar must survive the filter. -->
+		<AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.aar;.zip</AllowedOutputExtensionsInPackageBuildOutputFolder>
+	</PropertyGroup>
+
+	<Target Name="PackBindingOutputs" DependsOnTargets="Build">
+		<ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">
+			<BuildOutputInPackage Include="$(OutputPath)Indiko.Maui.Controls.MapBox.Bindings.Android.dll" />
+			<BuildOutputInPackage Include="$(OutputPath)*.aar" />
+		</ItemGroup>
+		<ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">
+			<BuildOutputInPackage Include="$(OutputPath)Indiko.Maui.Controls.MapBox.Bindings.iOS.dll" />
+			<BuildOutputInPackage Include="$(OutputPath)Indiko.Maui.Controls.MapBox.Bindings.iOS.resources.zip" />
+		</ItemGroup>
+	</Target>
 
 </Project>
