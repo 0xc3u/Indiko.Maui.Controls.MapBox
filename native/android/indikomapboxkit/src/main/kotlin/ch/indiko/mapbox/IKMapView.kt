@@ -15,6 +15,7 @@ import com.mapbox.maps.MapInitOptions
 import com.mapbox.maps.MapView
 import com.mapbox.maps.RenderedQueryGeometry
 import com.mapbox.maps.RenderedQueryOptions
+import com.mapbox.maps.ViewAnnotationAnchor
 import com.mapbox.maps.extension.style.expressions.generated.Expression
 import com.mapbox.maps.extension.style.layers.addLayer
 import com.mapbox.maps.extension.style.layers.addLayerBelow
@@ -44,6 +45,9 @@ import com.mapbox.maps.plugin.gestures.addOnMapLongClickListener
 import com.mapbox.maps.plugin.gestures.gestures
 import com.mapbox.maps.plugin.locationcomponent.createDefault2DPuck
 import com.mapbox.maps.plugin.locationcomponent.location
+import com.mapbox.maps.viewannotation.annotationAnchor
+import com.mapbox.maps.viewannotation.geometry
+import com.mapbox.maps.viewannotation.viewAnnotationOptions
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -453,6 +457,45 @@ class IKMapView(
 
     // endregion
 
+    // region View annotations
+
+    private val viewAnnotationViews = HashMap<String, android.view.View>()
+
+    /**
+     * Anchors a native view (bottom-center) to a coordinate. The caller provides the
+     * fixed size in dp; an existing annotation with the same id is replaced.
+     */
+    fun addViewAnnotation(id: String, view: android.view.View, latitude: Double, longitude: Double,
+                          widthDp: Double, heightDp: Double)
+    {
+        removeViewAnnotation(id)
+
+        val density = resources.displayMetrics.density
+        if (view.layoutParams == null)
+        {
+            // Mapbox's ViewAnnotationManager casts layoutParams unconditionally —
+            // freshly created (e.g. MAUI) views don't have any yet.
+            view.layoutParams = LayoutParams((widthDp * density).toInt(), (heightDp * density).toInt())
+        }
+        mapView.viewAnnotationManager.addViewAnnotation(view, viewAnnotationOptions {
+            geometry(Point.fromLngLat(longitude, latitude))
+            width(widthDp * density)
+            height(heightDp * density)
+            allowOverlap(true)
+            annotationAnchor {
+                anchor(ViewAnnotationAnchor.BOTTOM)
+            }
+        })
+        viewAnnotationViews[id] = view
+    }
+
+    fun removeViewAnnotation(id: String)
+    {
+        viewAnnotationViews.remove(id)?.let { mapView.viewAnnotationManager.removeViewAnnotation(it) }
+    }
+
+    // endregion
+
     // region Clustering
 
     /**
@@ -643,6 +686,8 @@ class IKMapView(
     fun destroy()
     {
         listener = null
+        mapView.viewAnnotationManager.removeAllViewAnnotations()
+        viewAnnotationViews.clear()
         pointManager = null
         polylineManager = null
         polygonManager = null

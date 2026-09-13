@@ -67,6 +67,14 @@ Markers cross the boundary as a JSON array (see `AnnotationSerializer`). Consequ
 - **GeoJSON sources/layers**: imperative MapView API (`AddGeoJsonSource`/`AddLayer`/`Remove*`) via
   CommandMapper. Mapbox drops runtime sources/layers on every style reload — both facades keep a
   registry and re-apply it after each StyleLoaded event, so they survive style switches.
+- **Click-consumed semantics**: `MapClicked` fires only for taps on empty map. Map-click dispatch
+  is deferred past the synchronous gesture pipeline; annotation click handlers stamp a timestamp
+  and the cluster hit-test reports through a completion callback.
+- **View annotations**: `ViewAnnotations` collection of `MapViewAnnotation` (MAUI `View` content,
+  fixed Width/Height, bottom-center anchor). The handler converts content via `ToPlatform` +
+  Measure/Arrange and syncs by id (no content updates — remove/re-add). Android facade must set
+  `layoutParams` before `addViewAnnotation` (Mapbox casts them unconditionally). MAUI gesture
+  recognizers inside the content keep working.
 - **Clustering**: `AddClusteredSource(MapClusterSource)` creates a clustered GeoJSON source plus
   three facade-managed layers (`<id>-clusters`, `<id>-cluster-count`, `<id>-points`); tapping a
   cluster queries the rendered feature and eases to its expansion zoom — all inside the facades.

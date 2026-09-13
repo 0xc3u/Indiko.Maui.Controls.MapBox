@@ -64,6 +64,18 @@ public class MapView : View
         set => SetValue(PolygonsProperty, value);
     }
 
+    public static readonly BindableProperty ViewAnnotationsProperty = BindableProperty.Create(
+        nameof(ViewAnnotations), typeof(ObservableRangeCollection<MapViewAnnotation>), typeof(MapView),
+        defaultValueCreator: _ => new ObservableRangeCollection<MapViewAnnotation>());
+
+    /// <summary>MAUI views anchored to coordinates. Synced by id — adding/removing
+    /// items creates/removes native view annotations.</summary>
+    public ObservableRangeCollection<MapViewAnnotation> ViewAnnotations
+    {
+        get => (ObservableRangeCollection<MapViewAnnotation>)GetValue(ViewAnnotationsProperty);
+        set => SetValue(ViewAnnotationsProperty, value);
+    }
+
     public static readonly BindableProperty ShowUserLocationProperty = BindableProperty.Create(
         nameof(ShowUserLocation), typeof(bool), typeof(MapView), false);
 

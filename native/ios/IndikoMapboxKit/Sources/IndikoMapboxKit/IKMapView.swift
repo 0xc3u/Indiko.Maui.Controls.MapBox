@@ -421,6 +421,34 @@ public class IKMapView: UIView
         try? mapView.mapboxMap.addLayer(layer, layerPosition: position)
     }
 
+    // MARK: - View annotations
+
+    private var viewAnnotationsById: [String: ViewAnnotation] = [:]
+
+    /// Anchors a native view (bottom-center) to a coordinate. The caller provides the
+    /// fixed size in points; an existing annotation with the same id is replaced.
+    @objc(addViewAnnotation:view:latitude:longitude:width:height:)
+    public func addViewAnnotation(id: String, view: UIView, latitude: Double, longitude: Double,
+                                  width: Double, height: Double)
+    {
+        removeViewAnnotation(id: id)
+
+        view.frame = CGRect(x: 0, y: 0, width: width, height: height)
+        let annotation = ViewAnnotation(
+            coordinate: CLLocationCoordinate2D(latitude: latitude, longitude: longitude),
+            view: view)
+        annotation.allowOverlap = true
+        annotation.variableAnchors = [ViewAnnotationAnchorConfig(anchor: .bottom)]
+        mapView.viewAnnotations.add(annotation)
+        viewAnnotationsById[id] = annotation
+    }
+
+    @objc(removeViewAnnotation:)
+    public func removeViewAnnotation(id: String)
+    {
+        viewAnnotationsById.removeValue(forKey: id)?.remove()
+    }
+
     // MARK: - Clustering
 
     /// Adds a clustered GeoJSON source plus three managed layers
@@ -604,6 +632,11 @@ public class IKMapView: UIView
         geoJsonSources.removeAll()
         layerConfigs.removeAll()
         clusterConfigs.removeAll()
+        for annotation in viewAnnotationsById.values
+        {
+            annotation.remove()
+        }
+        viewAnnotationsById.removeAll()
         mapView.removeFromSuperview()
         mapView = nil
     }

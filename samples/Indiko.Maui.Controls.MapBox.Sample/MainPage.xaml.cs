@@ -32,6 +32,8 @@ public partial class MainPage : ContentPage
 			OnToggleGeoJson(this, EventArgs.Empty);
 		if (Environment.GetEnvironmentVariable("DEMO_CLUSTER") == "1")
 			OnToggleCluster(this, EventArgs.Empty);
+		if (Environment.GetEnvironmentVariable("DEMO_BUBBLE") == "1")
+			OnToggleBubble(this, EventArgs.Empty);
 
 		Map.Polylines.Add(new MapPolyline
 		{
@@ -233,5 +235,54 @@ public partial class MainPage : ContentPage
 		}
 
 		clusterActive = !clusterActive;
+	}
+
+	private bool bubbleActive;
+
+	private void OnToggleBubble(object? sender, EventArgs e)
+	{
+		if (bubbleActive)
+		{
+			var bubble = Map.ViewAnnotations.FirstOrDefault(a => a.Id == "bubble-hb");
+			if (bubble is not null)
+				Map.ViewAnnotations.Remove(bubble);
+			StatusLabel.Text = "Bubble entfernt";
+		}
+		else
+		{
+			var label = new Label
+			{
+				Text = "🚉 Zürich HB",
+				TextColor = Colors.White,
+				FontSize = 14,
+				HorizontalOptions = LayoutOptions.Center,
+				VerticalOptions = LayoutOptions.Center,
+			};
+			var border = new Border
+			{
+				Background = Color.FromArgb("#1F2937"),
+				Stroke = Color.FromArgb("#F59E0B"),
+				StrokeThickness = 2,
+				StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 12 },
+				Content = label,
+			};
+			var tap = new TapGestureRecognizer();
+			tap.Tapped += (_, _) => StatusLabel.Text = "Bubble getippt! (MAUI-Gesture in View-Annotation)";
+			border.GestureRecognizers.Add(tap);
+
+			Map.ViewAnnotations.Add(new MapViewAnnotation
+			{
+				Id = "bubble-hb",
+				Latitude = 47.3779,
+				Longitude = 8.5403,
+				Content = border,
+				Width = 150,
+				Height = 44,
+			});
+			Map.FlyTo(new MapCameraPosition(47.3779, 8.5403, 13), 1000);
+			StatusLabel.Text = "View-Annotation aktiv — tippe die Bubble";
+		}
+
+		bubbleActive = !bubbleActive;
 	}
 }

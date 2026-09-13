@@ -362,6 +362,10 @@ SWIFT_CLASS_NAMED("IKMapView")
 /// {“id”,“sourceId”,“type”:“fill|line|circle”,“color”,“opacity”,“lineWidth”,“circleRadius”,“belowLayerId”}
 - (void)addLayerJson:(NSString * _Nonnull)json;
 - (void)removeLayer:(NSString * _Nonnull)id;
+/// Anchors a native view (bottom-center) to a coordinate. The caller provides the
+/// fixed size in points; an existing annotation with the same id is replaced.
+- (void)addViewAnnotation:(NSString * _Nonnull)id view:(UIView * _Nonnull)view latitude:(double)latitude longitude:(double)longitude width:(double)width height:(double)height;
+- (void)removeViewAnnotation:(NSString * _Nonnull)id;
 /// Adds a clustered GeoJSON source plus three managed layers
 /// (”<id>-clusters”, “<id>-cluster-count”, “<id>-points”). JSON:
 /// {“sourceId”,“geoJson”,“clusterRadius”,“clusterMaxZoom”,“clusterColor”,

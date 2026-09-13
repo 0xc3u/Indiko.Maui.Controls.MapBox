@@ -3,6 +3,7 @@ using Indiko.Maui.Controls.MapBox.Bindings;
 using Indiko.Maui.Controls.MapBox.Handlers;
 using Indiko.Maui.Controls.MapBox.Models;
 using Microsoft.Maui.Handlers;
+using Microsoft.Maui.Platform;
 
 namespace Indiko.Maui.Controls.MapBox.Platforms.Android;
 
@@ -14,6 +15,8 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
     private INotifyCollectionChanged? observedAnnotations;
     private INotifyCollectionChanged? observedPolylines;
     private INotifyCollectionChanged? observedPolygons;
+    private INotifyCollectionChanged? observedViewAnnotations;
+    private readonly Dictionary<string, MapViewAnnotation> shownViewAnnotations = [];
 
     public static readonly IPropertyMapper<MapView, MapViewHandler> Mapper =
         new PropertyMapper<MapView, MapViewHandler>(ViewMapper)
@@ -23,6 +26,7 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
             [nameof(MapView.Annotations)] = MapAnnotations,
             [nameof(MapView.Polylines)] = MapPolylines,
             [nameof(MapView.Polygons)] = MapPolygons,
+            [nameof(MapView.ViewAnnotations)] = MapViewAnnotations,
             [nameof(MapView.ShowUserLocation)] = MapShowUserLocation,
             [nameof(MapView.ScrollEnabled)] = MapGestures,
             [nameof(MapView.ZoomEnabled)] = MapGestures,
@@ -67,6 +71,7 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
         ObserveAnnotations(VirtualView.Annotations);
         ObservePolylines(VirtualView.Polylines);
         ObservePolygons(VirtualView.Polygons);
+        ObserveViewAnnotations(VirtualView.ViewAnnotations);
     }
 
     protected override void DisconnectHandler(IKMapView platformView)
@@ -74,6 +79,8 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
         ObserveAnnotations(null);
         ObservePolylines(null);
         ObservePolygons(null);
+        ObserveViewAnnotations(null);
+        shownViewAnnotations.Clear();
         platformView.Listener = null;
         listener?.Dispose();
         listener = null;
@@ -127,6 +134,12 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
     {
         handler.ObservePolygons(view.Polygons);
         handler.PushPolygons();
+    }
+
+    private static void MapViewAnnotations(MapViewHandler handler, MapView view)
+    {
+        handler.ObserveViewAnnotations(view.ViewAnnotations);
+        handler.PushViewAnnotations();
     }
 
     private static void MapShowUserLocation(MapViewHandler handler, MapView view)
@@ -259,6 +272,56 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
     private void PushPolygons()
     {
         PlatformView.SetPolygonsJson(AnnotationSerializer.ToPolygonsJson(VirtualView.Polygons));
+    }
+
+    private void ObserveViewAnnotations(INotifyCollectionChanged? viewAnnotations)
+    {
+        if (ReferenceEquals(observedViewAnnotations, viewAnnotations))
+            return;
+
+        if (observedViewAnnotations is not null)
+            observedViewAnnotations.CollectionChanged -= OnViewAnnotationsChanged;
+
+        observedViewAnnotations = viewAnnotations;
+
+        if (observedViewAnnotations is not null)
+            observedViewAnnotations.CollectionChanged += OnViewAnnotationsChanged;
+    }
+
+    private void OnViewAnnotationsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        PushViewAnnotations();
+    }
+
+    private void PushViewAnnotations()
+    {
+        if (MauiContext is null)
+            return;
+
+        var current = VirtualView.ViewAnnotations?.ToList() ?? [];
+        var currentIds = new HashSet<string>(current.Select(a => a.Id));
+
+        foreach (var staleId in shownViewAnnotations.Keys.Where(id => !currentIds.Contains(id)).ToList())
+        {
+            PlatformView.RemoveViewAnnotation(staleId);
+            shownViewAnnotations.Remove(staleId);
+        }
+
+        foreach (var annotation in current)
+        {
+            if (annotation.Content is null || shownViewAnnotations.ContainsKey(annotation.Id))
+                continue;
+
+            var platformContent = annotation.Content.ToPlatform(MauiContext);
+            var content = (IView)annotation.Content;
+            content.Measure(annotation.Width, annotation.Height);
+            content.Arrange(new Rect(0, 0, annotation.Width, annotation.Height));
+
+            PlatformView.AddViewAnnotation(
+                annotation.Id, platformContent, annotation.Latitude, annotation.Longitude,
+                annotation.Width, annotation.Height);
+            shownViewAnnotations[annotation.Id] = annotation;
+        }
     }
 
     /* --------------------------------- Listener ----------------------------------- */

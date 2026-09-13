@@ -126,6 +126,13 @@ interface IKMapView
     [Export("removeLayer:")]
     void RemoveLayer(string id);
 
+    [Export("addViewAnnotation:view:latitude:longitude:width:height:")]
+    void AddViewAnnotation(string id, UIView view, double latitude, double longitude,
+        double width, double height);
+
+    [Export("removeViewAnnotation:")]
+    void RemoveViewAnnotation(string id);
+
     [Export("addClusteredSourceJson:")]
     void AddClusteredSourceJson(string json);
 
