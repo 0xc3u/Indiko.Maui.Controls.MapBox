@@ -12,7 +12,16 @@ import com.mapbox.geojson.Point
 import com.mapbox.maps.CameraOptions
 import com.mapbox.maps.MapInitOptions
 import com.mapbox.maps.MapView
+import com.mapbox.maps.extension.style.layers.addLayer
+import com.mapbox.maps.extension.style.layers.addLayerBelow
+import com.mapbox.maps.extension.style.layers.generated.CircleLayer
+import com.mapbox.maps.extension.style.layers.generated.FillLayer
+import com.mapbox.maps.extension.style.layers.generated.LineLayer
 import com.mapbox.maps.extension.style.layers.properties.generated.IconAnchor
+import com.mapbox.maps.extension.style.sources.addSource
+import com.mapbox.maps.extension.style.sources.generated.GeoJsonSource
+import com.mapbox.maps.extension.style.sources.generated.geoJsonSource
+import com.mapbox.maps.extension.style.sources.getSourceAs
 import com.mapbox.maps.plugin.animation.MapAnimationOptions
 import com.mapbox.maps.plugin.animation.camera
 import com.mapbox.maps.plugin.annotation.annotations
@@ -31,6 +40,7 @@ import com.mapbox.maps.plugin.gestures.gestures
 import com.mapbox.maps.plugin.locationcomponent.createDefault2DPuck
 import com.mapbox.maps.plugin.locationcomponent.location
 import org.json.JSONArray
+import org.json.JSONObject
 
 /**
  * Global Mapbox configuration. Must be called before the first IKMapView is created.
@@ -92,6 +102,11 @@ class IKMapView(
     private val polylineIdsByAnnotationId = HashMap<String, String>()
     private val polygonIdsByAnnotationId = HashMap<String, String>()
 
+    // Registry of runtime sources/layers — Mapbox drops them on every style
+    // reload, so they are re-applied after each StyleLoaded event.
+    private val geoJsonSources = LinkedHashMap<String, String>()
+    private val layerConfigs = LinkedHashMap<String, JSONObject>()
+
     var listener: IKMapEventListener? = null
 
     init
@@ -107,7 +122,11 @@ class IKMapView(
         addView(mapView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
 
         mapView.mapboxMap.subscribeMapLoaded { listener?.onMapReady() }
-        mapView.mapboxMap.subscribeStyleLoaded { listener?.onStyleLoaded() }
+        mapView.mapboxMap.subscribeStyleLoaded {
+            geoJsonSources.forEach { (id, geoJson) -> applyGeoJsonSource(id, geoJson) }
+            layerConfigs.values.forEach { applyLayer(it) }
+            listener?.onStyleLoaded()
+        }
         mapView.mapboxMap.subscribeCameraChanged { event ->
             val state = event.cameraState
             listener?.onCameraChanged(
@@ -296,6 +315,101 @@ class IKMapView(
         polygonManager?.deleteAll()
         polygonIdsByAnnotationId.clear()
     }
+
+    // region GeoJSON sources & layers
+
+    /**
+     * Adds a GeoJSON source or replaces the data of an existing one.
+     */
+    fun addGeoJsonSource(id: String, geoJson: String)
+    {
+        geoJsonSources[id] = geoJson
+        applyGeoJsonSource(id, geoJson)
+    }
+
+    fun removeGeoJsonSource(id: String)
+    {
+        geoJsonSources.remove(id)
+        mapView.mapboxMap.style?.removeStyleSource(id)
+    }
+
+    /**
+     * Adds (or replaces) a style layer. JSON:
+     * {"id","sourceId","type":"fill|line|circle","color","opacity","lineWidth","circleRadius","belowLayerId"}
+     */
+    fun addLayerJson(json: String)
+    {
+        val config = JSONObject(json)
+        val id = config.optString("id")
+        if (id.isEmpty()) return
+
+        layerConfigs.remove(id)
+        layerConfigs[id] = config
+        applyLayer(config)
+    }
+
+    fun removeLayer(id: String)
+    {
+        layerConfigs.remove(id)
+        mapView.mapboxMap.style?.removeStyleLayer(id)
+    }
+
+    private fun applyGeoJsonSource(id: String, geoJson: String)
+    {
+        val style = mapView.mapboxMap.style ?: return
+        if (style.styleSourceExists(id))
+        {
+            style.getSourceAs<GeoJsonSource>(id)?.data(geoJson)
+        }
+        else
+        {
+            style.addSource(geoJsonSource(id) { data(geoJson) })
+        }
+    }
+
+    private fun applyLayer(config: JSONObject)
+    {
+        val style = mapView.mapboxMap.style ?: return
+        val id = config.optString("id")
+        val sourceId = config.optString("sourceId")
+        if (id.isEmpty() || sourceId.isEmpty()) return
+
+        if (style.styleLayerExists(id))
+        {
+            style.removeStyleLayer(id)
+        }
+
+        val color = config.optString("color", "#3B82F6")
+        val opacity = config.optDouble("opacity", 1.0)
+
+        val layer = when (config.optString("type"))
+        {
+            "fill" -> FillLayer(id, sourceId)
+                .fillColor(color)
+                .fillOpacity(opacity)
+            "line" -> LineLayer(id, sourceId)
+                .lineColor(color)
+                .lineOpacity(opacity)
+                .lineWidth(config.optDouble("lineWidth", 3.0))
+            "circle" -> CircleLayer(id, sourceId)
+                .circleColor(color)
+                .circleOpacity(opacity)
+                .circleRadius(config.optDouble("circleRadius", 6.0))
+            else -> return
+        }
+
+        val below = config.optString("belowLayerId")
+        if (below.isNotEmpty())
+        {
+            style.addLayerBelow(layer, below)
+        }
+        else
+        {
+            style.addLayer(layer)
+        }
+    }
+
+    // endregion
 
     private fun parsePoints(array: org.json.JSONArray?): List<Point>?
     {

@@ -85,6 +85,26 @@ internal static class AnnotationSerializer
         return builder.Append(']').ToString();
     }
 
+    public static string ToLayerJson(MapLayer layer)
+    {
+        var builder = new StringBuilder("{");
+        builder.Append("\"id\":").Append(Quote(layer.Id));
+        builder.Append(",\"sourceId\":").Append(Quote(layer.SourceId));
+        builder.Append(",\"type\":").Append(Quote(layer.Type switch
+        {
+            MapLayerType.Line => "line",
+            MapLayerType.Circle => "circle",
+            _ => "fill",
+        }));
+        builder.Append(",\"color\":").Append(Quote(layer.Color));
+        builder.Append(",\"opacity\":").Append(Invariant(layer.Opacity));
+        builder.Append(",\"lineWidth\":").Append(Invariant(layer.LineWidth));
+        builder.Append(",\"circleRadius\":").Append(Invariant(layer.CircleRadius));
+        if (!string.IsNullOrEmpty(layer.BelowLayerId))
+            builder.Append(",\"belowLayerId\":").Append(Quote(layer.BelowLayerId));
+        return builder.Append('}').ToString();
+    }
+
     private static void AppendPoints(StringBuilder builder, IEnumerable<MapPosition>? points)
     {
         builder.Append(",\"points\":[");

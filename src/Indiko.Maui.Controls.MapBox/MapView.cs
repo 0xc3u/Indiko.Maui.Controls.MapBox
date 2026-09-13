@@ -196,6 +196,31 @@ public class MapView : View
         Handler?.Invoke(nameof(FlyTo), new FlyToRequest(camera, durationMs));
     }
 
+    /// <summary>
+    /// Adds a GeoJSON source or replaces the data of an existing one. Sources survive
+    /// style switches — the native facade re-applies them after every style load.
+    /// </summary>
+    public void AddGeoJsonSource(string sourceId, string geoJson)
+    {
+        Handler?.Invoke(nameof(AddGeoJsonSource), new GeoJsonSourceRequest(sourceId, geoJson));
+    }
+
+    public void RemoveGeoJsonSource(string sourceId)
+    {
+        Handler?.Invoke(nameof(RemoveGeoJsonSource), sourceId);
+    }
+
+    /// <summary>Adds (or replaces) a style layer rendering a GeoJSON source.</summary>
+    public void AddLayer(MapLayer layer)
+    {
+        Handler?.Invoke(nameof(AddLayer), layer);
+    }
+
+    public void RemoveLayer(string layerId)
+    {
+        Handler?.Invoke(nameof(RemoveLayer), layerId);
+    }
+
     /* ------------------------- Internal event dispatchers ------------------------- */
 
     internal void SendMapReady()
@@ -269,6 +294,19 @@ public class MapView : View
         CameraChanged?.Invoke(this, args);
         if (CameraChangedCommand?.CanExecute(args) == true)
             CameraChangedCommand.Execute(args);
+    }
+}
+
+/// <summary>Payload for the AddGeoJsonSource command mapper.</summary>
+public sealed class GeoJsonSourceRequest
+{
+    public string SourceId { get; }
+    public string GeoJson { get; }
+
+    public GeoJsonSourceRequest(string sourceId, string geoJson)
+    {
+        SourceId = sourceId;
+        GeoJson = geoJson;
     }
 }
 

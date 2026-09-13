@@ -32,12 +32,17 @@
                FontSize="12"
                Text="Warte auf Karte…" />
 
-        <HorizontalStackLayout Grid.Row="1" Spacing="8" Padding="12">
-            <Button Text="Zürich" Clicked="OnFlyToZurich" />
-            <Button Text="Bern" Clicked="OnFlyToBern" />
-            <Button Text="Style" Clicked="OnToggleStyle" />
-            <Button Text="Marker löschen" Clicked="OnClearMarkers" />
-        </HorizontalStackLayout>
+        <VerticalStackLayout Grid.Row="1" Spacing="8" Padding="12">
+            <HorizontalStackLayout Spacing="8">
+                <Button Text="Zürich" Clicked="OnFlyToZurich" />
+                <Button Text="Bern" Clicked="OnFlyToBern" />
+                <Button Text="Style" Clicked="OnToggleStyle" />
+                <Button Text="Marker löschen" Clicked="OnClearMarkers" />
+            </HorizontalStackLayout>
+            <HorizontalStackLayout Spacing="8">
+                <Button Text="GeoJSON an/aus" Clicked="OnToggleGeoJson" />
+            </HorizontalStackLayout>
+        </VerticalStackLayout>
 
     </Grid>
 

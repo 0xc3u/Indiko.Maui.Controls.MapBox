@@ -34,6 +34,10 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
         new(ViewCommandMapper)
         {
             [nameof(MapView.FlyTo)] = MapFlyTo,
+            [nameof(MapView.AddGeoJsonSource)] = MapAddGeoJsonSource,
+            [nameof(MapView.RemoveGeoJsonSource)] = MapRemoveGeoJsonSource,
+            [nameof(MapView.AddLayer)] = MapAddLayer,
+            [nameof(MapView.RemoveLayer)] = MapRemoveLayer,
         };
 
     public MapViewHandler() : base(Mapper, Commands)
@@ -143,6 +147,30 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
         handler.PlatformView.FlyTo(
             request.Camera.Latitude, request.Camera.Longitude, request.Camera.Zoom,
             request.Camera.Bearing, request.Camera.Pitch, request.DurationMs);
+    }
+
+    private static void MapAddGeoJsonSource(MapViewHandler handler, MapView view, object? args)
+    {
+        if (args is GeoJsonSourceRequest request)
+            handler.PlatformView.AddGeoJsonSource(request.SourceId, request.GeoJson);
+    }
+
+    private static void MapRemoveGeoJsonSource(MapViewHandler handler, MapView view, object? args)
+    {
+        if (args is string sourceId)
+            handler.PlatformView.RemoveGeoJsonSource(sourceId);
+    }
+
+    private static void MapAddLayer(MapViewHandler handler, MapView view, object? args)
+    {
+        if (args is MapLayer layer)
+            handler.PlatformView.AddLayerJson(AnnotationSerializer.ToLayerJson(layer));
+    }
+
+    private static void MapRemoveLayer(MapViewHandler handler, MapView view, object? args)
+    {
+        if (args is string layerId)
+            handler.PlatformView.RemoveLayer(layerId);
     }
 
     /* -------------------------------- Annotations --------------------------------- */

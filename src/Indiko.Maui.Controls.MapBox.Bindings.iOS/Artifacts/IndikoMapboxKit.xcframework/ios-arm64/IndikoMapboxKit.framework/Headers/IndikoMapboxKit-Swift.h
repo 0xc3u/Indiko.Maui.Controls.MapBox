@@ -355,6 +355,13 @@ SWIFT_CLASS_NAMED("IKMapView")
 /// [{“id”:”…”,“points”:[[lat,lng],…],“fillColor”:”#RRGGBB”,“fillOpacity”:0.4,“strokeColor”:”#RRGGBB”}]
 - (void)setPolygonsJson:(NSString * _Nonnull)json;
 - (void)clearPolygons;
+/// Adds a GeoJSON source or replaces the data of an existing one.
+- (void)addGeoJsonSource:(NSString * _Nonnull)id geoJson:(NSString * _Nonnull)geoJson;
+- (void)removeGeoJsonSource:(NSString * _Nonnull)id;
+/// Adds (or replaces) a style layer. JSON:
+/// {“id”,“sourceId”,“type”:“fill|line|circle”,“color”,“opacity”,“lineWidth”,“circleRadius”,“belowLayerId”}
+- (void)addLayerJson:(NSString * _Nonnull)json;
+- (void)removeLayer:(NSString * _Nonnull)id;
 - (void)setUserLocationEnabled:(BOOL)enabled;
 - (void)setGesturesScroll:(BOOL)scroll zoom:(BOOL)zoom rotate:(BOOL)rotate pitch:(BOOL)pitch;
 - (void)destroy;

@@ -26,6 +26,11 @@ public partial class MainPage : ContentPage
 			new MapAnnotation { Latitude = 47.3667, Longitude = 8.5500, Title = "Zürichsee", Color = "#2980B9" },
 		]);
 
+		// Test hook: SIMCTL_CHILD_DEMO_GEOJSON=1 activates the GeoJSON demo on launch
+		// (the iOS simulator cannot inject taps).
+		if (Environment.GetEnvironmentVariable("DEMO_GEOJSON") == "1")
+			OnToggleGeoJson(this, EventArgs.Empty);
+
 		Map.Polylines.Add(new MapPolyline
 		{
 			Points =
@@ -111,5 +116,61 @@ public partial class MainPage : ContentPage
 	{
 		Map.Annotations.Clear();
 		StatusLabel.Text = "Marker gelöscht";
+	}
+
+	private bool geoJsonActive;
+
+	// Tram/S-Bahn-Halte als Points + eine Verbindung als LineString (GeoJSON ist [lng, lat]!)
+	private const string DemoGeoJson = """
+	{
+		"type": "FeatureCollection",
+		"features": [
+			{ "type": "Feature", "geometry": { "type": "Point", "coordinates": [8.5402, 47.3782] }, "properties": {} },
+			{ "type": "Feature", "geometry": { "type": "Point", "coordinates": [8.5317, 47.3859] }, "properties": {} },
+			{ "type": "Feature", "geometry": { "type": "Point", "coordinates": [8.5482, 47.3903] }, "properties": {} },
+			{ "type": "Feature", "geometry": { "type": "Point", "coordinates": [8.5610, 47.3846] }, "properties": {} },
+			{ "type": "Feature", "geometry": { "type": "Point", "coordinates": [8.5170, 47.3910] }, "properties": {} },
+			{ "type": "Feature", "geometry": { "type": "LineString", "coordinates": [
+				[8.5170, 47.3910], [8.5317, 47.3859], [8.5402, 47.3782],
+				[8.5482, 47.3903], [8.5610, 47.3846]
+			] }, "properties": {} }
+		]
+	}
+	""";
+
+	private void OnToggleGeoJson(object? sender, EventArgs e)
+	{
+		if (geoJsonActive)
+		{
+			Map.RemoveLayer("demo-circles");
+			Map.RemoveLayer("demo-route");
+			Map.RemoveGeoJsonSource("demo-source");
+			StatusLabel.Text = "GeoJSON entfernt";
+		}
+		else
+		{
+			Map.AddGeoJsonSource("demo-source", DemoGeoJson);
+			Map.AddLayer(new MapLayer
+			{
+				Id = "demo-route",
+				SourceId = "demo-source",
+				Type = MapLayerType.Line,
+				Color = "#16A085",
+				LineWidth = 4,
+			});
+			Map.AddLayer(new MapLayer
+			{
+				Id = "demo-circles",
+				SourceId = "demo-source",
+				Type = MapLayerType.Circle,
+				Color = "#C0392B",
+				CircleRadius = 9,
+				Opacity = 0.9,
+			});
+			Map.FlyTo(new MapCameraPosition(47.3855, 8.5400, 13), 1200);
+			StatusLabel.Text = "GeoJSON-Source + Circle/Line-Layer aktiv";
+		}
+
+		geoJsonActive = !geoJsonActive;
 	}
 }

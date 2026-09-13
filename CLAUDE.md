@@ -62,8 +62,11 @@ Markers cross the boundary as a JSON array (see `AnnotationSerializer`). Consequ
 - **Handlers**: follow the Chat plugin conventions — `ConnectHandler`/`DisconnectHandler`,
   listeners hold only a `WeakReference<MapView>` (NSObject subclasses leak on circular refs on
   Apple platforms), events are dispatched to the UI thread via `view.Dispatcher`.
-- **Annotations**: `ObservableRangeCollection<MapAnnotation>` with replace-all JSON push on every
-  collection change (spike-level; diffing is a later optimization).
+- **Annotations**: `ObservableRangeCollection<MapAnnotation>` (also Polylines/Polygons) with
+  replace-all JSON push on every collection change (spike-level; diffing is a later optimization).
+- **GeoJSON sources/layers**: imperative MapView API (`AddGeoJsonSource`/`AddLayer`/`Remove*`) via
+  CommandMapper. Mapbox drops runtime sources/layers on every style reload — both facades keep a
+  registry and re-apply it after each StyleLoaded event, so they survive style switches.
 
 ### Adding a new MapView property
 

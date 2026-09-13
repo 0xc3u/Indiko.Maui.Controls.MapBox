@@ -58,6 +58,11 @@ public class IKMapView: UIView
     private var polygonManager: PolygonAnnotationManager?
     private var cancelables = Set<AnyCancelable>()
 
+    // Registry of runtime sources/layers — Mapbox drops them on every style
+    // reload, so they are re-applied after each onStyleLoaded.
+    private var geoJsonSources: [String: String] = [:]
+    private var layerConfigs: [(id: String, config: [String: Any])] = []
+
     @objc public weak var listener: IKMapEventListener?
 
     @objc(initWithFrame:styleUri:latitude:longitude:zoom:bearing:pitch:)
@@ -93,7 +98,16 @@ public class IKMapView: UIView
         }.store(in: &cancelables)
 
         mapView.mapboxMap.onStyleLoaded.observe { [weak self] _ in
-            self?.listener?.onStyleLoaded()
+            guard let self else { return }
+            for (id, geoJson) in self.geoJsonSources
+            {
+                self.applyGeoJsonSource(id: id, geoJson: geoJson)
+            }
+            for entry in self.layerConfigs
+            {
+                self.applyLayer(entry.config)
+            }
+            self.listener?.onStyleLoaded()
         }.store(in: &cancelables)
 
         mapView.mapboxMap.onCameraChanged.observe { [weak self] event in
@@ -276,6 +290,102 @@ public class IKMapView: UIView
     public func clearPolygons()
     {
         polygonManager?.annotations = []
+    }
+
+    // MARK: - GeoJSON sources & layers
+
+    /// Adds a GeoJSON source or replaces the data of an existing one.
+    @objc(addGeoJsonSource:geoJson:)
+    public func addGeoJsonSource(id: String, geoJson: String)
+    {
+        geoJsonSources[id] = geoJson
+        applyGeoJsonSource(id: id, geoJson: geoJson)
+    }
+
+    @objc(removeGeoJsonSource:)
+    public func removeGeoJsonSource(id: String)
+    {
+        geoJsonSources.removeValue(forKey: id)
+        try? mapView.mapboxMap.removeSource(withId: id)
+    }
+
+    /// Adds (or replaces) a style layer. JSON:
+    /// {"id","sourceId","type":"fill|line|circle","color","opacity","lineWidth","circleRadius","belowLayerId"}
+    @objc(addLayerJson:)
+    public func addLayer(json: String)
+    {
+        guard let data = json.data(using: .utf8),
+              let config = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let id = config["id"] as? String
+        else { return }
+
+        layerConfigs.removeAll { $0.id == id }
+        layerConfigs.append((id, config))
+        applyLayer(config)
+    }
+
+    @objc(removeLayer:)
+    public func removeLayer(id: String)
+    {
+        layerConfigs.removeAll { $0.id == id }
+        try? mapView.mapboxMap.removeLayer(withId: id)
+    }
+
+    private func applyGeoJsonSource(id: String, geoJson: String)
+    {
+        if mapView.mapboxMap.sourceExists(withId: id)
+        {
+            mapView.mapboxMap.updateGeoJSONSource(withId: id, data: .string(geoJson))
+        }
+        else
+        {
+            var source = GeoJSONSource(id: id)
+            source.data = .string(geoJson)
+            try? mapView.mapboxMap.addSource(source)
+        }
+    }
+
+    private func applyLayer(_ config: [String: Any])
+    {
+        guard let id = config["id"] as? String,
+              let sourceId = config["sourceId"] as? String,
+              let type = config["type"] as? String
+        else { return }
+
+        if mapView.mapboxMap.layerExists(withId: id)
+        {
+            try? mapView.mapboxMap.removeLayer(withId: id)
+        }
+
+        let color = StyleColor(UIColor(hex: config["color"] as? String ?? "") ?? .systemBlue)
+        let opacity = config["opacity"] as? Double ?? 1.0
+
+        let layer: Layer
+        switch type
+        {
+        case "fill":
+            var fill = FillLayer(id: id, source: sourceId)
+            fill.fillColor = .constant(color)
+            fill.fillOpacity = .constant(opacity)
+            layer = fill
+        case "line":
+            var line = LineLayer(id: id, source: sourceId)
+            line.lineColor = .constant(color)
+            line.lineOpacity = .constant(opacity)
+            line.lineWidth = .constant(config["lineWidth"] as? Double ?? 3.0)
+            layer = line
+        case "circle":
+            var circle = CircleLayer(id: id, source: sourceId)
+            circle.circleColor = .constant(color)
+            circle.circleOpacity = .constant(opacity)
+            circle.circleRadius = .constant(config["circleRadius"] as? Double ?? 6.0)
+            layer = circle
+        default:
+            return
+        }
+
+        let position = (config["belowLayerId"] as? String).map { LayerPosition.below($0) }
+        try? mapView.mapboxMap.addLayer(layer, layerPosition: position)
     }
 
     private static func coordinates(from value: Any?) -> [CLLocationCoordinate2D]?
