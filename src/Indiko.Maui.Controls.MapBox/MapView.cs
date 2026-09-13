@@ -132,6 +132,15 @@ public class MapView : View
         set => SetValue(MapReadyCommandProperty, value);
     }
 
+    public static readonly BindableProperty StyleLoadedCommandProperty = BindableProperty.Create(
+        nameof(StyleLoadedCommand), typeof(ICommand), typeof(MapView));
+
+    public ICommand? StyleLoadedCommand
+    {
+        get => (ICommand?)GetValue(StyleLoadedCommandProperty);
+        set => SetValue(StyleLoadedCommandProperty, value);
+    }
+
     public static readonly BindableProperty MapClickedCommandProperty = BindableProperty.Create(
         nameof(MapClickedCommand), typeof(ICommand), typeof(MapView));
 
@@ -184,6 +193,24 @@ public class MapView : View
     {
         get => (ICommand?)GetValue(CameraChangedCommandProperty);
         set => SetValue(CameraChangedCommandProperty, value);
+    }
+
+    public static readonly BindableProperty OfflineRegionProgressCommandProperty = BindableProperty.Create(
+        nameof(OfflineRegionProgressCommand), typeof(ICommand), typeof(MapView));
+
+    public ICommand? OfflineRegionProgressCommand
+    {
+        get => (ICommand?)GetValue(OfflineRegionProgressCommandProperty);
+        set => SetValue(OfflineRegionProgressCommandProperty, value);
+    }
+
+    public static readonly BindableProperty OfflineRegionCompletedCommandProperty = BindableProperty.Create(
+        nameof(OfflineRegionCompletedCommand), typeof(ICommand), typeof(MapView));
+
+    public ICommand? OfflineRegionCompletedCommand
+    {
+        get => (ICommand?)GetValue(OfflineRegionCompletedCommandProperty);
+        set => SetValue(OfflineRegionCompletedCommandProperty, value);
     }
 
     /* ---------------------------------- Events ----------------------------------- */
@@ -277,6 +304,8 @@ public class MapView : View
     internal void SendStyleLoaded()
     {
         StyleLoaded?.Invoke(this, EventArgs.Empty);
+        if (StyleLoadedCommand?.CanExecute(null) == true)
+            StyleLoadedCommand.Execute(null);
     }
 
     internal void SendMapClicked(double latitude, double longitude)
@@ -333,13 +362,18 @@ public class MapView : View
 
     internal void SendOfflineRegionProgress(string regionId, double progress)
     {
-        OfflineRegionProgress?.Invoke(this, new OfflineRegionProgressEventArgs(regionId, progress));
+        var args = new OfflineRegionProgressEventArgs(regionId, progress);
+        OfflineRegionProgress?.Invoke(this, args);
+        if (OfflineRegionProgressCommand?.CanExecute(args) == true)
+            OfflineRegionProgressCommand.Execute(args);
     }
 
     internal void SendOfflineRegionCompleted(string regionId, bool success, string? errorMessage)
     {
-        OfflineRegionCompleted?.Invoke(
-            this, new OfflineRegionCompletedEventArgs(regionId, success, errorMessage));
+        var args = new OfflineRegionCompletedEventArgs(regionId, success, errorMessage);
+        OfflineRegionCompleted?.Invoke(this, args);
+        if (OfflineRegionCompletedCommand?.CanExecute(args) == true)
+            OfflineRegionCompletedCommand.Execute(args);
     }
 
     internal void SendCameraChanged(MapCameraPosition camera)
