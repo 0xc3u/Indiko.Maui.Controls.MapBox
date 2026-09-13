@@ -362,6 +362,12 @@ SWIFT_CLASS_NAMED("IKMapView")
 /// {“id”,“sourceId”,“type”:“fill|line|circle”,“color”,“opacity”,“lineWidth”,“circleRadius”,“belowLayerId”}
 - (void)addLayerJson:(NSString * _Nonnull)json;
 - (void)removeLayer:(NSString * _Nonnull)id;
+/// Adds a clustered GeoJSON source plus three managed layers
+/// (”<id>-clusters”, “<id>-cluster-count”, “<id>-points”). JSON:
+/// {“sourceId”,“geoJson”,“clusterRadius”,“clusterMaxZoom”,“clusterColor”,
+/// “clusterTextColor”,“pointColor”,“pointRadius”}
+- (void)addClusteredSourceJson:(NSString * _Nonnull)json;
+- (void)removeClusteredSource:(NSString * _Nonnull)id;
 - (void)setUserLocationEnabled:(BOOL)enabled;
 - (void)setGesturesScroll:(BOOL)scroll zoom:(BOOL)zoom rotate:(BOOL)rotate pitch:(BOOL)pitch;
 - (void)destroy;
@@ -747,6 +753,12 @@ SWIFT_CLASS_NAMED("IKMapView")
 /// {“id”,“sourceId”,“type”:“fill|line|circle”,“color”,“opacity”,“lineWidth”,“circleRadius”,“belowLayerId”}
 - (void)addLayerJson:(NSString * _Nonnull)json;
 - (void)removeLayer:(NSString * _Nonnull)id;
+/// Adds a clustered GeoJSON source plus three managed layers
+/// (”<id>-clusters”, “<id>-cluster-count”, “<id>-points”). JSON:
+/// {“sourceId”,“geoJson”,“clusterRadius”,“clusterMaxZoom”,“clusterColor”,
+/// “clusterTextColor”,“pointColor”,“pointRadius”}
+- (void)addClusteredSourceJson:(NSString * _Nonnull)json;
+- (void)removeClusteredSource:(NSString * _Nonnull)id;
 - (void)setUserLocationEnabled:(BOOL)enabled;
 - (void)setGesturesScroll:(BOOL)scroll zoom:(BOOL)zoom rotate:(BOOL)rotate pitch:(BOOL)pitch;
 - (void)destroy;

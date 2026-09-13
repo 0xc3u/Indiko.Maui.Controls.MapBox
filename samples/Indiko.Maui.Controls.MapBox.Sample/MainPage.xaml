@@ -41,6 +41,7 @@
             </HorizontalStackLayout>
             <HorizontalStackLayout Spacing="8">
                 <Button Text="GeoJSON an/aus" Clicked="OnToggleGeoJson" />
+                <Button Text="Cluster an/aus" Clicked="OnToggleCluster" />
             </HorizontalStackLayout>
         </VerticalStackLayout>
 

@@ -105,6 +105,20 @@ internal static class AnnotationSerializer
         return builder.Append('}').ToString();
     }
 
+    public static string ToClusterJson(MapClusterSource source)
+    {
+        var builder = new StringBuilder("{");
+        builder.Append("\"sourceId\":").Append(Quote(source.SourceId));
+        builder.Append(",\"geoJson\":").Append(Quote(source.GeoJson));
+        builder.Append(",\"clusterRadius\":").Append(Invariant(source.ClusterRadius));
+        builder.Append(",\"clusterMaxZoom\":").Append(Invariant(source.ClusterMaxZoom));
+        builder.Append(",\"clusterColor\":").Append(Quote(source.ClusterColor));
+        builder.Append(",\"clusterTextColor\":").Append(Quote(source.ClusterTextColor));
+        builder.Append(",\"pointColor\":").Append(Quote(source.PointColor));
+        builder.Append(",\"pointRadius\":").Append(Invariant(source.PointRadius));
+        return builder.Append('}').ToString();
+    }
+
     private static void AppendPoints(StringBuilder builder, IEnumerable<MapPosition>? points)
     {
         builder.Append(",\"points\":[");
@@ -127,6 +141,11 @@ internal static class AnnotationSerializer
 
     private static string Quote(string value)
     {
-        return "\"" + value.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"";
+        return "\"" + value
+            .Replace("\\", "\\\\")
+            .Replace("\"", "\\\"")
+            .Replace("\n", "\\n")
+            .Replace("\r", "\\r")
+            .Replace("\t", "\\t") + "\"";
     }
 }

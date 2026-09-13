@@ -62,6 +62,7 @@ public class IKMapView: UIView
     // reload, so they are re-applied after each onStyleLoaded.
     private var geoJsonSources: [String: String] = [:]
     private var layerConfigs: [(id: String, config: [String: Any])] = []
+    private var clusterConfigs: [String: [String: Any]] = [:]
 
     @objc public weak var listener: IKMapEventListener?
 
@@ -107,6 +108,10 @@ public class IKMapView: UIView
             {
                 self.applyLayer(entry.config)
             }
+            for config in self.clusterConfigs.values
+            {
+                self.applyClusteredSource(config)
+            }
             self.listener?.onStyleLoaded()
         }.store(in: &cancelables)
 
@@ -122,6 +127,7 @@ public class IKMapView: UIView
         }.store(in: &cancelables)
 
         mapView.gestures.onMapTap.observe { [weak self] context in
+            self?.handleClusterTap(at: context.point)
             self?.listener?.onMapClick(
                 latitude: context.coordinate.latitude,
                 longitude: context.coordinate.longitude)
@@ -298,7 +304,16 @@ public class IKMapView: UIView
     @objc(addGeoJsonSource:geoJson:)
     public func addGeoJsonSource(id: String, geoJson: String)
     {
-        geoJsonSources[id] = geoJson
+        if var config = clusterConfigs[id]
+        {
+            // Clustered source: only its data is replaced, cluster config stays.
+            config["geoJson"] = geoJson
+            clusterConfigs[id] = config
+        }
+        else
+        {
+            geoJsonSources[id] = geoJson
+        }
         applyGeoJsonSource(id: id, geoJson: geoJson)
     }
 
@@ -388,6 +403,131 @@ public class IKMapView: UIView
         try? mapView.mapboxMap.addLayer(layer, layerPosition: position)
     }
 
+    // MARK: - Clustering
+
+    /// Adds a clustered GeoJSON source plus three managed layers
+    /// ("<id>-clusters", "<id>-cluster-count", "<id>-points"). JSON:
+    /// {"sourceId","geoJson","clusterRadius","clusterMaxZoom","clusterColor",
+    ///  "clusterTextColor","pointColor","pointRadius"}
+    @objc(addClusteredSourceJson:)
+    public func addClusteredSource(json: String)
+    {
+        guard let data = json.data(using: .utf8),
+              let config = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let id = config["sourceId"] as? String
+        else { return }
+
+        clusterConfigs[id] = config
+        applyClusteredSource(config)
+    }
+
+    @objc(removeClusteredSource:)
+    public func removeClusteredSource(id: String)
+    {
+        clusterConfigs.removeValue(forKey: id)
+        for suffix in ["-clusters", "-cluster-count", "-points"]
+        {
+            try? mapView.mapboxMap.removeLayer(withId: id + suffix)
+        }
+        try? mapView.mapboxMap.removeSource(withId: id)
+    }
+
+    private func applyClusteredSource(_ config: [String: Any])
+    {
+        guard let id = config["sourceId"] as? String,
+              let geoJson = config["geoJson"] as? String
+        else { return }
+
+        if mapView.mapboxMap.sourceExists(withId: id)
+        {
+            mapView.mapboxMap.updateGeoJSONSource(withId: id, data: .string(geoJson))
+        }
+        else
+        {
+            var source = GeoJSONSource(id: id)
+            source.data = .string(geoJson)
+            source.cluster = true
+            source.clusterRadius = config["clusterRadius"] as? Double ?? 50
+            source.clusterMaxZoom = config["clusterMaxZoom"] as? Double ?? 14
+            try? mapView.mapboxMap.addSource(source)
+        }
+
+        guard let hasCount = Self.expression("[\"has\",\"point_count\"]"),
+              let hasNoCount = Self.expression("[\"!\",[\"has\",\"point_count\"]]"),
+              let radiusSteps = Self.expression("[\"step\",[\"get\",\"point_count\"],15,25,20,100,25]"),
+              let countText = Self.expression("[\"get\",\"point_count_abbreviated\"]")
+        else { return }
+
+        for suffix in ["-clusters", "-cluster-count", "-points"]
+        {
+            try? mapView.mapboxMap.removeLayer(withId: id + suffix)
+        }
+
+        let clusterColor = StyleColor(UIColor(hex: config["clusterColor"] as? String ?? "") ?? .systemBlue)
+        let textColor = StyleColor(UIColor(hex: config["clusterTextColor"] as? String ?? "") ?? .white)
+        let pointColor = StyleColor(UIColor(hex: config["pointColor"] as? String ?? "") ?? .systemRed)
+        let pointRadius = config["pointRadius"] as? Double ?? 6.0
+
+        var points = CircleLayer(id: id + "-points", source: id)
+        points.filter = hasNoCount
+        points.circleColor = .constant(pointColor)
+        points.circleRadius = .constant(pointRadius)
+        try? mapView.mapboxMap.addLayer(points)
+
+        var clusters = CircleLayer(id: id + "-clusters", source: id)
+        clusters.filter = hasCount
+        clusters.circleColor = .constant(clusterColor)
+        clusters.circleOpacity = .constant(0.85)
+        clusters.circleRadius = .expression(radiusSteps)
+        try? mapView.mapboxMap.addLayer(clusters)
+
+        var counts = SymbolLayer(id: id + "-cluster-count", source: id)
+        counts.filter = hasCount
+        counts.textField = .expression(countText)
+        counts.textSize = .constant(12)
+        counts.textColor = .constant(textColor)
+        counts.textAllowOverlap = .constant(true)
+        counts.textIgnorePlacement = .constant(true)
+        try? mapView.mapboxMap.addLayer(counts)
+    }
+
+    /// Tap on a cluster circle eases the camera to the cluster's expansion zoom.
+    private func handleClusterTap(at point: CGPoint)
+    {
+        guard !clusterConfigs.isEmpty else { return }
+
+        let layerIds = clusterConfigs.keys.map { "\($0)-clusters" }
+        let options = RenderedQueryOptions(layerIds: Array(layerIds), filter: nil)
+
+        mapView.mapboxMap.queryRenderedFeatures(with: point, options: options) { [weak self] result in
+            guard let self,
+                  case let .success(features) = result,
+                  let queried = features.first?.queriedFeature
+            else { return }
+
+            let feature = queried.feature
+            self.mapView.mapboxMap.getGeoJsonClusterExpansionZoom(
+                forSourceId: queried.source, feature: feature)
+            { [weak self] zoomResult in
+                guard let self,
+                      case let .success(extensionValue) = zoomResult,
+                      let zoom = (extensionValue.value as? NSNumber)?.doubleValue,
+                      case let .point(centerPoint) = feature.geometry
+                else { return }
+
+                self.mapView.camera.ease(
+                    to: CameraOptions(center: centerPoint.coordinates, zoom: zoom + 0.5),
+                    duration: 0.4)
+            }
+        }
+    }
+
+    private static func expression(_ json: String) -> Exp?
+    {
+        guard let data = json.data(using: .utf8) else { return nil }
+        return try? JSONDecoder().decode(Exp.self, from: data)
+    }
+
     private static func coordinates(from value: Any?) -> [CLLocationCoordinate2D]?
     {
         guard let points = value as? [[Double]] else { return nil }
@@ -427,6 +567,9 @@ public class IKMapView: UIView
         pointManager = nil
         polylineManager = nil
         polygonManager = nil
+        geoJsonSources.removeAll()
+        layerConfigs.removeAll()
+        clusterConfigs.removeAll()
         mapView.removeFromSuperview()
         mapView = nil
     }

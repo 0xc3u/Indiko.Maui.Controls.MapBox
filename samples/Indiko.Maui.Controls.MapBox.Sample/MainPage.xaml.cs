@@ -26,10 +26,12 @@ public partial class MainPage : ContentPage
 			new MapAnnotation { Latitude = 47.3667, Longitude = 8.5500, Title = "Zürichsee", Color = "#2980B9" },
 		]);
 
-		// Test hook: SIMCTL_CHILD_DEMO_GEOJSON=1 activates the GeoJSON demo on launch
-		// (the iOS simulator cannot inject taps).
+		// Test hooks: SIMCTL_CHILD_DEMO_GEOJSON=1 / SIMCTL_CHILD_DEMO_CLUSTER=1 activate
+		// the demos on launch (the iOS simulator cannot inject taps).
 		if (Environment.GetEnvironmentVariable("DEMO_GEOJSON") == "1")
 			OnToggleGeoJson(this, EventArgs.Empty);
+		if (Environment.GetEnvironmentVariable("DEMO_CLUSTER") == "1")
+			OnToggleCluster(this, EventArgs.Empty);
 
 		Map.Polylines.Add(new MapPolyline
 		{
@@ -172,5 +174,64 @@ public partial class MainPage : ContentPage
 		}
 
 		geoJsonActive = !geoJsonActive;
+	}
+
+	private bool clusterActive;
+
+	private static string BuildClusterGeoJson()
+	{
+		// 8 points each around Zürich, Luzern, Bern, Lausanne and Basel
+		(double Lat, double Lng)[] centers =
+		[
+			(47.3769, 8.5417), (47.0502, 8.3093), (46.9480, 7.4474), (46.5197, 6.6323), (47.5596, 7.5886),
+		];
+
+		var builder = new System.Text.StringBuilder("{\"type\":\"FeatureCollection\",\"features\":[");
+		var first = true;
+		foreach (var (lat, lng) in centers)
+		{
+			for (var i = 0; i < 8; i++)
+			{
+				if (!first)
+					builder.Append(',');
+				first = false;
+
+				var pointLat = lat + (i % 3) * 0.020 - 0.020;
+				var pointLng = lng + (i % 4) * 0.025 - 0.0375;
+				builder.Append("{\"type\":\"Feature\",\"properties\":{},\"geometry\":{\"type\":\"Point\",\"coordinates\":[")
+					.Append(pointLng.ToString(System.Globalization.CultureInfo.InvariantCulture))
+					.Append(',')
+					.Append(pointLat.ToString(System.Globalization.CultureInfo.InvariantCulture))
+					.Append("]}}");
+			}
+		}
+
+		return builder.Append("]}").ToString();
+	}
+
+	private void OnToggleCluster(object? sender, EventArgs e)
+	{
+		if (clusterActive)
+		{
+			Map.RemoveClusteredSource("demo-cluster");
+			StatusLabel.Text = "Cluster entfernt";
+		}
+		else
+		{
+			Map.AddClusteredSource(new MapClusterSource
+			{
+				SourceId = "demo-cluster",
+				GeoJson = BuildClusterGeoJson(),
+				ClusterRadius = 50,
+				ClusterColor = "#2563EB",
+				ClusterTextColor = "#FFFFFF",
+				PointColor = "#DC2626",
+				PointRadius = 6,
+			});
+			Map.FlyTo(new MapCameraPosition(46.95, 7.9, 7), 1200);
+			StatusLabel.Text = "Cluster aktiv — tippe auf einen Cluster zum Zoomen";
+		}
+
+		clusterActive = !clusterActive;
 	}
 }

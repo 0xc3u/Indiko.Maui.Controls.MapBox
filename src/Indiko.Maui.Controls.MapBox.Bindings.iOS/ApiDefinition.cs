@@ -126,6 +126,12 @@ interface IKMapView
     [Export("removeLayer:")]
     void RemoveLayer(string id);
 
+    [Export("addClusteredSourceJson:")]
+    void AddClusteredSourceJson(string json);
+
+    [Export("removeClusteredSource:")]
+    void RemoveClusteredSource(string id);
+
     [Export("setUserLocationEnabled:")]
     void SetUserLocationEnabled(bool enabled);
 

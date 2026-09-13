@@ -67,6 +67,11 @@ Markers cross the boundary as a JSON array (see `AnnotationSerializer`). Consequ
 - **GeoJSON sources/layers**: imperative MapView API (`AddGeoJsonSource`/`AddLayer`/`Remove*`) via
   CommandMapper. Mapbox drops runtime sources/layers on every style reload — both facades keep a
   registry and re-apply it after each StyleLoaded event, so they survive style switches.
+- **Clustering**: `AddClusteredSource(MapClusterSource)` creates a clustered GeoJSON source plus
+  three facade-managed layers (`<id>-clusters`, `<id>-cluster-count`, `<id>-points`); tapping a
+  cluster queries the rendered feature and eases to its expansion zoom — all inside the facades.
+  `AddGeoJsonSource` on a clustered id only replaces its data. Expressions are built from raw
+  style-spec JSON (`Exp` via JSONDecoder on iOS, `Expression.fromRaw` on Android).
 
 ### Adding a new MapView property
 

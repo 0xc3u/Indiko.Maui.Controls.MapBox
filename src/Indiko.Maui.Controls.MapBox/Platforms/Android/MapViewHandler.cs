@@ -38,6 +38,8 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
             [nameof(MapView.RemoveGeoJsonSource)] = MapRemoveGeoJsonSource,
             [nameof(MapView.AddLayer)] = MapAddLayer,
             [nameof(MapView.RemoveLayer)] = MapRemoveLayer,
+            [nameof(MapView.AddClusteredSource)] = MapAddClusteredSource,
+            [nameof(MapView.RemoveClusteredSource)] = MapRemoveClusteredSource,
         };
 
     public MapViewHandler() : base(Mapper, Commands)
@@ -171,6 +173,18 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
     {
         if (args is string layerId)
             handler.PlatformView.RemoveLayer(layerId);
+    }
+
+    private static void MapAddClusteredSource(MapViewHandler handler, MapView view, object? args)
+    {
+        if (args is MapClusterSource source)
+            handler.PlatformView.AddClusteredSourceJson(AnnotationSerializer.ToClusterJson(source));
+    }
+
+    private static void MapRemoveClusteredSource(MapViewHandler handler, MapView view, object? args)
+    {
+        if (args is string sourceId)
+            handler.PlatformView.RemoveClusteredSource(sourceId);
     }
 
     /* -------------------------------- Annotations --------------------------------- */

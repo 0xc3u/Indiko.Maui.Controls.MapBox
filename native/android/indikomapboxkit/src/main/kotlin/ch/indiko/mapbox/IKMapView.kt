@@ -9,14 +9,19 @@ import android.graphics.Path
 import android.widget.FrameLayout
 import com.mapbox.common.MapboxOptions
 import com.mapbox.geojson.Point
+import com.mapbox.geojson.Feature
 import com.mapbox.maps.CameraOptions
 import com.mapbox.maps.MapInitOptions
 import com.mapbox.maps.MapView
+import com.mapbox.maps.RenderedQueryGeometry
+import com.mapbox.maps.RenderedQueryOptions
+import com.mapbox.maps.extension.style.expressions.generated.Expression
 import com.mapbox.maps.extension.style.layers.addLayer
 import com.mapbox.maps.extension.style.layers.addLayerBelow
 import com.mapbox.maps.extension.style.layers.generated.CircleLayer
 import com.mapbox.maps.extension.style.layers.generated.FillLayer
 import com.mapbox.maps.extension.style.layers.generated.LineLayer
+import com.mapbox.maps.extension.style.layers.generated.SymbolLayer
 import com.mapbox.maps.extension.style.layers.properties.generated.IconAnchor
 import com.mapbox.maps.extension.style.sources.addSource
 import com.mapbox.maps.extension.style.sources.generated.GeoJsonSource
@@ -106,6 +111,7 @@ class IKMapView(
     // reload, so they are re-applied after each StyleLoaded event.
     private val geoJsonSources = LinkedHashMap<String, String>()
     private val layerConfigs = LinkedHashMap<String, JSONObject>()
+    private val clusterConfigs = LinkedHashMap<String, JSONObject>()
 
     var listener: IKMapEventListener? = null
 
@@ -125,6 +131,7 @@ class IKMapView(
         mapView.mapboxMap.subscribeStyleLoaded {
             geoJsonSources.forEach { (id, geoJson) -> applyGeoJsonSource(id, geoJson) }
             layerConfigs.values.forEach { applyLayer(it) }
+            clusterConfigs.values.forEach { applyClusteredSource(it) }
             listener?.onStyleLoaded()
         }
         mapView.mapboxMap.subscribeCameraChanged { event ->
@@ -141,6 +148,7 @@ class IKMapView(
         }
 
         mapView.gestures.addOnMapClickListener { point ->
+            handleClusterTap(point)
             listener?.onMapClick(point.latitude(), point.longitude())
             false
         }
@@ -323,7 +331,16 @@ class IKMapView(
      */
     fun addGeoJsonSource(id: String, geoJson: String)
     {
-        geoJsonSources[id] = geoJson
+        val clusterConfig = clusterConfigs[id]
+        if (clusterConfig != null)
+        {
+            // Clustered source: only its data is replaced, cluster config stays.
+            clusterConfig.put("geoJson", geoJson)
+        }
+        else
+        {
+            geoJsonSources[id] = geoJson
+        }
         applyGeoJsonSource(id, geoJson)
     }
 
@@ -406,6 +423,132 @@ class IKMapView(
         else
         {
             style.addLayer(layer)
+        }
+    }
+
+    // endregion
+
+    // region Clustering
+
+    /**
+     * Adds a clustered GeoJSON source plus three managed layers
+     * ("<id>-clusters", "<id>-cluster-count", "<id>-points"). JSON:
+     * {"sourceId","geoJson","clusterRadius","clusterMaxZoom","clusterColor",
+     *  "clusterTextColor","pointColor","pointRadius"}
+     */
+    fun addClusteredSourceJson(json: String)
+    {
+        val config = JSONObject(json)
+        val id = config.optString("sourceId")
+        if (id.isEmpty()) return
+
+        clusterConfigs[id] = config
+        applyClusteredSource(config)
+    }
+
+    fun removeClusteredSource(id: String)
+    {
+        clusterConfigs.remove(id)
+        val style = mapView.mapboxMap.style ?: return
+        for (suffix in listOf("-clusters", "-cluster-count", "-points"))
+        {
+            style.removeStyleLayer(id + suffix)
+        }
+        style.removeStyleSource(id)
+    }
+
+    private fun applyClusteredSource(config: JSONObject)
+    {
+        val style = mapView.mapboxMap.style ?: return
+        val id = config.optString("sourceId")
+        val geoJson = config.optString("geoJson")
+        if (id.isEmpty() || geoJson.isEmpty()) return
+
+        if (style.styleSourceExists(id))
+        {
+            style.getSourceAs<GeoJsonSource>(id)?.data(geoJson)
+        }
+        else
+        {
+            style.addSource(geoJsonSource(id) {
+                data(geoJson)
+                cluster(true)
+                clusterRadius(config.optLong("clusterRadius", 50))
+                clusterMaxZoom(config.optLong("clusterMaxZoom", 14))
+            })
+        }
+
+        for (suffix in listOf("-clusters", "-cluster-count", "-points"))
+        {
+            if (style.styleLayerExists(id + suffix))
+            {
+                style.removeStyleLayer(id + suffix)
+            }
+        }
+
+        val hasCount = Expression.fromRaw("[\"has\",\"point_count\"]")
+        val hasNoCount = Expression.fromRaw("[\"!\",[\"has\",\"point_count\"]]")
+        val radiusSteps = Expression.fromRaw("[\"step\",[\"get\",\"point_count\"],15,25,20,100,25]")
+        val countText = Expression.fromRaw("[\"get\",\"point_count_abbreviated\"]")
+
+        style.addLayer(
+            CircleLayer(id + "-points", id)
+                .filter(hasNoCount)
+                .circleColor(config.optString("pointColor", "#E74C3C"))
+                .circleRadius(config.optDouble("pointRadius", 6.0))
+        )
+        style.addLayer(
+            CircleLayer(id + "-clusters", id)
+                .filter(hasCount)
+                .circleColor(config.optString("clusterColor", "#3B82F6"))
+                .circleOpacity(0.85)
+                .circleRadius(radiusSteps)
+        )
+        style.addLayer(
+            SymbolLayer(id + "-cluster-count", id)
+                .filter(hasCount)
+                .textField(countText)
+                .textSize(12.0)
+                .textColor(config.optString("clusterTextColor", "#FFFFFF"))
+                .textAllowOverlap(true)
+                .textIgnorePlacement(true)
+        )
+    }
+
+    /**
+     * Tap on a cluster circle eases the camera to the cluster's expansion zoom.
+     */
+    private fun handleClusterTap(point: Point)
+    {
+        if (clusterConfigs.isEmpty()) return
+
+        val layerIds = clusterConfigs.keys.map { "$it-clusters" }
+        val screen = mapView.mapboxMap.pixelForCoordinate(point)
+
+        mapView.mapboxMap.queryRenderedFeatures(
+            RenderedQueryGeometry(screen),
+            RenderedQueryOptions(layerIds, null)
+        ) { queryResult ->
+            val queried = queryResult.value?.firstOrNull()?.queriedFeature ?: return@queryRenderedFeatures
+            val feature: Feature = queried.feature
+            val center = feature.geometry() as? Point ?: return@queryRenderedFeatures
+
+            mapView.mapboxMap.getGeoJsonClusterExpansionZoom(queried.source, feature) { zoomResult ->
+                val contents = zoomResult.value?.value?.contents
+                val zoom = when (contents)
+                {
+                    is Double -> contents
+                    is Long -> contents.toDouble()
+                    else -> null
+                } ?: return@getGeoJsonClusterExpansionZoom
+
+                post {
+                    mapView.camera.easeTo(
+                        CameraOptions.Builder().center(center).zoom(zoom + 0.5).build(),
+                        MapAnimationOptions.mapAnimationOptions { duration(400) }
+                    )
+                }
+            }
         }
     }
 

@@ -221,6 +221,21 @@ public class MapView : View
         Handler?.Invoke(nameof(RemoveLayer), layerId);
     }
 
+    /// <summary>
+    /// Adds a clustered point source with managed cluster/count/point layers.
+    /// Tapping a cluster zooms to its expansion level automatically.
+    /// </summary>
+    public void AddClusteredSource(MapClusterSource source)
+    {
+        Handler?.Invoke(nameof(AddClusteredSource), source);
+    }
+
+    /// <summary>Removes a clustered source including its managed layers.</summary>
+    public void RemoveClusteredSource(string sourceId)
+    {
+        Handler?.Invoke(nameof(RemoveClusteredSource), sourceId);
+    }
+
     /* ------------------------- Internal event dispatchers ------------------------- */
 
     internal void SendMapReady()
