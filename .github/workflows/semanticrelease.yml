@@ -45,7 +45,7 @@ jobs:
           path: |
             src/Indiko.Maui.Controls.MapBox.Bindings.iOS/Artifacts
             src/Indiko.Maui.Controls.MapBox.Bindings.Android/Artifacts
-          key: native-${{ runner.os }}-${{ hashFiles('native/**', 'scripts/**') }}
+          key: native-${{ runner.os }}-${{ hashFiles('native/ios/IndikoMapboxKit/project.yml', 'native/ios/IndikoMapboxKit/Sources/**', 'native/android/**/*.kt', 'native/android/**/*.kts', 'native/android/gradle/**', 'native/android/gradle.properties', 'scripts/*.sh') }}
 
       - name: Build native facades
         if: steps.native-cache.outputs.cache-hit != 'true'
