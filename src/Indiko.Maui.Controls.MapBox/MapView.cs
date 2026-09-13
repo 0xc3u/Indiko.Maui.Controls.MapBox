@@ -44,6 +44,26 @@ public class MapView : View
         set => SetValue(AnnotationsProperty, value);
     }
 
+    public static readonly BindableProperty PolylinesProperty = BindableProperty.Create(
+        nameof(Polylines), typeof(ObservableRangeCollection<MapPolyline>), typeof(MapView),
+        defaultValueCreator: _ => new ObservableRangeCollection<MapPolyline>());
+
+    public ObservableRangeCollection<MapPolyline> Polylines
+    {
+        get => (ObservableRangeCollection<MapPolyline>)GetValue(PolylinesProperty);
+        set => SetValue(PolylinesProperty, value);
+    }
+
+    public static readonly BindableProperty PolygonsProperty = BindableProperty.Create(
+        nameof(Polygons), typeof(ObservableRangeCollection<MapPolygon>), typeof(MapView),
+        defaultValueCreator: _ => new ObservableRangeCollection<MapPolygon>());
+
+    public ObservableRangeCollection<MapPolygon> Polygons
+    {
+        get => (ObservableRangeCollection<MapPolygon>)GetValue(PolygonsProperty);
+        set => SetValue(PolygonsProperty, value);
+    }
+
     public static readonly BindableProperty ShowUserLocationProperty = BindableProperty.Create(
         nameof(ShowUserLocation), typeof(bool), typeof(MapView), false);
 
@@ -127,6 +147,24 @@ public class MapView : View
         set => SetValue(AnnotationClickedCommandProperty, value);
     }
 
+    public static readonly BindableProperty PolylineClickedCommandProperty = BindableProperty.Create(
+        nameof(PolylineClickedCommand), typeof(ICommand), typeof(MapView));
+
+    public ICommand? PolylineClickedCommand
+    {
+        get => (ICommand?)GetValue(PolylineClickedCommandProperty);
+        set => SetValue(PolylineClickedCommandProperty, value);
+    }
+
+    public static readonly BindableProperty PolygonClickedCommandProperty = BindableProperty.Create(
+        nameof(PolygonClickedCommand), typeof(ICommand), typeof(MapView));
+
+    public ICommand? PolygonClickedCommand
+    {
+        get => (ICommand?)GetValue(PolygonClickedCommandProperty);
+        set => SetValue(PolygonClickedCommandProperty, value);
+    }
+
     public static readonly BindableProperty CameraChangedCommandProperty = BindableProperty.Create(
         nameof(CameraChangedCommand), typeof(ICommand), typeof(MapView));
 
@@ -143,6 +181,8 @@ public class MapView : View
     public event EventHandler<MapClickedEventArgs>? MapClicked;
     public event EventHandler<MapClickedEventArgs>? MapLongPressed;
     public event EventHandler<AnnotationClickedEventArgs>? AnnotationClicked;
+    public event EventHandler<PolylineClickedEventArgs>? PolylineClicked;
+    public event EventHandler<PolygonClickedEventArgs>? PolygonClicked;
     public event EventHandler<CameraChangedEventArgs>? CameraChanged;
 
     /// <summary>Live camera position, updated on every camera change.</summary>
@@ -196,6 +236,30 @@ public class MapView : View
         AnnotationClicked?.Invoke(this, args);
         if (AnnotationClickedCommand?.CanExecute(args) == true)
             AnnotationClickedCommand.Execute(args);
+    }
+
+    internal void SendPolylineClicked(string polylineId)
+    {
+        var polyline = Polylines?.FirstOrDefault(p => p.Id == polylineId);
+        if (polyline is null)
+            return;
+
+        var args = new PolylineClickedEventArgs(polyline);
+        PolylineClicked?.Invoke(this, args);
+        if (PolylineClickedCommand?.CanExecute(args) == true)
+            PolylineClickedCommand.Execute(args);
+    }
+
+    internal void SendPolygonClicked(string polygonId)
+    {
+        var polygon = Polygons?.FirstOrDefault(p => p.Id == polygonId);
+        if (polygon is null)
+            return;
+
+        var args = new PolygonClickedEventArgs(polygon);
+        PolygonClicked?.Invoke(this, args);
+        if (PolygonClickedCommand?.CanExecute(args) == true)
+            PolygonClickedCommand.Execute(args);
     }
 
     internal void SendCameraChanged(MapCameraPosition camera)

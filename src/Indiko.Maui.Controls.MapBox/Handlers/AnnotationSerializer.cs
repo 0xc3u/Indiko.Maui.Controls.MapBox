@@ -35,6 +35,76 @@ internal static class AnnotationSerializer
         return builder.Append(']').ToString();
     }
 
+    public static string ToPolylinesJson(IEnumerable<MapPolyline>? polylines)
+    {
+        if (polylines is null)
+            return "[]";
+
+        var builder = new StringBuilder("[");
+        var first = true;
+
+        foreach (var polyline in polylines)
+        {
+            if (!first)
+                builder.Append(',');
+            first = false;
+
+            builder.Append("{\"id\":").Append(Quote(polyline.Id));
+            AppendPoints(builder, polyline.Points);
+            builder.Append(",\"color\":").Append(Quote(polyline.Color));
+            builder.Append(",\"width\":").Append(Invariant(polyline.Width));
+            builder.Append(",\"opacity\":").Append(Invariant(polyline.Opacity));
+            builder.Append('}');
+        }
+
+        return builder.Append(']').ToString();
+    }
+
+    public static string ToPolygonsJson(IEnumerable<MapPolygon>? polygons)
+    {
+        if (polygons is null)
+            return "[]";
+
+        var builder = new StringBuilder("[");
+        var first = true;
+
+        foreach (var polygon in polygons)
+        {
+            if (!first)
+                builder.Append(',');
+            first = false;
+
+            builder.Append("{\"id\":").Append(Quote(polygon.Id));
+            AppendPoints(builder, polygon.Points);
+            builder.Append(",\"fillColor\":").Append(Quote(polygon.FillColor));
+            builder.Append(",\"fillOpacity\":").Append(Invariant(polygon.FillOpacity));
+            builder.Append(",\"strokeColor\":").Append(Quote(polygon.StrokeColor));
+            builder.Append('}');
+        }
+
+        return builder.Append(']').ToString();
+    }
+
+    private static void AppendPoints(StringBuilder builder, IEnumerable<MapPosition>? points)
+    {
+        builder.Append(",\"points\":[");
+        var first = true;
+        foreach (var point in points ?? [])
+        {
+            if (!first)
+                builder.Append(',');
+            first = false;
+            builder.Append('[').Append(Invariant(point.Latitude)).Append(',')
+                .Append(Invariant(point.Longitude)).Append(']');
+        }
+        builder.Append(']');
+    }
+
+    private static string Invariant(double value)
+    {
+        return value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+    }
+
     private static string Quote(string value)
     {
         return "\"" + value.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"";

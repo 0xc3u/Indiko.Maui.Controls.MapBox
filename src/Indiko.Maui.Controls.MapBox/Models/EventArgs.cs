@@ -22,6 +22,26 @@ public class AnnotationClickedEventArgs : EventArgs
     }
 }
 
+public class PolylineClickedEventArgs : EventArgs
+{
+    public MapPolyline Polyline { get; }
+
+    public PolylineClickedEventArgs(MapPolyline polyline)
+    {
+        Polyline = polyline;
+    }
+}
+
+public class PolygonClickedEventArgs : EventArgs
+{
+    public MapPolygon Polygon { get; }
+
+    public PolygonClickedEventArgs(MapPolygon polygon)
+    {
+        Polygon = polygon;
+    }
+}
+
 public class CameraChangedEventArgs : EventArgs
 {
     public MapCameraPosition Camera { get; }

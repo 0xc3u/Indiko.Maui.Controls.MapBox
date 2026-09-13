@@ -1,0 +1,73 @@
+/* Accessibility hint */
+"COMPASS_A11Y_HINT" = "Xira o mapa cara ao norte";
+
+/* Accessibility label */
+"COMPASS_A11Y_LABEL" = "Compás";
+
+/* Accessibility hint */
+"INFO_A11Y_HINT" = "Mostra créditos, un formulario de comentarios e moito máis";
+
+/* Accessibility label */
+"INFO_A11Y_LABEL" = "Sobre este mapa";
+
+/* Telemetry prompt message */
+"TELEMETRY_DISABLED_MSG" = "Podes contribuír a mellorar os mapas de OpenStreetMap e Mapbox aportando datos de uso anónimos.";
+
+/* Telemetry prompt button */
+"TELEMETRY_DISABLED_OFF" = "Non participes";
+
+/* Telemetry prompt button */
+"TELEMETRY_DISABLED_ON" = "Participa";
+
+/* Telemetry prompt message */
+"TELEMETRY_ENABLED_MSG" = "Estás contribuíndo a mellorar os mapas de OpenStreetMap e Mapbox aportando datos de uso anónimos.";
+
+/* Telemetry prompt button */
+"TELEMETRY_ENABLED_OFF" = "Deixa de participar";
+
+/* Telemetry prompt button */
+"TELEMETRY_ENABLED_ON" = "Sigue participando";
+
+/* Telemetry prompt button */
+"TELEMETRY_MORE" = "Cóntame máis";
+
+/* Action in attribution sheet */
+"TELEMETRY_NAME" = "Telemetría Mapbox";
+
+/* Telemetry prompt title */
+"TELEMETRY_TITLE" = "Mellora os mapas de Mapbox";
+
+/* Privacy policy action in attribution sheet */
+"ATTRIBUTION_PRIVACY_POLICY" = "Política de privacidade de Mapbox";
+
+/* Header in attribution sheet */
+"SDK_NAME" = "Desenvolvido por Mapbox Maps";
+
+/* Title of button for dismissing attribution action sheet */
+"ATTRIBUTION_CANCEL" = "Cancelar";
+
+// MARK: - Strings that SDK expect to receive from sources
+
+"Improve this map" = "Mellora este mapa";
+
+"OpenStreetMap contributors" = "Colaboradores de OpenStreetMap";
+
+// MARK: - Geofencing
+
+/* Geofencing prompt title */
+"GEOFENCING_TITLE" = "Permitir que esta aplicación use Geofencing";
+
+/* Geofencing prompt message */
+"GEOFENCING_MSG" = "Esta aplicación usa Mapbox Geofencing para detectar a presenza do teu dispositivo nas áreas que definiu o programador da aplicación. Só o programador da aplicación pode ver onde están esas áreas. Tes a opción de desactivar Mapbox Geofencing, o que pode afectar á funcionalidade da aplicación.";
+
+/* Geofencing prompt button */
+"GEOFENCING_ENABLED_ON" = "Mantén o Geofencing activado";
+
+/* Geofencing prompt button */
+"GEOFENCING_ENABLED_OFF" = "Desactivar Geofencing";
+
+/* Geofencing prompt button */
+"GEOFENCING_DISABLED_ON" = "Activar Geofencing";
+
+/* Geofencing prompt button */
+"GEOFENCING_DISABLED_OFF" = "Manter o geofencing desactivado";

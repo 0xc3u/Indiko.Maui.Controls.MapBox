@@ -18,7 +18,13 @@ import com.mapbox.maps.plugin.animation.camera
 import com.mapbox.maps.plugin.annotation.annotations
 import com.mapbox.maps.plugin.annotation.generated.PointAnnotationManager
 import com.mapbox.maps.plugin.annotation.generated.PointAnnotationOptions
+import com.mapbox.maps.plugin.annotation.generated.PolygonAnnotationManager
+import com.mapbox.maps.plugin.annotation.generated.PolygonAnnotationOptions
+import com.mapbox.maps.plugin.annotation.generated.PolylineAnnotationManager
+import com.mapbox.maps.plugin.annotation.generated.PolylineAnnotationOptions
 import com.mapbox.maps.plugin.annotation.generated.createPointAnnotationManager
+import com.mapbox.maps.plugin.annotation.generated.createPolygonAnnotationManager
+import com.mapbox.maps.plugin.annotation.generated.createPolylineAnnotationManager
 import com.mapbox.maps.plugin.gestures.addOnMapClickListener
 import com.mapbox.maps.plugin.gestures.addOnMapLongClickListener
 import com.mapbox.maps.plugin.gestures.gestures
@@ -59,6 +65,8 @@ interface IKMapEventListener
     fun onMapClick(latitude: Double, longitude: Double)
     fun onMapLongPress(latitude: Double, longitude: Double)
     fun onMarkerClick(id: String)
+    fun onPolylineClick(id: String)
+    fun onPolygonClick(id: String)
     fun onCameraChanged(camera: IKCameraState)
 }
 
@@ -78,7 +86,11 @@ class IKMapView(
 {
     private val mapView: MapView
     private var pointManager: PointAnnotationManager? = null
+    private var polylineManager: PolylineAnnotationManager? = null
+    private var polygonManager: PolygonAnnotationManager? = null
     private val markerIdsByAnnotationId = HashMap<String, String>()
+    private val polylineIdsByAnnotationId = HashMap<String, String>()
+    private val polygonIdsByAnnotationId = HashMap<String, String>()
 
     var listener: IKMapEventListener? = null
 
@@ -199,6 +211,107 @@ class IKMapView(
 
     // endregion
 
+    // region Polylines & polygons
+
+    /**
+     * Replaces all polylines. JSON:
+     * [{"id":"...","points":[[lat,lng],...],"color":"#RRGGBB","width":4.0,"opacity":1.0}]
+     */
+    fun setPolylinesJson(json: String)
+    {
+        val manager = polylineManager ?: mapView.annotations.createPolylineAnnotationManager().also { created ->
+            created.addClickListener { annotation ->
+                polylineIdsByAnnotationId[annotation.id]?.let { listener?.onPolylineClick(it) }
+                true
+            }
+            polylineManager = created
+        }
+
+        manager.deleteAll()
+        polylineIdsByAnnotationId.clear()
+
+        val items = JSONArray(json)
+        for (i in 0 until items.length())
+        {
+            val item = items.getJSONObject(i)
+            val id = item.optString("id") ?: continue
+            val points = parsePoints(item.optJSONArray("points")) ?: continue
+            if (points.size < 2) continue
+
+            val options = PolylineAnnotationOptions()
+                .withPoints(points)
+                .withLineColor(item.optString("color", "#3B82F6"))
+                .withLineWidth(item.optDouble("width", 4.0))
+                .withLineOpacity(item.optDouble("opacity", 1.0))
+
+            val annotation = manager.create(options)
+            polylineIdsByAnnotationId[annotation.id] = id
+        }
+    }
+
+    fun clearPolylines()
+    {
+        polylineManager?.deleteAll()
+        polylineIdsByAnnotationId.clear()
+    }
+
+    /**
+     * Replaces all polygons. JSON:
+     * [{"id":"...","points":[[lat,lng],...],"fillColor":"#RRGGBB","fillOpacity":0.4,"strokeColor":"#RRGGBB"}]
+     */
+    fun setPolygonsJson(json: String)
+    {
+        val manager = polygonManager ?: mapView.annotations.createPolygonAnnotationManager().also { created ->
+            created.addClickListener { annotation ->
+                polygonIdsByAnnotationId[annotation.id]?.let { listener?.onPolygonClick(it) }
+                true
+            }
+            polygonManager = created
+        }
+
+        manager.deleteAll()
+        polygonIdsByAnnotationId.clear()
+
+        val items = JSONArray(json)
+        for (i in 0 until items.length())
+        {
+            val item = items.getJSONObject(i)
+            val id = item.optString("id") ?: continue
+            val points = parsePoints(item.optJSONArray("points")) ?: continue
+            if (points.size < 3) continue
+
+            val options = PolygonAnnotationOptions()
+                .withPoints(listOf(points))
+                .withFillColor(item.optString("fillColor", "#3B82F6"))
+                .withFillOpacity(item.optDouble("fillOpacity", 0.4))
+                .withFillOutlineColor(item.optString("strokeColor", "#1D4ED8"))
+
+            val annotation = manager.create(options)
+            polygonIdsByAnnotationId[annotation.id] = id
+        }
+    }
+
+    fun clearPolygons()
+    {
+        polygonManager?.deleteAll()
+        polygonIdsByAnnotationId.clear()
+    }
+
+    private fun parsePoints(array: org.json.JSONArray?): List<Point>?
+    {
+        if (array == null) return null
+        val points = ArrayList<Point>(array.length())
+        for (i in 0 until array.length())
+        {
+            val pair = array.optJSONArray(i) ?: continue
+            if (pair.length() < 2) continue
+            points.add(Point.fromLngLat(pair.getDouble(1), pair.getDouble(0)))
+        }
+        return points
+    }
+
+    // endregion
+
     // region Location & gestures
 
     fun setUserLocationEnabled(enabled: Boolean)
@@ -233,7 +346,11 @@ class IKMapView(
     {
         listener = null
         pointManager = null
+        polylineManager = null
+        polygonManager = null
         markerIdsByAnnotationId.clear()
+        polylineIdsByAnnotationId.clear()
+        polygonIdsByAnnotationId.clear()
         removeAllViews()
         mapView.onStop()
         mapView.onDestroy()

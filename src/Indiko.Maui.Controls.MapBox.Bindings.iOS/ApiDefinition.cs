@@ -59,6 +59,14 @@ interface IKMapEventListener
     void OnMarkerClick(string id);
 
     [Abstract]
+    [Export("onPolylineClick:")]
+    void OnPolylineClick(string id);
+
+    [Abstract]
+    [Export("onPolygonClick:")]
+    void OnPolygonClick(string id);
+
+    [Abstract]
     [Export("onCameraChanged:")]
     void OnCameraChanged(IKCameraState camera);
 }
@@ -93,6 +101,18 @@ interface IKMapView
 
     [Export("clearMarkers")]
     void ClearMarkers();
+
+    [Export("setPolylinesJson:")]
+    void SetPolylines(string json);
+
+    [Export("clearPolylines")]
+    void ClearPolylines();
+
+    [Export("setPolygonsJson:")]
+    void SetPolygons(string json);
+
+    [Export("clearPolygons")]
+    void ClearPolygons();
 
     [Export("setUserLocationEnabled:")]
     void SetUserLocationEnabled(bool enabled);

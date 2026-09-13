@@ -1,0 +1,73 @@
+/* Accessibility hint */
+"COMPASS_A11Y_HINT" = "Gira el mapa per mirar cap al nord";
+
+/* Accessibility label */
+"COMPASS_A11Y_LABEL" = "Brúixola";
+
+/* Accessibility hint */
+"INFO_A11Y_HINT" = "Mostra crèdits, un formulari de comentaris i molt més";
+
+/* Accessibility label */
+"INFO_A11Y_LABEL" = "Sobre aquest mapa";
+
+/* Telemetry prompt message */
+"TELEMETRY_DISABLED_MSG" = "Podeu ajudar a millorar els mapes OpenStreetMap i Mapbox aportant dades d'ús anònimes.";
+
+/* Telemetry prompt button */
+"TELEMETRY_DISABLED_OFF" = "No participis";
+
+/* Telemetry prompt button */
+"TELEMETRY_DISABLED_ON" = "Participa";
+
+/* Telemetry prompt message */
+"TELEMETRY_ENABLED_MSG" = "Esteu ajudant a millorar els mapes OpenStreetMap i Mapbox aportant dades d'ús anònimes.";
+
+/* Telemetry prompt button */
+"TELEMETRY_ENABLED_OFF" = "Deixa de participar";
+
+/* Telemetry prompt button */
+"TELEMETRY_ENABLED_ON" = "Seguiu participant";
+
+/* Telemetry prompt button */
+"TELEMETRY_MORE" = "Explica'm més";
+
+/* Action in attribution sheet */
+"TELEMETRY_NAME" = "Telemetria de Mapbox";
+
+/* Telemetry prompt title */
+"TELEMETRY_TITLE" = "Millorar els mapes de Mapbox";
+
+/* Privacy policy action in attribution sheet */
+"ATTRIBUTION_PRIVACY_POLICY" = "Política de privadesa de Mapbox";
+
+/* Header in attribution sheet */
+"SDK_NAME" = "Desenvolupat per Mapbox Maps";
+
+/* Title of button for dismissing attribution action sheet */
+"ATTRIBUTION_CANCEL" = "Cancel·lar";
+
+// MARK: - Strings that SDK expect to receive from sources
+
+"Improve this map" = "Millora aquest mapa";
+
+"OpenStreetMap contributors" = "Col·laboradors d'OpenStreetMap";
+
+// MARK: - Geofencing
+
+/* Geofencing prompt title */
+"GEOFENCING_TITLE" = "Permet que aquesta aplicació utilitzi Geofencing";
+
+/* Geofencing prompt message */
+"GEOFENCING_MSG" = "Aquesta aplicació utilitza Mapbox Geofencing per detectar la presència del vostre dispositiu a les àrees que el desenvolupador de l'aplicació ha definit. Només el desenvolupador d'aplicacions pot veure on es troben aquestes àrees. Teniu l'opció de desactivar Mapbox Geofencing, que pot afectar la funcionalitat de l'aplicació.";
+
+/* Geofencing prompt button */
+"GEOFENCING_ENABLED_ON" = "Manteniu el geofencing habilitat";
+
+/* Geofencing prompt button */
+"GEOFENCING_ENABLED_OFF" = "Desactiva el geofencing";
+
+/* Geofencing prompt button */
+"GEOFENCING_DISABLED_ON" = "Activa el geofencing";
+
+/* Geofencing prompt button */
+"GEOFENCING_DISABLED_OFF" = "Mantenir el geofencing desactivat";

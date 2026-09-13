@@ -25,6 +25,46 @@ public partial class MainPage : ContentPage
 			new MapAnnotation { Latitude = 47.3769, Longitude = 8.5417, Title = "Zürich", Color = "#E74C3C" },
 			new MapAnnotation { Latitude = 47.3667, Longitude = 8.5500, Title = "Zürichsee", Color = "#2980B9" },
 		]);
+
+		Map.Polylines.Add(new MapPolyline
+		{
+			Points =
+			[
+				new MapPosition(47.3769, 8.5417),   // Zürich HB
+				new MapPosition(47.3660, 8.5450),   // Bürkliplatz
+				new MapPosition(47.3550, 8.5530),   // Seefeld
+				new MapPosition(47.3400, 8.5570),   // Zollikon
+				new MapPosition(47.3200, 8.5520),   // Küsnacht
+			],
+			Title = "Seeuferweg",
+			Color = "#E67E22",
+			Width = 5,
+		});
+
+		Map.Polygons.Add(new MapPolygon
+		{
+			Points =
+			[
+				new MapPosition(47.3660, 8.5410),
+				new MapPosition(47.3660, 8.5560),
+				new MapPosition(47.3330, 8.5620),
+				new MapPosition(47.3310, 8.5450),
+			],
+			Title = "Unteres Seebecken",
+			FillColor = "#9B59B6",
+			FillOpacity = 0.35,
+			StrokeColor = "#6C3483",
+		});
+	}
+
+	private void OnPolylineClicked(object? sender, PolylineClickedEventArgs e)
+	{
+		StatusLabel.Text = $"Polyline: {e.Polyline.Title ?? e.Polyline.Id}";
+	}
+
+	private void OnPolygonClicked(object? sender, PolygonClickedEventArgs e)
+	{
+		StatusLabel.Text = $"Polygon: {e.Polygon.Title ?? e.Polygon.Id}";
 	}
 
 	private void OnMapClicked(object? sender, MapClickedEventArgs e)

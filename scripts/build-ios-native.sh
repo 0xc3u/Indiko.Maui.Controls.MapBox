@@ -14,6 +14,13 @@ xcodegen generate
 
 rm -rf archives out
 
+# MapboxMaps is statically linked into the facade, so its SPM resource bundle
+# must live inside the facade framework — the runtime bundle accessor looks it
+# up via Bundle(for:) relative to the framework that contains the code.
+# Both archives share ArchiveIntermediates, so each bundle must be copied
+# immediately after its own archive step before the next one wipes it.
+INTERMEDIATE="$DERIVED/Build/Intermediates.noindex/ArchiveIntermediates/IndikoMapboxKit/IntermediateBuildFilesPath/UninstalledProducts"
+
 xcodebuild archive \
     -project IndikoMapboxKit.xcodeproj \
     -scheme IndikoMapboxKit \
@@ -21,6 +28,9 @@ xcodebuild archive \
     -archivePath archives/ios.xcarchive \
     -derivedDataPath "$DERIVED" \
     SKIP_INSTALL=NO CODE_SIGNING_ALLOWED=NO | tail -5
+
+cp -R "$INTERMEDIATE/iphoneos/MapboxMaps_MapboxMaps.bundle" \
+    archives/ios.xcarchive/Products/Library/Frameworks/IndikoMapboxKit.framework/
 
 xcodebuild archive \
     -project IndikoMapboxKit.xcodeproj \
@@ -30,12 +40,6 @@ xcodebuild archive \
     -derivedDataPath "$DERIVED" \
     SKIP_INSTALL=NO CODE_SIGNING_ALLOWED=NO | tail -5
 
-# MapboxMaps is statically linked into the facade, so its SPM resource bundle
-# must live inside the facade framework — the runtime bundle accessor looks it
-# up via Bundle(for:) relative to the framework that contains the code.
-INTERMEDIATE="$DERIVED/Build/Intermediates.noindex/ArchiveIntermediates/IndikoMapboxKit/IntermediateBuildFilesPath/UninstalledProducts"
-cp -R "$INTERMEDIATE/iphoneos/MapboxMaps_MapboxMaps.bundle" \
-    archives/ios.xcarchive/Products/Library/Frameworks/IndikoMapboxKit.framework/
 cp -R "$INTERMEDIATE/iphonesimulator/MapboxMaps_MapboxMaps.bundle" \
     archives/iossim.xcarchive/Products/Library/Frameworks/IndikoMapboxKit.framework/
 

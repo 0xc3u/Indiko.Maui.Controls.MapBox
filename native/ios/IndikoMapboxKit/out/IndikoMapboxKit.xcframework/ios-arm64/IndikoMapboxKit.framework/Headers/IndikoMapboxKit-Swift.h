@@ -327,6 +327,8 @@ SWIFT_PROTOCOL_NAMED("IKMapEventListener")
 - (void)onMapClick:(double)latitude longitude:(double)longitude;
 - (void)onMapLongPress:(double)latitude longitude:(double)longitude;
 - (void)onMarkerClick:(NSString * _Nonnull)id;
+- (void)onPolylineClick:(NSString * _Nonnull)id;
+- (void)onPolygonClick:(NSString * _Nonnull)id;
 - (void)onCameraChanged:(IKCameraState * _Nonnull)camera;
 @end
 
@@ -345,6 +347,14 @@ SWIFT_CLASS_NAMED("IKMapView")
 /// Replaces all markers. JSON: [{“id”:”…”,“lat”:..,“lng”:..,“title”:”…”,“color”:”#RRGGBB”}]
 - (void)setMarkersJson:(NSString * _Nonnull)json;
 - (void)clearMarkers;
+/// Replaces all polylines. JSON:
+/// [{“id”:”…”,“points”:[[lat,lng],…],“color”:”#RRGGBB”,“width”:4.0,“opacity”:1.0}]
+- (void)setPolylinesJson:(NSString * _Nonnull)json;
+- (void)clearPolylines;
+/// Replaces all polygons. JSON:
+/// [{“id”:”…”,“points”:[[lat,lng],…],“fillColor”:”#RRGGBB”,“fillOpacity”:0.4,“strokeColor”:”#RRGGBB”}]
+- (void)setPolygonsJson:(NSString * _Nonnull)json;
+- (void)clearPolygons;
 - (void)setUserLocationEnabled:(BOOL)enabled;
 - (void)setGesturesScroll:(BOOL)scroll zoom:(BOOL)zoom rotate:(BOOL)rotate pitch:(BOOL)pitch;
 - (void)destroy;

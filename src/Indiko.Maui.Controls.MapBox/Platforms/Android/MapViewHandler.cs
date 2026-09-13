@@ -12,6 +12,8 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
 
     private MapEventListener? listener;
     private INotifyCollectionChanged? observedAnnotations;
+    private INotifyCollectionChanged? observedPolylines;
+    private INotifyCollectionChanged? observedPolygons;
 
     public static readonly IPropertyMapper<MapView, MapViewHandler> Mapper =
         new PropertyMapper<MapView, MapViewHandler>(ViewMapper)
@@ -19,6 +21,8 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
             [nameof(MapView.StyleUri)] = MapStyleUri,
             [nameof(MapView.Camera)] = MapCamera,
             [nameof(MapView.Annotations)] = MapAnnotations,
+            [nameof(MapView.Polylines)] = MapPolylines,
+            [nameof(MapView.Polygons)] = MapPolygons,
             [nameof(MapView.ShowUserLocation)] = MapShowUserLocation,
             [nameof(MapView.ScrollEnabled)] = MapGestures,
             [nameof(MapView.ZoomEnabled)] = MapGestures,
@@ -55,11 +59,15 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
         platformView.Listener = listener;
 
         ObserveAnnotations(VirtualView.Annotations);
+        ObservePolylines(VirtualView.Polylines);
+        ObservePolygons(VirtualView.Polygons);
     }
 
     protected override void DisconnectHandler(IKMapView platformView)
     {
         ObserveAnnotations(null);
+        ObservePolylines(null);
+        ObservePolygons(null);
         platformView.Listener = null;
         listener?.Dispose();
         listener = null;
@@ -101,6 +109,18 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
     {
         handler.ObserveAnnotations(view.Annotations);
         handler.PushAnnotations();
+    }
+
+    private static void MapPolylines(MapViewHandler handler, MapView view)
+    {
+        handler.ObservePolylines(view.Polylines);
+        handler.PushPolylines();
+    }
+
+    private static void MapPolygons(MapViewHandler handler, MapView view)
+    {
+        handler.ObservePolygons(view.Polygons);
+        handler.PushPolygons();
     }
 
     private static void MapShowUserLocation(MapViewHandler handler, MapView view)
@@ -151,6 +171,54 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
         PlatformView.SetMarkersJson(AnnotationSerializer.ToJson(VirtualView.Annotations));
     }
 
+    private void ObservePolylines(INotifyCollectionChanged? polylines)
+    {
+        if (ReferenceEquals(observedPolylines, polylines))
+            return;
+
+        if (observedPolylines is not null)
+            observedPolylines.CollectionChanged -= OnPolylinesChanged;
+
+        observedPolylines = polylines;
+
+        if (observedPolylines is not null)
+            observedPolylines.CollectionChanged += OnPolylinesChanged;
+    }
+
+    private void OnPolylinesChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        PushPolylines();
+    }
+
+    private void PushPolylines()
+    {
+        PlatformView.SetPolylinesJson(AnnotationSerializer.ToPolylinesJson(VirtualView.Polylines));
+    }
+
+    private void ObservePolygons(INotifyCollectionChanged? polygons)
+    {
+        if (ReferenceEquals(observedPolygons, polygons))
+            return;
+
+        if (observedPolygons is not null)
+            observedPolygons.CollectionChanged -= OnPolygonsChanged;
+
+        observedPolygons = polygons;
+
+        if (observedPolygons is not null)
+            observedPolygons.CollectionChanged += OnPolygonsChanged;
+    }
+
+    private void OnPolygonsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        PushPolygons();
+    }
+
+    private void PushPolygons()
+    {
+        PlatformView.SetPolygonsJson(AnnotationSerializer.ToPolygonsJson(VirtualView.Polygons));
+    }
+
     /* --------------------------------- Listener ----------------------------------- */
 
     private sealed class MapEventListener : Java.Lang.Object, IKMapEventListener
@@ -179,6 +247,10 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
             Dispatch(v => v.SendMapLongPressed(latitude, longitude));
 
         public void OnMarkerClick(string id) => Dispatch(v => v.SendAnnotationClicked(id));
+
+        public void OnPolylineClick(string id) => Dispatch(v => v.SendPolylineClicked(id));
+
+        public void OnPolygonClick(string id) => Dispatch(v => v.SendPolygonClicked(id));
 
         public void OnCameraChanged(IKCameraState camera)
         {

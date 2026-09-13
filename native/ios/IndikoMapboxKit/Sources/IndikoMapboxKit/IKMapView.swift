@@ -41,6 +41,8 @@ public protocol IKMapEventListener
     @objc(onMapClick:longitude:) func onMapClick(latitude: Double, longitude: Double)
     @objc(onMapLongPress:longitude:) func onMapLongPress(latitude: Double, longitude: Double)
     @objc(onMarkerClick:) func onMarkerClick(id: String)
+    @objc(onPolylineClick:) func onPolylineClick(id: String)
+    @objc(onPolygonClick:) func onPolygonClick(id: String)
     @objc(onCameraChanged:) func onCameraChanged(camera: IKCameraState)
 }
 
@@ -52,6 +54,8 @@ public class IKMapView: UIView
 {
     private var mapView: MapView!
     private var pointManager: PointAnnotationManager?
+    private var polylineManager: PolylineAnnotationManager?
+    private var polygonManager: PolygonAnnotationManager?
     private var cancelables = Set<AnyCancelable>()
 
     @objc public weak var listener: IKMapEventListener?
@@ -187,6 +191,102 @@ public class IKMapView: UIView
         pointManager?.annotations = []
     }
 
+    // MARK: - Polylines & polygons
+
+    /// Replaces all polylines. JSON:
+    /// [{"id":"...","points":[[lat,lng],...],"color":"#RRGGBB","width":4.0,"opacity":1.0}]
+    @objc(setPolylinesJson:)
+    public func setPolylines(json: String)
+    {
+        guard let data = json.data(using: .utf8),
+              let items = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
+        else { return }
+
+        if polylineManager == nil
+        {
+            polylineManager = mapView.annotations.makePolylineAnnotationManager()
+        }
+
+        var lines: [PolylineAnnotation] = []
+        for item in items
+        {
+            guard let id = item["id"] as? String,
+                  let coordinates = Self.coordinates(from: item["points"]), coordinates.count >= 2
+            else { continue }
+
+            var line = PolylineAnnotation(id: id, lineCoordinates: coordinates)
+            line.lineColor = StyleColor(UIColor(hex: item["color"] as? String ?? "") ?? .systemBlue)
+            line.lineWidth = item["width"] as? Double ?? 4.0
+            line.lineOpacity = item["opacity"] as? Double ?? 1.0
+            line.tapHandler = { [weak self] _ in
+                self?.listener?.onPolylineClick(id: id)
+                return true
+            }
+            lines.append(line)
+        }
+
+        polylineManager?.annotations = lines
+    }
+
+    @objc(clearPolylines)
+    public func clearPolylines()
+    {
+        polylineManager?.annotations = []
+    }
+
+    /// Replaces all polygons. JSON:
+    /// [{"id":"...","points":[[lat,lng],...],"fillColor":"#RRGGBB","fillOpacity":0.4,"strokeColor":"#RRGGBB"}]
+    @objc(setPolygonsJson:)
+    public func setPolygons(json: String)
+    {
+        guard let data = json.data(using: .utf8),
+              let items = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
+        else { return }
+
+        if polygonManager == nil
+        {
+            polygonManager = mapView.annotations.makePolygonAnnotationManager()
+        }
+
+        var polygons: [PolygonAnnotation] = []
+        for item in items
+        {
+            guard let id = item["id"] as? String,
+                  let coordinates = Self.coordinates(from: item["points"]), coordinates.count >= 3
+            else { continue }
+
+            var polygon = PolygonAnnotation(id: id, polygon: Polygon([coordinates]))
+            polygon.fillColor = StyleColor(UIColor(hex: item["fillColor"] as? String ?? "") ?? .systemBlue)
+            polygon.fillOpacity = item["fillOpacity"] as? Double ?? 0.4
+            if let stroke = UIColor(hex: item["strokeColor"] as? String ?? "")
+            {
+                polygon.fillOutlineColor = StyleColor(stroke)
+            }
+            polygon.tapHandler = { [weak self] _ in
+                self?.listener?.onPolygonClick(id: id)
+                return true
+            }
+            polygons.append(polygon)
+        }
+
+        polygonManager?.annotations = polygons
+    }
+
+    @objc(clearPolygons)
+    public func clearPolygons()
+    {
+        polygonManager?.annotations = []
+    }
+
+    private static func coordinates(from value: Any?) -> [CLLocationCoordinate2D]?
+    {
+        guard let points = value as? [[Double]] else { return nil }
+        return points.compactMap
+        {
+            $0.count >= 2 ? CLLocationCoordinate2D(latitude: $0[0], longitude: $0[1]) : nil
+        }
+    }
+
     // MARK: - Location & gestures
 
     @objc(setUserLocationEnabled:)
@@ -215,6 +315,8 @@ public class IKMapView: UIView
         cancelables.removeAll()
         listener = nil
         pointManager = nil
+        polylineManager = nil
+        polygonManager = nil
         mapView.removeFromSuperview()
         mapView = nil
     }

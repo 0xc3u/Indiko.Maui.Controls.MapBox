@@ -14,7 +14,9 @@
                      MapReady="OnMapReady"
                      MapClicked="OnMapClicked"
                      MapLongPressed="OnMapLongPressed"
-                     AnnotationClicked="OnAnnotationClicked">
+                     AnnotationClicked="OnAnnotationClicked"
+                     PolylineClicked="OnPolylineClicked"
+                     PolygonClicked="OnPolygonClicked">
             <map:MapView.Camera>
                 <mapModels:MapCameraPosition Latitude="47.3769" Longitude="8.5417" Zoom="11" />
             </map:MapView.Camera>
