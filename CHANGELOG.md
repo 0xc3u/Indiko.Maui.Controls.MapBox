@@ -1,3 +1,10 @@
+# [1.7.0](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/compare/v1.6.0...v1.7.0) (2026-09-14)
+
+
+### Features
+
+* 3D terrain — Mapbox DEM with sky atmosphere and configurable exaggeration ([b9079e5](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/commit/b9079e57aebc8c3fb86755d126b71a9c98944096))
+
 # [1.6.0](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/compare/v1.5.0...v1.6.0) (2026-09-14)
 
 
