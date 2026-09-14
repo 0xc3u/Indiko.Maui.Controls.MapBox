@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/compare/v1.2.0...v1.3.0) (2026-09-14)
+
+
+### Features
+
+* draggable markers with drag-end event and model sync ([33379bc](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/commit/33379bca555bdc464e2d05caf55b91ea2504471f))
+
 # [1.2.0](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/compare/v1.1.0...v1.2.0) (2026-09-14)
 
 
