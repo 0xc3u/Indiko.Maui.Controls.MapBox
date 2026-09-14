@@ -25,11 +25,18 @@
 		<Title>INDIKO .NET MAUI Mapbox View</Title>
 		<Description>Native Mapbox map control for .NET MAUI applications. Renders the Mapbox Maps SDK v11 natively on Android and iOS through a thin facade binding, exposing styles, camera control, markers, user location and gesture configuration as a bindable MAUI view.</Description>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<PackageIcon>icon.png</PackageIcon>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<DebugType>portable</DebugType>
 	</PropertyGroup>
 
 	<ItemGroup>
 		<PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Include="icon.png" Pack="true" PackagePath="" />
+		<None Include="..\..\README.md" Pack="true" PackagePath="" />
 	</ItemGroup>
 
 	<!--
