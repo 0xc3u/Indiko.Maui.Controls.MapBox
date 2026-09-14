@@ -1,7 +1,9 @@
 # Indiko.Maui.Controls.MapBox
 
-Native Mapbox map control for .NET MAUI (Android + iOS), built on the **Mapbox Maps SDK v11** with
-own, self-maintained bindings via a thin native facade (`IndikoMapboxKit`).
+[![NuGet](https://img.shields.io/nuget/v/Indiko.Maui.Controls.MapBox.svg)](https://www.nuget.org/packages/Indiko.Maui.Controls.MapBox)
+
+Native Mapbox map control for .NET MAUI (Android + iOS), built on the **Mapbox Maps SDK v11**
+with self-maintained bindings via a thin native facade (`IndikoMapboxKit`).
 
 ```
 MapView (cross-platform MAUI View)
@@ -10,35 +12,448 @@ MapView (cross-platform MAUI View)
                     └── Mapbox Maps SDK v11 (native)
 ```
 
-## Features (MVP)
+Every feature is exposed **twice**: as a classic .NET **event** for code-behind usage and as a
+bindable **`ICommand`** for MVVM — pick whichever fits your app. All events/commands are raised
+on the UI thread; command parameters carry the same `EventArgs` object the event delivers.
 
-- Map display with all Mapbox styles (Standard, Streets, Dark, Satellite, … or custom style URIs)
-- Camera control: declarative via `Camera` property, animated via `FlyTo(...)`
-- Point annotations (markers) with per-marker color and click events
-- Map click / long-press events with geo coordinates
-- Live camera observation (`CameraChanged` / `CurrentCamera`)
-- User location puck, gesture configuration (scroll/zoom/rotate/pitch)
+## Features
+
+- 🗺️ All Mapbox styles (Standard, Streets, Dark, Satellite, … or any custom style URI)
+- 🎥 Camera control: declarative `Camera` property, animated `FlyTo`, live `CameraChanged`
+- 📍 Markers (point annotations) with per-marker color, title, payload and click events
+- ➰ Polylines and polygons with styling and click events
+- 🧩 GeoJSON sources with fill/line/circle style layers (survive style switches automatically)
+- 🔵 Point clustering with managed layers and tap-to-expand zoom
+- 💬 View annotations — any MAUI view anchored to a coordinate, gestures included
+- 📴 Offline regions (style pack + tiles) with download progress events
+- 🧭 Compass on rotation, scale bar, user-location puck, per-gesture configuration
+- 👆 Click-consumed semantics: `MapClicked` fires only for taps on empty map
 
 ## Getting started
 
-```csharp
-// MauiProgram.cs
-builder.UseMapbox("pk.YOUR_MAPBOX_ACCESS_TOKEN");
 ```
+dotnet add package Indiko.Maui.Controls.MapBox
+```
+
+Register the handler and your Mapbox **public access token** (`pk.…` from
+https://account.mapbox.com) in `MauiProgram.cs`:
+
+```csharp
+using Indiko.Maui.Controls.MapBox;
+
+builder
+    .UseMauiApp<App>()
+    .UseMapbox("pk.YOUR_MAPBOX_ACCESS_TOKEN");
+```
+
+Add the map to a page:
 
 ```xml
-<map:MapView StyleUri="{x:Static mapModels:MapStyles.Streets}"
-             MapClicked="OnMapClicked">
-    <map:MapView.Camera>
-        <mapModels:MapCameraPosition Latitude="47.3769" Longitude="8.5417" Zoom="11" />
-    </map:MapView.Camera>
-</map:MapView>
+<ContentPage xmlns:map="clr-namespace:Indiko.Maui.Controls.MapBox;assembly=Indiko.Maui.Controls.MapBox"
+             xmlns:mapModels="clr-namespace:Indiko.Maui.Controls.MapBox.Models;assembly=Indiko.Maui.Controls.MapBox">
+
+    <map:MapView x:Name="Map" StyleUri="{x:Static mapModels:MapStyles.Streets}">
+        <map:MapView.Camera>
+            <mapModels:MapCameraPosition Latitude="47.3769" Longitude="8.5417" Zoom="11" />
+        </map:MapView.Camera>
+    </map:MapView>
+
+</ContentPage>
 ```
 
-A public access token (pk.…) from https://account.mapbox.com is required at runtime.
-For the sample app, set it in `samples/Indiko.Maui.Controls.MapBox.Sample/MauiProgram.cs`.
+The MVVM samples below use [CommunityToolkit.Mvvm](https://learn.microsoft.com/dotnet/communitytoolkit/mvvm/)
+(`[RelayCommand]`, `[ObservableProperty]`), but any `ICommand` implementation works.
 
-## Building
+---
+
+## Map styles
+
+`StyleUri` accepts the constants from `MapStyles` (`Standard`, `StandardSatellite`, `Streets`,
+`Outdoors`, `Light`, `Dark`, `Satellite`, `SatelliteStreets`) or any custom
+`mapbox://styles/{user}/{styleId}` URI. `StyleLoaded` fires after every style switch.
+Runtime content (GeoJSON layers, clusters) is re-applied automatically after a switch.
+
+**Event-driven**
+
+```csharp
+Map.StyleUri = MapStyles.Dark;
+Map.StyleLoaded += (_, _) => Debug.WriteLine("style is live");
+```
+
+**MVVM**
+
+```xml
+<map:MapView StyleUri="{Binding StyleUri}"
+             StyleLoadedCommand="{Binding StyleLoadedCommand}" />
+```
+
+```csharp
+[ObservableProperty]
+private string styleUri = MapStyles.Streets;
+
+[RelayCommand]
+private void StyleLoaded() => IsStyleReady = true;
+```
+
+---
+
+## Camera & FlyTo
+
+`Camera` sets the position instantly (one-way). `FlyTo` animates. `CurrentCamera` always holds
+the live position; `CameraChanged` fires continuously while the user pans/zooms/rotates.
+
+**Event-driven**
+
+```csharp
+Map.MapReady += (_, _) => Map.FlyTo(new MapCameraPosition(46.9480, 7.4474, zoom: 12), durationMs: 2000);
+Map.CameraChanged += (_, e) => ZoomLabel.Text = $"Zoom {e.Camera.Zoom:F1}";
+```
+
+**MVVM**
+
+```xml
+<map:MapView x:Name="Map"
+             Camera="{Binding StartCamera}"
+             MapReadyCommand="{Binding MapReadyCommand}"
+             CameraChangedCommand="{Binding CameraChangedCommand}" />
+```
+
+```csharp
+public MapCameraPosition StartCamera { get; } = new(47.3769, 8.5417, zoom: 11);
+
+[RelayCommand]
+private void CameraChanged(CameraChangedEventArgs e) => CurrentZoom = e.Camera.Zoom;
+```
+
+`FlyTo` is imperative by design. In MVVM, expose the `MapView` to the ViewModel via a slim
+interface, or call it from the view in response to a ViewModel message.
+
+---
+
+## Markers (annotations)
+
+`Annotations` is a bindable `ObservableRangeCollection<MapAnnotation>` — add/remove/clear and
+the map updates. `AddRange`/`ReplaceRange` avoid per-item notifications for bulk updates.
+Each marker has `Id`, `Latitude`, `Longitude`, `Title`, `Color` (hex) and a free `Tag` payload.
+Tapping a marker raises `AnnotationClicked` (and suppresses `MapClicked`).
+
+**Event-driven**
+
+```csharp
+Map.Annotations.Add(new MapAnnotation
+{
+    Latitude = 47.3769, Longitude = 8.5417,
+    Title = "Zürich HB", Color = "#E74C3C", Tag = stationModel,
+});
+
+Map.AnnotationClicked += (_, e) => ShowDetails((Station)e.Annotation.Tag!);
+```
+
+**MVVM**
+
+```xml
+<map:MapView Annotations="{Binding Pins}"
+             AnnotationClickedCommand="{Binding PinTappedCommand}" />
+```
+
+```csharp
+public ObservableRangeCollection<MapAnnotation> Pins { get; } = [];
+
+public void LoadStations(IEnumerable<Station> stations) =>
+    Pins.ReplaceRange(stations.Select(s => new MapAnnotation
+    {
+        Latitude = s.Lat, Longitude = s.Lng, Title = s.Name, Tag = s,
+    }));
+
+[RelayCommand]
+private void PinTapped(AnnotationClickedEventArgs e) =>
+    SelectedStation = (Station)e.Annotation.Tag!;
+```
+
+---
+
+## Map clicks & long-presses
+
+`MapClicked` / `MapLongPressed` deliver the geographic coordinate of the tap.
+**Click-consumed semantics:** taps that hit a marker, polyline, polygon or cluster are consumed
+by that element — `MapClicked` only fires for taps on empty map.
+
+**Event-driven**
+
+```csharp
+Map.MapClicked += (_, e) => Map.Annotations.Add(new MapAnnotation
+{
+    Latitude = e.Latitude, Longitude = e.Longitude, Color = "#27AE60",
+});
+Map.MapLongPressed += (_, e) => Map.FlyTo(new MapCameraPosition(e.Latitude, e.Longitude, 14), 1500);
+```
+
+**MVVM**
+
+```xml
+<map:MapView MapClickedCommand="{Binding MapClickedCommand}"
+             MapLongPressedCommand="{Binding MapLongPressedCommand}" />
+```
+
+```csharp
+[RelayCommand]
+private void MapClicked(MapClickedEventArgs e) =>
+    Waypoints.Add(new MapAnnotation { Latitude = e.Latitude, Longitude = e.Longitude });
+```
+
+---
+
+## Polylines
+
+`Polylines` is a bindable `ObservableRangeCollection<MapPolyline>`; each polyline has `Points`
+(at least two `MapPosition`s), `Color`, `Width`, `Opacity`, `Title` and `Tag`. Tapping one
+raises `PolylineClicked`.
+
+**Event-driven**
+
+```csharp
+Map.Polylines.Add(new MapPolyline
+{
+    Points = [new(47.3769, 8.5417), new(47.3660, 8.5450), new(47.3550, 8.5530)],
+    Color = "#E67E22", Width = 5, Title = "Lakeside trail",
+});
+Map.PolylineClicked += (_, e) => Toast($"Route: {e.Polyline.Title}");
+```
+
+**MVVM**
+
+```xml
+<map:MapView Polylines="{Binding Routes}"
+             PolylineClickedCommand="{Binding RouteTappedCommand}" />
+```
+
+```csharp
+public ObservableRangeCollection<MapPolyline> Routes { get; } = [];
+
+[RelayCommand]
+private void RouteTapped(PolylineClickedEventArgs e) => SelectedRoute = e.Polyline;
+```
+
+---
+
+## Polygons
+
+`Polygons` works the same way: `Points` (at least three, ring closes automatically),
+`FillColor`, `FillOpacity`, `StrokeColor`, `Title`, `Tag`, plus `PolygonClicked`.
+
+**Event-driven**
+
+```csharp
+Map.Polygons.Add(new MapPolygon
+{
+    Points = [new(47.366, 8.541), new(47.366, 8.556), new(47.333, 8.562), new(47.331, 8.545)],
+    FillColor = "#9B59B6", FillOpacity = 0.35, StrokeColor = "#6C3483", Title = "Zone A",
+});
+Map.PolygonClicked += (_, e) => Toast($"Zone: {e.Polygon.Title}");
+```
+
+**MVVM**
+
+```xml
+<map:MapView Polygons="{Binding Zones}"
+             PolygonClickedCommand="{Binding ZoneTappedCommand}" />
+```
+
+```csharp
+[RelayCommand]
+private void ZoneTapped(PolygonClickedEventArgs e) => SelectedZone = e.Polygon;
+```
+
+---
+
+## GeoJSON sources & style layers
+
+For data-driven rendering beyond individual shapes: add a GeoJSON source once, style it with
+fill/line/circle layers. Calling `AddGeoJsonSource` again with the same id **replaces only the
+data** — perfect for live updates. Sources and layers survive style switches automatically
+(the native facade re-applies them after every style load).
+
+These APIs are imperative (`AddGeoJsonSource`, `RemoveGeoJsonSource`, `AddLayer`,
+`RemoveLayer`) — call them from code-behind, or hand the `MapView` to your ViewModel behind a
+slim interface.
+
+```csharp
+Map.AddGeoJsonSource("live-vehicles", featureCollectionJson);
+
+Map.AddLayer(new MapLayer
+{
+    Id = "vehicle-dots", SourceId = "live-vehicles",
+    Type = MapLayerType.Circle, Color = "#C0392B", CircleRadius = 8,
+});
+Map.AddLayer(new MapLayer
+{
+    Id = "route-line", SourceId = "live-vehicles",
+    Type = MapLayerType.Line, Color = "#16A085", LineWidth = 4,
+});
+
+// live update — only the data is replaced:
+timer.Tick += (_, _) => Map.AddGeoJsonSource("live-vehicles", FetchLatestGeoJson());
+```
+
+`MapLayer` options: `Type` (`Fill` | `Line` | `Circle`), `Color`, `Opacity`, `LineWidth`,
+`CircleRadius`, `BelowLayerId` (insert position in the style).
+
+---
+
+## Clustering
+
+One call creates a clustered source plus three managed layers (cluster circles that grow with
+the point count, the count label, unclustered points). **Tapping a cluster automatically zooms
+to its expansion level** — handled inside the native facade.
+
+```csharp
+Map.AddClusteredSource(new MapClusterSource
+{
+    SourceId = "stations",
+    GeoJson = stationsFeatureCollection,   // point features
+    ClusterRadius = 50, ClusterMaxZoom = 14,
+    ClusterColor = "#2563EB", ClusterTextColor = "#FFFFFF",
+    PointColor = "#DC2626", PointRadius = 6,
+});
+
+Map.AddGeoJsonSource("stations", updatedGeoJson);  // live data update, cluster config stays
+Map.RemoveClusteredSource("stations");             // removes source + all managed layers
+```
+
+---
+
+## View annotations (MAUI views on the map)
+
+Anchor **any MAUI view** to a coordinate — it is rendered natively, moves with the map, and its
+gesture recognizers keep working. The native view-annotation system requires a fixed size.
+
+**Event-driven**
+
+```csharp
+var bubble = new Border
+{
+    Background = Color.FromArgb("#1F2937"),
+    StrokeShape = new RoundRectangle { CornerRadius = 12 },
+    Content = new Label { Text = "🚉 Zürich HB", TextColor = Colors.White },
+};
+var tap = new TapGestureRecognizer();
+tap.Tapped += (_, _) => ShowStationSheet();
+bubble.GestureRecognizers.Add(tap);
+
+Map.ViewAnnotations.Add(new MapViewAnnotation
+{
+    Latitude = 47.3779, Longitude = 8.5403,
+    Content = bubble, Width = 150, Height = 44,
+});
+```
+
+**MVVM**
+
+```xml
+<map:MapView ViewAnnotations="{Binding Bubbles}" />
+```
+
+```csharp
+public ObservableRangeCollection<MapViewAnnotation> Bubbles { get; } = [];
+
+// Content can be built from a DataTemplate-style factory in the VM layer:
+Bubbles.Add(new MapViewAnnotation
+{
+    Latitude = poi.Lat, Longitude = poi.Lng,
+    Content = _bubbleFactory.Create(poi),   // returns a MAUI View with bound commands
+    Width = 150, Height = 44,
+});
+```
+
+---
+
+## Offline regions
+
+`DownloadOfflineRegion` downloads the style pack **and** the map tiles for a bounding box in
+one call. Progress and completion are reported per region id; downloaded regions render
+automatically without network (the map reads the shared tile store).
+
+**Event-driven**
+
+```csharp
+Map.OfflineRegionProgress += (_, e) => DownloadBar.Progress = e.Progress;      // 0.0 … 1.0
+Map.OfflineRegionCompleted += (_, e) =>
+    Status.Text = e.Success ? "Available offline ✓" : $"Failed: {e.ErrorMessage}";
+
+Map.DownloadOfflineRegion(new MapOfflineRegion
+{
+    Id = "zurich",
+    StyleUri = MapStyles.Streets,
+    MinLatitude = 47.32, MinLongitude = 8.46,
+    MaxLatitude = 47.43, MaxLongitude = 8.62,
+    MinZoom = 6, MaxZoom = 14,          // higher MaxZoom = more detail, much more data
+});
+
+Map.RemoveOfflineRegion("zurich");      // cancels a running download / deletes tiles
+```
+
+**MVVM**
+
+```xml
+<map:MapView OfflineRegionProgressCommand="{Binding DownloadProgressCommand}"
+             OfflineRegionCompletedCommand="{Binding DownloadCompletedCommand}" />
+```
+
+```csharp
+[ObservableProperty]
+private double downloadProgress;
+
+[RelayCommand]
+private void DownloadProgress(OfflineRegionProgressEventArgs e) => DownloadProgress = e.Progress;
+
+[RelayCommand]
+private void DownloadCompleted(OfflineRegionCompletedEventArgs e) =>
+    IsOfflineReady = e.Success;
+```
+
+---
+
+## User location, gestures & compass
+
+```xml
+<map:MapView ShowUserLocation="True"
+             ScrollEnabled="True" ZoomEnabled="True"
+             RotateEnabled="True" PitchEnabled="False" />
+```
+
+- `ShowUserLocation` shows the native location puck (your app must request location
+  permission itself).
+- The four gesture switches toggle pan / zoom (pinch, double-tap, quick-zoom) / rotate / pitch
+  individually — all bindable.
+- A **compass ornament appears automatically** (top-right) whenever the map is rotated away
+  from north and hides again when facing north; tapping it resets the bearing to 0.
+  It indicates the map's north, not the device's magnetometer heading.
+
+---
+
+## Events ↔ Commands
+
+Every event has a bindable command counterpart; command parameters are the event args.
+
+| Event | Command | Args |
+|---|---|---|
+| `MapReady` | `MapReadyCommand` | – |
+| `StyleLoaded` | `StyleLoadedCommand` | – |
+| `MapClicked` | `MapClickedCommand` | `MapClickedEventArgs` |
+| `MapLongPressed` | `MapLongPressedCommand` | `MapClickedEventArgs` |
+| `AnnotationClicked` | `AnnotationClickedCommand` | `AnnotationClickedEventArgs` |
+| `PolylineClicked` | `PolylineClickedCommand` | `PolylineClickedEventArgs` |
+| `PolygonClicked` | `PolygonClickedCommand` | `PolygonClickedEventArgs` |
+| `CameraChanged` | `CameraChangedCommand` | `CameraChangedEventArgs` |
+| `OfflineRegionProgress` | `OfflineRegionProgressCommand` | `OfflineRegionProgressEventArgs` |
+| `OfflineRegionCompleted` | `OfflineRegionCompletedCommand` | `OfflineRegionCompletedEventArgs` |
+
+## Sample app
+
+`samples/Indiko.Maui.Controls.MapBox.Sample` demonstrates every feature. Copy
+`MapboxToken.cs.template` to `MapboxToken.cs` (git-ignored) and insert your `pk.…` token.
+
+## Building from source
 
 ```bash
 # 1. Native facades — run once after cloning (fetches Mapbox binaries) and
@@ -66,3 +481,6 @@ via `MAPBOX_DOWNLOADS_TOKEN` in `~/.gradle/gradle.properties` and `~/.netrc`.
 | -------- | ------- | --------- |
 | Android  | 11.30.1 | `native/android/indikomapboxkit/build.gradle.kts` |
 | iOS      | 11.26.0 | `native/ios/IndikoMapboxKit/project.yml` |
+
+Releases are automated via Semantic Release — conventional commits on `main` produce the
+version tag, CHANGELOG and NuGet package.
