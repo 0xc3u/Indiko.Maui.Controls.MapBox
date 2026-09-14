@@ -72,6 +72,14 @@ public partial class MainPage : ContentPage
 
 	private async void OnMapReady(object? sender, EventArgs e)
 	{
+		// Promo hook: cinematic flight Lauterbrunnen (3D) -> Bern (2D), used to
+		// record marketing clips (SIMCTL_CHILD_DEMO_FLIGHT=1). Skips demo content.
+		if (Environment.GetEnvironmentVariable("DEMO_FLIGHT") == "1")
+		{
+			_ = RunPromoFlightAsync();
+			return;
+		}
+
 		StatusLabel.Text = "Karte bereit — tippe für Marker, lang drücken für FlyTo";
 
 		using var pawStream = await FileSystem.OpenAppPackageFileAsync("paw.png");
@@ -138,6 +146,36 @@ public partial class MainPage : ContentPage
 			FillOpacity = 0.35,
 			StrokeColor = "#6C3483",
 		});
+	}
+
+	/// <summary>
+	/// Cinematic promo flight: 3D terrain over the Lauterbrunnen valley, a slow
+	/// pan, then a fly-to towards Bern during which the pitch interpolates to 0 —
+	/// the 3D → 2D transition happens mid-flight.
+	/// </summary>
+	private async Task RunPromoFlightAsync()
+	{
+		if (!sheetCollapsed)
+			OnSheetHandleTapped(this, new TappedEventArgs(null));
+
+		Map.TerrainEnabled = true;
+		PaintChip(Fab3D, true);
+		StatusLabel.Text = "3D-Terrain · Lauterbrunnental";
+		Map.Camera = new MapCameraPosition(46.60, 7.91, 12.2, bearing: 0, pitch: 68);
+
+		// Let terrain + tiles settle, then a slow cinematic pan.
+		await Task.Delay(3500);
+		Map.FlyTo(new MapCameraPosition(46.585, 7.905, 12.6, bearing: 40, pitch: 66), 7000);
+		await Task.Delay(7600);
+
+		// Flight to Bern — pitch eases 66 -> 0 on the way (3D becomes 2D).
+		StatusLabel.Text = "FlyTo Bern — Übergang in 2D";
+		Map.FlyTo(new MapCameraPosition(46.9480, 7.4474, 12.5, bearing: 0, pitch: 0), 11000);
+		await Task.Delay(11600);
+
+		Map.TerrainEnabled = false;
+		PaintChip(Fab3D, false);
+		StatusLabel.Text = "2D · Bern — Indiko.Maui.Controls.MapBox";
 	}
 
 	private void OnPolylineClicked(object? sender, PolylineClickedEventArgs e)
