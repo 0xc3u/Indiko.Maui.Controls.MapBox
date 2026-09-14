@@ -154,11 +154,11 @@ public partial class MainPage : ContentPage
 	{
 		"type": "FeatureCollection",
 		"features": [
-			{ "type": "Feature", "geometry": { "type": "Point", "coordinates": [8.5402, 47.3782] }, "properties": {} },
-			{ "type": "Feature", "geometry": { "type": "Point", "coordinates": [8.5317, 47.3859] }, "properties": {} },
-			{ "type": "Feature", "geometry": { "type": "Point", "coordinates": [8.5482, 47.3903] }, "properties": {} },
-			{ "type": "Feature", "geometry": { "type": "Point", "coordinates": [8.5610, 47.3846] }, "properties": {} },
-			{ "type": "Feature", "geometry": { "type": "Point", "coordinates": [8.5170, 47.3910] }, "properties": {} },
+			{ "type": "Feature", "geometry": { "type": "Point", "coordinates": [8.5402, 47.3782] }, "properties": { "name": "Hauptbahnhof" } },
+			{ "type": "Feature", "geometry": { "type": "Point", "coordinates": [8.5317, 47.3859] }, "properties": { "name": "Wipkingen" } },
+			{ "type": "Feature", "geometry": { "type": "Point", "coordinates": [8.5482, 47.3903] }, "properties": { "name": "Oerlikon" } },
+			{ "type": "Feature", "geometry": { "type": "Point", "coordinates": [8.5610, 47.3846] }, "properties": { "name": "Stettbach" } },
+			{ "type": "Feature", "geometry": { "type": "Point", "coordinates": [8.5170, 47.3910] }, "properties": { "name": "Hardbrücke" } },
 			{ "type": "Feature", "geometry": { "type": "LineString", "coordinates": [
 				[8.5170, 47.3910], [8.5317, 47.3859], [8.5402, 47.3782],
 				[8.5482, 47.3903], [8.5610, 47.3846]
@@ -171,6 +171,7 @@ public partial class MainPage : ContentPage
 	{
 		if (geoJsonActive)
 		{
+			Map.RemoveLayer("demo-labels");
 			Map.RemoveLayer("demo-circles");
 			Map.RemoveLayer("demo-route");
 			Map.RemoveGeoJsonSource("demo-source");
@@ -195,6 +196,18 @@ public partial class MainPage : ContentPage
 				Color = "#C0392B",
 				CircleRadius = 9,
 				Opacity = 0.9,
+			});
+			Map.AddLayer(new MapLayer
+			{
+				Id = "demo-labels",
+				SourceId = "demo-source",
+				Type = MapLayerType.Symbol,
+				TextField = "name",
+				TextSize = 13,
+				TextColor = "#1F2937",
+				TextHaloColor = "#FFFFFF",
+				TextHaloWidth = 1.6,
+				AllowOverlap = true,
 			});
 			Map.FlyTo(new MapCameraPosition(47.3855, 8.5400, 13), 1200);
 			StatusLabel.Text = "GeoJSON-Source + Circle/Line-Layer aktiv";

@@ -24,7 +24,7 @@ on the UI thread; command parameters carry the same `EventArgs` object the event
 - 📍 Markers (point annotations) with per-marker color, custom icon, title, payload and click events
 - ✋ Draggable markers with a drag-end event and automatic model sync
 - ➰ Polylines and polygons with styling and click events
-- 🧩 GeoJSON sources with fill/line/circle style layers (survive style switches automatically)
+- 🧩 GeoJSON sources with fill/line/circle/symbol style layers (survive style switches automatically)
 - 🔵 Point clustering with managed layers and tap-to-expand zoom
 - 💬 View annotations — any MAUI view anchored to a coordinate, gestures included
 - 📴 Offline regions (style pack + tiles) with download progress events
@@ -81,7 +81,8 @@ on the UI thread; command parameters carry the same `EventArgs` object the event
 | **Data-driven styling** | | |
 | GeoJSON sources (add / live-update / remove) | ✅ | `AddGeoJsonSource` (add-or-update semantics) |
 | Fill / line / circle layers | ✅ | `AddLayer(MapLayer)` with color, opacity, width, radius, insert position |
-| Symbol, heatmap, fill-extrusion, raster, hillshade, sky layers | ❌ | |
+| Symbol layers (data-driven labels + icons) | ✅ | `MapLayerType.Symbol`: `TextField` property labels, halo, icon bytes, overlap |
+| Heatmap, fill-extrusion, raster, hillshade, sky layers | ❌ | |
 | Vector / raster / image sources | ❌ | GeoJSON only |
 | Expressions | 🔶 | used internally (cluster steps); not exposed as API |
 | Clustering | ✅ | `AddClusteredSource` — managed layers, counts, tap-to-expand zoom |
@@ -465,8 +466,24 @@ Map.AddLayer(new MapLayer
 timer.Tick += (_, _) => Map.AddGeoJsonSource("live-vehicles", FetchLatestGeoJson());
 ```
 
-`MapLayer` options: `Type` (`Fill` | `Line` | `Circle`), `Color`, `Opacity`, `LineWidth`,
-`CircleRadius`, `BelowLayerId` (insert position in the style).
+`MapLayer` options: `Type` (`Fill` | `Line` | `Circle` | `Symbol`), `Color`, `Opacity`,
+`LineWidth`, `CircleRadius`, `BelowLayerId` (insert position in the style).
+
+**Symbol layers** render data-driven labels (and optionally icons) from feature properties:
+
+```csharp
+Map.AddLayer(new MapLayer
+{
+    Id = "station-labels", SourceId = "stations",
+    Type = MapLayerType.Symbol,
+    TextField = "name",                  // label = feature.properties.name
+    TextSize = 13, TextColor = "#1F2937",
+    TextHaloColor = "#FFFFFF", TextHaloWidth = 1.6,
+    IconData = iconBytes,                // optional per-feature icon (label moves below it)
+    IconWidth = 28,
+    AllowOverlap = true,
+});
+```
 
 ---
 

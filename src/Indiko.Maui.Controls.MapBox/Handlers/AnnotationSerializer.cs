@@ -106,6 +106,7 @@ internal static class AnnotationSerializer
         {
             MapLayerType.Line => "line",
             MapLayerType.Circle => "circle",
+            MapLayerType.Symbol => "symbol",
             _ => "fill",
         }));
         builder.Append(",\"color\":").Append(Quote(layer.Color));
@@ -114,6 +115,28 @@ internal static class AnnotationSerializer
         builder.Append(",\"circleRadius\":").Append(Invariant(layer.CircleRadius));
         if (!string.IsNullOrEmpty(layer.BelowLayerId))
             builder.Append(",\"belowLayerId\":").Append(Quote(layer.BelowLayerId));
+        if (layer.Type == MapLayerType.Symbol)
+        {
+            if (!string.IsNullOrEmpty(layer.TextField))
+            {
+                builder.Append(",\"textField\":").Append(Quote(layer.TextField));
+                builder.Append(",\"textSize\":").Append(Invariant(layer.TextSize));
+                builder.Append(",\"textColor\":").Append(Quote(layer.TextColor));
+                if (!string.IsNullOrEmpty(layer.TextHaloColor))
+                {
+                    builder.Append(",\"textHaloColor\":").Append(Quote(layer.TextHaloColor));
+                    builder.Append(",\"textHaloWidth\":").Append(Invariant(layer.TextHaloWidth));
+                }
+            }
+            if (layer.IconData is { Length: > 0 })
+            {
+                builder.Append(",\"icon\":").Append(Quote(Convert.ToBase64String(layer.IconData)));
+                if (layer.IconWidth > 0)
+                    builder.Append(",\"iconWidth\":").Append(Invariant(layer.IconWidth));
+            }
+            if (layer.AllowOverlap)
+                builder.Append(",\"allowOverlap\":true");
+        }
         return builder.Append('}').ToString();
     }
 

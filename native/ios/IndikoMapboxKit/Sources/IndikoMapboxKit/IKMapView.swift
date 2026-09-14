@@ -481,6 +481,8 @@ public class IKMapView: UIView
             circle.circleOpacity = .constant(opacity)
             circle.circleRadius = .constant(config["circleRadius"] as? Double ?? 6.0)
             layer = circle
+        case "symbol":
+            layer = buildSymbolLayer(id: id, sourceId: sourceId, config: config)
         default:
             return
         }
@@ -600,6 +602,49 @@ public class IKMapView: UIView
     {
         tileRegionCancelables.removeValue(forKey: id)?.cancel()
         TileStore.default.removeTileRegion(forId: id)
+    }
+
+    private func buildSymbolLayer(id: String, sourceId: String, config: [String: Any]) -> SymbolLayer
+    {
+        var layer = SymbolLayer(id: id, source: sourceId)
+        let textField = config["textField"] as? String ?? ""
+
+        if !textField.isEmpty, let expr = Self.expression("[\"get\",\"\(textField)\"]")
+        {
+            layer.textField = .expression(expr)
+            layer.textSize = .constant(config["textSize"] as? Double ?? 14)
+            layer.textColor = .constant(StyleColor(UIColor(hex: config["textColor"] as? String ?? "") ?? .black))
+
+            if let halo = UIColor(hex: config["textHaloColor"] as? String ?? "")
+            {
+                layer.textHaloColor = .constant(StyleColor(halo))
+                layer.textHaloWidth = .constant(config["textHaloWidth"] as? Double ?? 1.2)
+            }
+        }
+
+        if let iconBase64 = config["icon"] as? String, !iconBase64.isEmpty,
+           let icon = customIcon(base64: iconBase64, width: config["iconWidth"] as? Double ?? 0, height: 0)
+        {
+            let imageId = "ik-layer-icon-\(id)"
+            try? mapView.mapboxMap.addImage(icon.image, id: imageId)
+            layer.iconImage = .constant(.name(imageId))
+            if !textField.isEmpty
+            {
+                // Icon above, label below
+                layer.textOffset = .constant([0, 1.2])
+                layer.textAnchor = .constant(.top)
+            }
+        }
+
+        if config["allowOverlap"] as? Bool == true
+        {
+            layer.iconAllowOverlap = .constant(true)
+            layer.iconIgnorePlacement = .constant(true)
+            layer.textAllowOverlap = .constant(true)
+            layer.textIgnorePlacement = .constant(true)
+        }
+
+        return layer
     }
 
     // MARK: - Clustering

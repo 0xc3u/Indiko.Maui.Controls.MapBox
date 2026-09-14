@@ -34,6 +34,7 @@ import com.mapbox.maps.extension.style.layers.generated.FillLayer
 import com.mapbox.maps.extension.style.layers.generated.LineLayer
 import com.mapbox.maps.extension.style.layers.generated.SymbolLayer
 import com.mapbox.maps.extension.style.layers.properties.generated.IconAnchor
+import com.mapbox.maps.extension.style.layers.properties.generated.TextAnchor
 import com.mapbox.maps.extension.style.sources.addSource
 import com.mapbox.maps.extension.style.sources.generated.GeoJsonSource
 import com.mapbox.maps.extension.style.sources.generated.geoJsonSource
@@ -505,6 +506,55 @@ class IKMapView(
         mapView.mapboxMap.style?.removeStyleLayer(id)
     }
 
+    private fun buildSymbolLayer(
+        style: com.mapbox.maps.Style,
+        id: String,
+        sourceId: String,
+        config: JSONObject
+    ): SymbolLayer
+    {
+        val layer = SymbolLayer(id, sourceId)
+        val textField = config.optString("textField")
+
+        if (textField.isNotEmpty())
+        {
+            layer.textField(Expression.fromRaw("[\"get\",\"$textField\"]"))
+                .textSize(config.optDouble("textSize", 14.0))
+                .textColor(config.optString("textColor", "#000000"))
+
+            val halo = config.optString("textHaloColor")
+            if (halo.isNotEmpty())
+            {
+                layer.textHaloColor(halo).textHaloWidth(config.optDouble("textHaloWidth", 1.2))
+            }
+        }
+
+        val iconBase64 = config.optString("icon")
+        if (iconBase64.isNotEmpty())
+        {
+            val bitmap = customIconBitmap(iconBase64, config.optDouble("iconWidth", 0.0), 0.0)
+            if (bitmap != null)
+            {
+                val imageId = "ik-layer-icon-$id"
+                style.addImage(imageId, bitmap)
+                layer.iconImage(imageId)
+                if (textField.isNotEmpty())
+                {
+                    // Icon above, label below
+                    layer.textOffset(listOf(0.0, 1.2)).textAnchor(TextAnchor.TOP)
+                }
+            }
+        }
+
+        if (config.optBoolean("allowOverlap", false))
+        {
+            layer.iconAllowOverlap(true).iconIgnorePlacement(true)
+                .textAllowOverlap(true).textIgnorePlacement(true)
+        }
+
+        return layer
+    }
+
     private fun applyGeoJsonSource(id: String, geoJson: String)
     {
         val style = mapView.mapboxMap.style ?: return
@@ -546,6 +596,7 @@ class IKMapView(
                 .circleColor(color)
                 .circleOpacity(opacity)
                 .circleRadius(config.optDouble("circleRadius", 6.0))
+            "symbol" -> buildSymbolLayer(style, id, sourceId, config)
             else -> return
         }
 
