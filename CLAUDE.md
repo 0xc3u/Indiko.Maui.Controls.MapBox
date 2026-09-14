@@ -19,6 +19,11 @@ dotnet build samples/Indiko.Maui.Controls.MapBox.Sample.sln -c Release
 
 Running the sample requires a Mapbox public token (pk.…) in `samples/.../MauiProgram.cs`.
 
+Known issue: after deleting ALL obj/bin folders, the very first sample iOS build can fail with
+"Undefined symbols … _OBJC_CLASS_$_IK…" — the binding's `.resources.zip` sidecar is produced too
+late for the app link in the same invocation. Simply build a second time. NuGet consumers and CI
+(library-only build) are not affected.
+
 ## Releasing
 
 Semantic Release CI (like Indiko.Maui.Controls.Chat): pushes to main run

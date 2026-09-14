@@ -82,10 +82,10 @@ jobs:
       - name: Pack project
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            dotnet pack ${{ matrix.project.path }} -c Release -p:PackageVersion=${{ env.latest_tag }}
+            dotnet pack ${{ matrix.project.path }} -c Release -p:PackBindings=true -p:PackageVersion=${{ env.latest_tag }}
           else
             version_without_v=${{ steps.get_version_from_push.outputs.version-without-v }}
-            dotnet pack ${{ matrix.project.path }} -c Release -p:PackageVersion=$version_without_v
+            dotnet pack ${{ matrix.project.path }} -c Release -p:PackBindings=true -p:PackageVersion=$version_without_v
           fi
         shell: bash
 

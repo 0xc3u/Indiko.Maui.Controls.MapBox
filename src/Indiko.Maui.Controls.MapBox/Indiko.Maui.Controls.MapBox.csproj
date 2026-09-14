@@ -34,15 +34,22 @@
 
 	<!--
 	  The binding projects are not packable — their assemblies (plus the native AARs /
-	  the iOS resources sidecar) are packed INTO this package via PackBindingOutputs
-	  below. PrivateAssets=all keeps them out of the nuspec dependency list.
+	  the iOS resources sidecar) are packed INTO this package via PackBindingOutputs below.
+	  PrivateAssets=all (which keeps them out of the nuspec dependency list) must ONLY be
+	  active while packing: it also blocks the flow of the bindings' native resources into
+	  consuming app builds. CI packs with -p:PackBindings=true.
 	-->
+	<PropertyGroup>
+		<BindingPrivateAssets>none</BindingPrivateAssets>
+		<BindingPrivateAssets Condition="'$(PackBindings)' == 'true'">all</BindingPrivateAssets>
+	</PropertyGroup>
+
 	<ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">
-		<ProjectReference Include="..\Indiko.Maui.Controls.MapBox.Bindings.Android\Indiko.Maui.Controls.MapBox.Bindings.Android.csproj" PrivateAssets="all" />
+		<ProjectReference Include="..\Indiko.Maui.Controls.MapBox.Bindings.Android\Indiko.Maui.Controls.MapBox.Bindings.Android.csproj" PrivateAssets="$(BindingPrivateAssets)" />
 	</ItemGroup>
 
 	<ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">
-		<ProjectReference Include="..\Indiko.Maui.Controls.MapBox.Bindings.iOS\Indiko.Maui.Controls.MapBox.Bindings.iOS.csproj" PrivateAssets="all" />
+		<ProjectReference Include="..\Indiko.Maui.Controls.MapBox.Bindings.iOS\Indiko.Maui.Controls.MapBox.Bindings.iOS.csproj" PrivateAssets="$(BindingPrivateAssets)" />
 	</ItemGroup>
 
 	<!--
