@@ -36,6 +36,8 @@ public partial class MainPage : ContentPage
 			OnToggleBubble(this, EventArgs.Empty);
 		if (Environment.GetEnvironmentVariable("DEMO_OFFLINE") == "1")
 			OnDownloadOffline(this, EventArgs.Empty);
+		if (Environment.GetEnvironmentVariable("DEMO_AUTOFIT") == "1")
+			OnToggleAutoFit(this, EventArgs.Empty);
 
 		Map.Polylines.Add(new MapPolyline
 		{
@@ -286,6 +288,14 @@ public partial class MainPage : ContentPage
 		}
 
 		bubbleActive = !bubbleActive;
+	}
+
+	private void OnToggleAutoFit(object? sender, EventArgs e)
+	{
+		Map.AutoFitBounds = !Map.AutoFitBounds;
+		StatusLabel.Text = Map.AutoFitBounds
+			? "AutoFit aktiv — Kamera folgt dem Karteninhalt"
+			: "AutoFit aus";
 	}
 
 	private void OnDownloadOffline(object? sender, EventArgs e)

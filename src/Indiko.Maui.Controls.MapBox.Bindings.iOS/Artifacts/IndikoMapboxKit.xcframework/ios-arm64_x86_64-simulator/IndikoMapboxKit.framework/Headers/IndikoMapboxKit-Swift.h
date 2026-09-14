@@ -346,6 +346,9 @@ SWIFT_CLASS_NAMED("IKMapView")
 - (void)setStyleUri:(NSString * _Nonnull)uri;
 - (void)setCamera:(double)latitude longitude:(double)longitude zoom:(double)zoom bearing:(double)bearing pitch:(double)pitch;
 - (void)flyTo:(double)latitude longitude:(double)longitude zoom:(double)zoom bearing:(double)bearing pitch:(double)pitch durationMs:(double)durationMs;
+/// Moves the camera so the given bounding box is fully visible, with uniform
+/// padding in points. durationMs 0 jumps instantly.
+- (void)fitBounds:(double)minLat minLng:(double)minLng maxLat:(double)maxLat maxLng:(double)maxLng padding:(double)padding durationMs:(double)durationMs;
 /// Replaces all markers. JSON: [{“id”:”…”,“lat”:..,“lng”:..,“title”:”…”,“color”:”#RRGGBB”}]
 - (void)setMarkersJson:(NSString * _Nonnull)json;
 - (void)clearMarkers;
@@ -748,6 +751,9 @@ SWIFT_CLASS_NAMED("IKMapView")
 - (void)setStyleUri:(NSString * _Nonnull)uri;
 - (void)setCamera:(double)latitude longitude:(double)longitude zoom:(double)zoom bearing:(double)bearing pitch:(double)pitch;
 - (void)flyTo:(double)latitude longitude:(double)longitude zoom:(double)zoom bearing:(double)bearing pitch:(double)pitch durationMs:(double)durationMs;
+/// Moves the camera so the given bounding box is fully visible, with uniform
+/// padding in points. durationMs 0 jumps instantly.
+- (void)fitBounds:(double)minLat minLng:(double)minLng maxLat:(double)maxLat maxLng:(double)maxLng padding:(double)padding durationMs:(double)durationMs;
 /// Replaces all markers. JSON: [{“id”:”…”,“lat”:..,“lng”:..,“title”:”…”,“color”:”#RRGGBB”}]
 - (void)setMarkersJson:(NSString * _Nonnull)json;
 - (void)clearMarkers;

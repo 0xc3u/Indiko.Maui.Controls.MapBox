@@ -76,6 +76,34 @@ public class MapView : View
         set => SetValue(ViewAnnotationsProperty, value);
     }
 
+    public static readonly BindableProperty AutoFitBoundsProperty = BindableProperty.Create(
+        nameof(AutoFitBounds), typeof(bool), typeof(MapView), false,
+        propertyChanged: (bindable, _, newValue) =>
+        {
+            if (newValue is true)
+                ((MapView)bindable).TryAutoFit();
+        });
+
+    /// <summary>
+    /// When enabled, the camera automatically fits all map content (annotations,
+    /// polylines, polygons, view annotations) whenever it changes.
+    /// </summary>
+    public bool AutoFitBounds
+    {
+        get => (bool)GetValue(AutoFitBoundsProperty);
+        set => SetValue(AutoFitBoundsProperty, value);
+    }
+
+    public static readonly BindableProperty FitBoundsPaddingProperty = BindableProperty.Create(
+        nameof(FitBoundsPadding), typeof(double), typeof(MapView), 40.0);
+
+    /// <summary>Uniform edge padding (device-independent units) used by FitBounds/AutoFitBounds.</summary>
+    public double FitBoundsPadding
+    {
+        get => (double)GetValue(FitBoundsPaddingProperty);
+        set => SetValue(FitBoundsPaddingProperty, value);
+    }
+
     public static readonly BindableProperty ShowUserLocationProperty = BindableProperty.Create(
         nameof(ShowUserLocation), typeof(bool), typeof(MapView), false);
 
@@ -237,6 +265,46 @@ public class MapView : View
         Handler?.Invoke(nameof(FlyTo), new FlyToRequest(camera, durationMs));
     }
 
+    /// <summary>Moves the camera so the bounding box is fully visible. durationMs 0 jumps instantly.</summary>
+    public void FitBounds(MapBounds bounds, double? padding = null, int durationMs = 1000)
+    {
+        Handler?.Invoke(nameof(FitBounds),
+            new FitBoundsRequest(bounds, padding ?? FitBoundsPadding, durationMs));
+    }
+
+    /// <summary>Fits the camera to all current map content (no-op when the map is empty).</summary>
+    public void FitBoundsToContent(int durationMs = 1000)
+    {
+        var bounds = ComputeContentBounds();
+        if (bounds is not null)
+            FitBounds(bounds, durationMs: durationMs);
+    }
+
+    internal void TryAutoFit()
+    {
+        if (AutoFitBounds)
+            FitBoundsToContent(600);
+    }
+
+    private MapBounds? ComputeContentBounds()
+    {
+        IEnumerable<(double, double)> Positions()
+        {
+            foreach (var annotation in Annotations ?? [])
+                yield return (annotation.Latitude, annotation.Longitude);
+            foreach (var polyline in Polylines ?? [])
+                foreach (var point in polyline.Points)
+                    yield return (point.Latitude, point.Longitude);
+            foreach (var polygon in Polygons ?? [])
+                foreach (var point in polygon.Points)
+                    yield return (point.Latitude, point.Longitude);
+            foreach (var viewAnnotation in ViewAnnotations ?? [])
+                yield return (viewAnnotation.Latitude, viewAnnotation.Longitude);
+        }
+
+        return MapBounds.FromPositions(Positions());
+    }
+
     /// <summary>
     /// Adds a GeoJSON source or replaces the data of an existing one. Sources survive
     /// style switches — the native facade re-applies them after every style load.
@@ -396,6 +464,21 @@ public sealed class GeoJsonSourceRequest
     {
         SourceId = sourceId;
         GeoJson = geoJson;
+    }
+}
+
+/// <summary>Payload for the FitBounds command mapper.</summary>
+public sealed class FitBoundsRequest
+{
+    public MapBounds Bounds { get; }
+    public double Padding { get; }
+    public int DurationMs { get; }
+
+    public FitBoundsRequest(MapBounds bounds, double padding, int durationMs)
+    {
+        Bounds = bounds;
+        Padding = padding;
+        DurationMs = durationMs;
     }
 }
 

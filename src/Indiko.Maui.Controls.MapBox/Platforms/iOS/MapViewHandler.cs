@@ -39,6 +39,7 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
         new(ViewCommandMapper)
         {
             [nameof(MapView.FlyTo)] = MapFlyTo,
+            [nameof(MapView.FitBounds)] = MapFitBounds,
             [nameof(MapView.AddGeoJsonSource)] = MapAddGeoJsonSource,
             [nameof(MapView.RemoveGeoJsonSource)] = MapRemoveGeoJsonSource,
             [nameof(MapView.AddLayer)] = MapAddLayer,
@@ -215,6 +216,17 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
             handler.PlatformView.RemoveOfflineRegion(regionId);
     }
 
+    private static void MapFitBounds(MapViewHandler handler, MapView view, object? args)
+    {
+        if (args is not FitBoundsRequest request)
+            return;
+
+        handler.PlatformView.FitBounds(
+            request.Bounds.MinLatitude, request.Bounds.MinLongitude,
+            request.Bounds.MaxLatitude, request.Bounds.MaxLongitude,
+            request.Padding, request.DurationMs);
+    }
+
     /* -------------------------------- Annotations --------------------------------- */
 
     private void ObserveAnnotations(INotifyCollectionChanged? annotations)
@@ -239,6 +251,7 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
     private void PushAnnotations()
     {
         PlatformView.SetMarkers(AnnotationSerializer.ToJson(VirtualView.Annotations));
+        VirtualView.TryAutoFit();
     }
 
     private void ObservePolylines(INotifyCollectionChanged? polylines)
@@ -263,6 +276,7 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
     private void PushPolylines()
     {
         PlatformView.SetPolylines(AnnotationSerializer.ToPolylinesJson(VirtualView.Polylines));
+        VirtualView.TryAutoFit();
     }
 
     private void ObservePolygons(INotifyCollectionChanged? polygons)
@@ -287,6 +301,7 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
     private void PushPolygons()
     {
         PlatformView.SetPolygons(AnnotationSerializer.ToPolygonsJson(VirtualView.Polygons));
+        VirtualView.TryAutoFit();
     }
 
     private void ObserveViewAnnotations(INotifyCollectionChanged? viewAnnotations)
@@ -337,6 +352,7 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
                 annotation.Width, annotation.Height);
             shownViewAnnotations[annotation.Id] = annotation;
         }
+        VirtualView.TryAutoFit();
     }
 
     /* --------------------------------- Listener ----------------------------------- */

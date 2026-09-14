@@ -15,6 +15,8 @@ import com.mapbox.geojson.Point
 import com.mapbox.geojson.Feature
 import com.mapbox.geojson.Polygon
 import com.mapbox.maps.CameraOptions
+import com.mapbox.maps.CoordinateBounds
+import com.mapbox.maps.EdgeInsets
 import com.mapbox.maps.GlyphsRasterizationMode
 import com.mapbox.maps.MapInitOptions
 import com.mapbox.maps.MapView
@@ -224,6 +226,37 @@ class IKMapView(
                 .build(),
             MapAnimationOptions.mapAnimationOptions { duration(durationMs.toLong()) }
         )
+    }
+
+    /**
+     * Moves the camera so the given bounding box is fully visible, with uniform
+     * padding in dp. durationMs 0 jumps instantly.
+     */
+    fun fitBounds(minLat: Double, minLng: Double, maxLat: Double, maxLng: Double,
+                  paddingDp: Double, durationMs: Double)
+    {
+        val paddingPx = (paddingDp * resources.displayMetrics.density)
+        val camera = mapView.mapboxMap.cameraForCoordinateBounds(
+            CoordinateBounds(
+                Point.fromLngLat(minLng, minLat),
+                Point.fromLngLat(maxLng, maxLat)
+            ),
+            EdgeInsets(paddingPx, paddingPx, paddingPx, paddingPx),
+            null,
+            null
+        )
+
+        if (durationMs <= 0)
+        {
+            mapView.mapboxMap.setCamera(camera)
+        }
+        else
+        {
+            mapView.camera.flyTo(
+                camera,
+                MapAnimationOptions.mapAnimationOptions { duration(durationMs.toLong()) }
+            )
+        }
     }
 
     // endregion

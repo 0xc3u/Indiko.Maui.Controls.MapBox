@@ -48,6 +48,7 @@
             </HorizontalStackLayout>
             <HorizontalStackLayout Spacing="8">
                 <Button Text="Offline laden" Clicked="OnDownloadOffline" />
+                <Button Text="AutoFit an/aus" Clicked="OnToggleAutoFit" />
             </HorizontalStackLayout>
         </VerticalStackLayout>
 

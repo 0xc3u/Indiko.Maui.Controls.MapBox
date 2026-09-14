@@ -20,6 +20,7 @@ on the UI thread; command parameters carry the same `EventArgs` object the event
 
 - 🗺️ All Mapbox styles (Standard, Streets, Dark, Satellite, … or any custom style URI)
 - 🎥 Camera control: declarative `Camera` property, animated `FlyTo`, live `CameraChanged`
+- 🔲 FitBounds: fit the camera to a bounding box or to all map content — manually or automatically (`AutoFitBounds`)
 - 📍 Markers (point annotations) with per-marker color, title, payload and click events
 - ➰ Polylines and polygons with styling and click events
 - 🧩 GeoJSON sources with fill/line/circle style layers (survive style switches automatically)
@@ -127,6 +128,46 @@ private void CameraChanged(CameraChangedEventArgs e) => CurrentZoom = e.Camera.Z
 
 `FlyTo` is imperative by design. In MVVM, expose the `MapView` to the ViewModel via a slim
 interface, or call it from the view in response to a ViewModel message.
+
+---
+
+## FitBounds
+
+Fit the camera to a bounding box, to the current content, or keep it fitted automatically.
+`FitBoundsPadding` (default 40 dp) controls the uniform edge padding.
+
+**Event-driven / imperative**
+
+```csharp
+// explicit bounding box (e.g. a GPS track's extent):
+Map.FitBounds(new MapBounds(minLat: 47.32, minLng: 8.46, maxLat: 47.43, maxLng: 8.62),
+              padding: 60, durationMs: 800);
+
+// fit to everything currently on the map (annotations, polylines, polygons, view annotations):
+Map.FitBoundsToContent();
+
+// helper: compute bounds from any positions
+var bounds = MapBounds.FromPositions(track.Points.Select(p => (p.Lat, p.Lng)));
+```
+
+**MVVM — switchable auto mode**
+
+```xml
+<map:MapView Annotations="{Binding Pins}"
+             Polylines="{Binding Routes}"
+             AutoFitBounds="{Binding IsAutoFitEnabled}"
+             FitBoundsPadding="60" />
+```
+
+```csharp
+[ObservableProperty]
+private bool isAutoFitEnabled = true;
+```
+
+While `AutoFitBounds` is enabled, every change to `Annotations`/`Polylines`/`Polygons`/
+`ViewAnnotations` re-fits the camera to the full content; turning it off returns camera
+control to the user. Explicit `FlyTo`/`Camera` calls are not overridden — auto-fit only
+reacts to content changes.
 
 ---
 

@@ -183,6 +183,31 @@ public class IKMapView: UIView
             duration: durationMs / 1000.0)
     }
 
+    /// Moves the camera so the given bounding box is fully visible, with uniform
+    /// padding in points. durationMs 0 jumps instantly.
+    @objc(fitBounds:minLng:maxLat:maxLng:padding:durationMs:)
+    public func fitBounds(minLat: Double, minLng: Double, maxLat: Double, maxLng: Double,
+                          padding: Double, durationMs: Double)
+    {
+        let bounds = CoordinateBounds(
+            southwest: CLLocationCoordinate2D(latitude: minLat, longitude: minLng),
+            northeast: CLLocationCoordinate2D(latitude: maxLat, longitude: maxLng))
+        let insets = UIEdgeInsets(top: padding, left: padding, bottom: padding, right: padding)
+
+        guard let camera = try? mapView.mapboxMap.camera(
+            for: bounds, padding: insets, bearing: nil, pitch: nil, maxZoom: nil, offset: nil)
+        else { return }
+
+        if durationMs <= 0
+        {
+            mapView.mapboxMap.setCamera(to: camera)
+        }
+        else
+        {
+            mapView.camera.fly(to: camera, duration: durationMs / 1000.0)
+        }
+    }
+
     // MARK: - Markers
 
     /// Replaces all markers. JSON: [{"id":"...","lat":..,"lng":..,"title":"...","color":"#RRGGBB"}]

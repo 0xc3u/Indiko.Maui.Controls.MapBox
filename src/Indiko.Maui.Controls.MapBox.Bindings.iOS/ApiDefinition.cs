@@ -104,6 +104,10 @@ interface IKMapView
     [Export("flyTo:longitude:zoom:bearing:pitch:durationMs:")]
     void FlyTo(double latitude, double longitude, double zoom, double bearing, double pitch, double durationMs);
 
+    [Export("fitBounds:minLng:maxLat:maxLng:padding:durationMs:")]
+    void FitBounds(double minLat, double minLng, double maxLat, double maxLng,
+        double padding, double durationMs);
+
     [Export("setMarkersJson:")]
     void SetMarkers(string json);
 
