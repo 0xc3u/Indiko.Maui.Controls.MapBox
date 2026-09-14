@@ -332,6 +332,7 @@ SWIFT_PROTOCOL_NAMED("IKMapEventListener")
 - (void)onCameraChanged:(IKCameraState * _Nonnull)camera;
 - (void)onOfflineRegionProgress:(NSString * _Nonnull)id progress:(double)progress;
 - (void)onOfflineRegionCompleted:(NSString * _Nonnull)id success:(BOOL)success error:(NSString * _Nullable)error;
+- (void)onFollowPuckChanged:(BOOL)active;
 @end
 
 @class NSCoder;
@@ -383,6 +384,10 @@ SWIFT_CLASS_NAMED("IKMapView")
 - (void)addClusteredSourceJson:(NSString * _Nonnull)json;
 - (void)removeClusteredSource:(NSString * _Nonnull)id;
 - (void)setUserLocationEnabled:(BOOL)enabled;
+/// Enables/disables the follow-puck viewport mode. Enabling implicitly shows the
+/// location puck. The mode ends natively when the user pans the map — reported
+/// through onFollowPuckChanged.
+- (void)setFollowPuck:(BOOL)enabled zoom:(double)zoom trackBearing:(BOOL)trackBearing;
 - (void)setGesturesScroll:(BOOL)scroll zoom:(BOOL)zoom rotate:(BOOL)rotate pitch:(BOOL)pitch;
 - (void)destroy;
 - (nonnull instancetype)initWithFrame:(CGRect)frame SWIFT_UNAVAILABLE;

@@ -70,6 +70,17 @@ public class OfflineRegionCompletedEventArgs : EventArgs
     }
 }
 
+public class FollowPuckChangedEventArgs : EventArgs
+{
+    /// <summary>True while the camera is following the puck.</summary>
+    public bool IsActive { get; }
+
+    public FollowPuckChangedEventArgs(bool isActive)
+    {
+        IsActive = isActive;
+    }
+}
+
 public class CameraChangedEventArgs : EventArgs
 {
     public MapCameraPosition Camera { get; }

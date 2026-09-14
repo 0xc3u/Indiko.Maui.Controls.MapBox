@@ -104,6 +104,43 @@ public class MapView : View
         set => SetValue(FitBoundsPaddingProperty, value);
     }
 
+    public static readonly BindableProperty FollowPuckProperty = BindableProperty.Create(
+        nameof(FollowPuck), typeof(bool), typeof(MapView), false);
+
+    /// <summary>
+    /// When enabled, the camera follows the user-location puck (the puck is shown
+    /// implicitly). The mode ends when the user pans the map — the property is updated
+    /// and <see cref="FollowPuckChanged"/> is raised.
+    /// </summary>
+    public bool FollowPuck
+    {
+        get => (bool)GetValue(FollowPuckProperty);
+        set => SetValue(FollowPuckProperty, value);
+    }
+
+    public static readonly BindableProperty FollowPuckZoomProperty = BindableProperty.Create(
+        nameof(FollowPuckZoom), typeof(double), typeof(MapView), 16.0);
+
+    /// <summary>Zoom level used while following the puck.</summary>
+    public double FollowPuckZoom
+    {
+        get => (double)GetValue(FollowPuckZoomProperty);
+        set => SetValue(FollowPuckZoomProperty, value);
+    }
+
+    public static readonly BindableProperty FollowPuckTrackBearingProperty = BindableProperty.Create(
+        nameof(FollowPuckTrackBearing), typeof(bool), typeof(MapView), false);
+
+    /// <summary>Rotate the map with the puck's heading instead of keeping north up.</summary>
+    public bool FollowPuckTrackBearing
+    {
+        get => (bool)GetValue(FollowPuckTrackBearingProperty);
+        set => SetValue(FollowPuckTrackBearingProperty, value);
+    }
+
+    /// <summary>Guards the FollowPuck property mapper while syncing state from native.</summary>
+    internal bool SuppressFollowPuckSync;
+
     public static readonly BindableProperty ShowUserLocationProperty = BindableProperty.Create(
         nameof(ShowUserLocation), typeof(bool), typeof(MapView), false);
 
@@ -223,6 +260,15 @@ public class MapView : View
         set => SetValue(CameraChangedCommandProperty, value);
     }
 
+    public static readonly BindableProperty FollowPuckChangedCommandProperty = BindableProperty.Create(
+        nameof(FollowPuckChangedCommand), typeof(ICommand), typeof(MapView));
+
+    public ICommand? FollowPuckChangedCommand
+    {
+        get => (ICommand?)GetValue(FollowPuckChangedCommandProperty);
+        set => SetValue(FollowPuckChangedCommandProperty, value);
+    }
+
     public static readonly BindableProperty OfflineRegionProgressCommandProperty = BindableProperty.Create(
         nameof(OfflineRegionProgressCommand), typeof(ICommand), typeof(MapView));
 
@@ -253,6 +299,7 @@ public class MapView : View
     public event EventHandler<CameraChangedEventArgs>? CameraChanged;
     public event EventHandler<OfflineRegionProgressEventArgs>? OfflineRegionProgress;
     public event EventHandler<OfflineRegionCompletedEventArgs>? OfflineRegionCompleted;
+    public event EventHandler<FollowPuckChangedEventArgs>? FollowPuckChanged;
 
     /// <summary>Live camera position, updated on every camera change.</summary>
     public MapCameraPosition? CurrentCamera { get; private set; }
@@ -442,6 +489,21 @@ public class MapView : View
         OfflineRegionCompleted?.Invoke(this, args);
         if (OfflineRegionCompletedCommand?.CanExecute(args) == true)
             OfflineRegionCompletedCommand.Execute(args);
+    }
+
+    internal void SendFollowPuckChanged(bool isActive)
+    {
+        if (FollowPuck != isActive)
+        {
+            SuppressFollowPuckSync = true;
+            FollowPuck = isActive;
+            SuppressFollowPuckSync = false;
+        }
+
+        var args = new FollowPuckChangedEventArgs(isActive);
+        FollowPuckChanged?.Invoke(this, args);
+        if (FollowPuckChangedCommand?.CanExecute(args) == true)
+            FollowPuckChangedCommand.Execute(args);
     }
 
     internal void SendCameraChanged(MapCameraPosition camera)

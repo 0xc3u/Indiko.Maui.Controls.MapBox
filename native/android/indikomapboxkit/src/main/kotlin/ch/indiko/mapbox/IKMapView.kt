@@ -55,6 +55,12 @@ import com.mapbox.maps.plugin.gestures.addOnMapLongClickListener
 import com.mapbox.maps.plugin.gestures.gestures
 import com.mapbox.maps.plugin.locationcomponent.createDefault2DPuck
 import com.mapbox.maps.plugin.locationcomponent.location
+import com.mapbox.maps.plugin.viewport.ViewportStatus
+import com.mapbox.maps.plugin.viewport.ViewportStatusObserver
+import com.mapbox.maps.plugin.viewport.data.FollowPuckViewportStateBearing
+import com.mapbox.maps.plugin.viewport.data.FollowPuckViewportStateOptions
+import com.mapbox.maps.plugin.viewport.state.FollowPuckViewportState
+import com.mapbox.maps.plugin.viewport.viewport
 import com.mapbox.maps.viewannotation.annotationAnchor
 import com.mapbox.maps.viewannotation.geometry
 import com.mapbox.maps.viewannotation.viewAnnotationOptions
@@ -99,6 +105,7 @@ interface IKMapEventListener
     fun onCameraChanged(camera: IKCameraState)
     fun onOfflineRegionProgress(id: String, progress: Double)
     fun onOfflineRegionCompleted(id: String, success: Boolean, error: String?)
+    fun onFollowPuckChanged(active: Boolean)
 }
 
 /**
@@ -194,6 +201,18 @@ class IKMapView(
             listener?.onMapLongPress(point.latitude(), point.longitude())
             false
         }
+
+        mapView.viewport.addStatusObserver(ViewportStatusObserver { _, to, _ ->
+            val active = isFollowPuck(to)
+            post { listener?.onFollowPuckChanged(active) }
+        })
+    }
+
+    private fun isFollowPuck(status: ViewportStatus): Boolean = when (status)
+    {
+        is ViewportStatus.State -> status.state is FollowPuckViewportState
+        is ViewportStatus.Transition -> status.toState is FollowPuckViewportState
+        else -> false
     }
 
     // region Style & camera
@@ -794,6 +813,38 @@ class IKMapView(
             {
                 locationPuck = createDefault2DPuck(withBearing = true)
             }
+        }
+    }
+
+    /**
+     * Enables/disables the follow-puck viewport mode. Enabling implicitly shows the
+     * location puck. The mode ends natively when the user pans the map — reported
+     * through onFollowPuckChanged.
+     */
+    fun setFollowPuck(enabled: Boolean, zoom: Double, trackBearing: Boolean)
+    {
+        if (enabled)
+        {
+            mapView.location.updateSettings {
+                this.enabled = true
+                locationPuck = createDefault2DPuck(withBearing = true)
+            }
+
+            val state = mapView.viewport.makeFollowPuckViewportState(
+                FollowPuckViewportStateOptions.Builder()
+                    .zoom(zoom)
+                    .bearing(
+                        if (trackBearing) FollowPuckViewportStateBearing.SyncWithLocationPuck
+                        else FollowPuckViewportStateBearing.Constant(0.0)
+                    )
+                    .pitch(0.0)
+                    .build()
+            )
+            mapView.viewport.transitionTo(state)
+        }
+        else
+        {
+            mapView.viewport.idle()
         }
     }
 

@@ -28,6 +28,9 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
             [nameof(MapView.Polygons)] = MapPolygons,
             [nameof(MapView.ViewAnnotations)] = MapViewAnnotations,
             [nameof(MapView.ShowUserLocation)] = MapShowUserLocation,
+            [nameof(MapView.FollowPuck)] = MapFollowPuck,
+            [nameof(MapView.FollowPuckZoom)] = MapFollowPuck,
+            [nameof(MapView.FollowPuckTrackBearing)] = MapFollowPuck,
             [nameof(MapView.ScrollEnabled)] = MapGestures,
             [nameof(MapView.ZoomEnabled)] = MapGestures,
             [nameof(MapView.RotateEnabled)] = MapGestures,
@@ -148,6 +151,14 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
     private static void MapShowUserLocation(MapViewHandler handler, MapView view)
     {
         handler.PlatformView.SetUserLocationEnabled(view.ShowUserLocation);
+    }
+
+    private static void MapFollowPuck(MapViewHandler handler, MapView view)
+    {
+        if (view.SuppressFollowPuckSync)
+            return;
+
+        handler.PlatformView.SetFollowPuck(view.FollowPuck, view.FollowPuckZoom, view.FollowPuckTrackBearing);
     }
 
     private static void MapGestures(MapViewHandler handler, MapView view)
@@ -398,5 +409,8 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
 
         public void OnOfflineRegionCompleted(string id, bool success, string? error) =>
             Dispatch(v => v.SendOfflineRegionCompleted(id, success, error));
+
+        public void OnFollowPuckChanged(bool active) =>
+            Dispatch(v => v.SendFollowPuckChanged(active));
     }
 }

@@ -47,6 +47,7 @@ public protocol IKMapEventListener
     @objc(onCameraChanged:) func onCameraChanged(camera: IKCameraState)
     @objc(onOfflineRegionProgress:progress:) func onOfflineRegionProgress(id: String, progress: Double)
     @objc(onOfflineRegionCompleted:success:error:) func onOfflineRegionCompleted(id: String, success: Bool, error: String?)
+    @objc(onFollowPuckChanged:) func onFollowPuckChanged(active: Bool)
 }
 
 /// Thin facade over MapboxMaps.MapView exposing exactly the surface the
@@ -94,6 +95,7 @@ public class IKMapView: UIView
         addSubview(mapView)
 
         subscribeEvents()
+        mapView.viewport.addStatusObserver(self)
     }
 
     required init?(coder: NSCoder)
@@ -719,6 +721,32 @@ public class IKMapView: UIView
         mapView.location.options.puckType = enabled ? .puck2D(.makeDefault(showBearing: true)) : nil
     }
 
+    /// Enables/disables the follow-puck viewport mode. Enabling implicitly shows the
+    /// location puck. The mode ends natively when the user pans the map — reported
+    /// through onFollowPuckChanged.
+    @objc(setFollowPuck:zoom:trackBearing:)
+    public func setFollowPuck(enabled: Bool, zoom: Double, trackBearing: Bool)
+    {
+        if enabled
+        {
+            if mapView.location.options.puckType == nil
+            {
+                mapView.location.options.puckType = .puck2D(.makeDefault(showBearing: true))
+            }
+
+            let options = FollowPuckViewportStateOptions(
+                zoom: zoom,
+                bearing: trackBearing ? .heading : .constant(0),
+                pitch: 0)
+            let state = mapView.viewport.makeFollowPuckViewportState(options: options)
+            mapView.viewport.transition(to: state)
+        }
+        else
+        {
+            mapView.viewport.idle()
+        }
+    }
+
     @objc(setGesturesScroll:zoom:rotate:pitch:)
     public func setGestures(scroll: Bool, zoom: Bool, rotate: Bool, pitch: Bool)
     {
@@ -783,6 +811,29 @@ public class IKMapView: UIView
         }
         pinCache[hex] = image
         return image
+    }
+}
+
+extension IKMapView: ViewportStatusObserver
+{
+    public func viewportStatusDidChange(from fromStatus: ViewportStatus, to toStatus: ViewportStatus,
+                                        reason: ViewportStatusChangeReason)
+    {
+        let active = Self.isFollowPuck(toStatus)
+        listener?.onFollowPuckChanged(active: active)
+    }
+
+    private static func isFollowPuck(_ status: ViewportStatus) -> Bool
+    {
+        switch status
+        {
+        case .state(let state):
+            return state is FollowPuckViewportState
+        case let .transition(_, toState):
+            return toState is FollowPuckViewportState
+        case .idle:
+            return false
+        }
     }
 }
 

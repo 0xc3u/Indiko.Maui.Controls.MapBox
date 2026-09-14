@@ -38,6 +38,8 @@ public partial class MainPage : ContentPage
 			OnDownloadOffline(this, EventArgs.Empty);
 		if (Environment.GetEnvironmentVariable("DEMO_AUTOFIT") == "1")
 			OnToggleAutoFit(this, EventArgs.Empty);
+		if (Environment.GetEnvironmentVariable("DEMO_FOLLOW") == "1")
+			OnToggleFollow(this, EventArgs.Empty);
 
 		Map.Polylines.Add(new MapPolyline
 		{
@@ -296,6 +298,28 @@ public partial class MainPage : ContentPage
 		StatusLabel.Text = Map.AutoFitBounds
 			? "AutoFit aktiv — Kamera folgt dem Karteninhalt"
 			: "AutoFit aus";
+	}
+
+	private async void OnToggleFollow(object? sender, EventArgs e)
+	{
+		if (!Map.FollowPuck)
+		{
+			var status = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
+			if (status != PermissionStatus.Granted)
+			{
+				StatusLabel.Text = "Follow-Modus: Standort-Berechtigung fehlt";
+				return;
+			}
+		}
+
+		Map.FollowPuck = !Map.FollowPuck;
+	}
+
+	private void OnFollowPuckChanged(object? sender, FollowPuckChangedEventArgs e)
+	{
+		StatusLabel.Text = e.IsActive
+			? "Follow-Modus aktiv — Karte folgt deiner Position"
+			: "Follow-Modus beendet";
 	}
 
 	private void OnDownloadOffline(object? sender, EventArgs e)

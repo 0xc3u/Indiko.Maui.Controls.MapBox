@@ -77,6 +77,10 @@ interface IKMapEventListener
     [Abstract]
     [Export("onOfflineRegionCompleted:success:error:")]
     void OnOfflineRegionCompleted(string id, bool success, [NullAllowed] string? error);
+
+    [Abstract]
+    [Export("onFollowPuckChanged:")]
+    void OnFollowPuckChanged(bool active);
 }
 
 [BaseType(typeof(UIView), Name = "IKMapView")]
@@ -159,6 +163,9 @@ interface IKMapView
 
     [Export("setUserLocationEnabled:")]
     void SetUserLocationEnabled(bool enabled);
+
+    [Export("setFollowPuck:zoom:trackBearing:")]
+    void SetFollowPuck(bool enabled, double zoom, bool trackBearing);
 
     [Export("setGesturesScroll:zoom:rotate:pitch:")]
     void SetGestures(bool scroll, bool zoom, bool rotate, bool pitch);

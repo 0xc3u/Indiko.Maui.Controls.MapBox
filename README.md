@@ -28,6 +28,7 @@ on the UI thread; command parameters carry the same `EventArgs` object the event
 - 💬 View annotations — any MAUI view anchored to a coordinate, gestures included
 - 📴 Offline regions (style pack + tiles) with download progress events
 - 🧭 Compass on rotation, scale bar, user-location puck, per-gesture configuration
+- 🎯 Follow-puck mode: camera follows the user's position — switchable, with state-change events
 - 👆 Click-consumed semantics: `MapClicked` fires only for taps on empty map
 
 ## Getting started
@@ -451,6 +452,46 @@ private void DownloadProgress(OfflineRegionProgressEventArgs e) => DownloadProgr
 private void DownloadCompleted(OfflineRegionCompletedEventArgs e) =>
     IsOfflineReady = e.Success;
 ```
+
+---
+
+## Follow-puck mode
+
+When enabled, the camera continuously follows the user-location puck (shown implicitly) using
+Mapbox's native viewport engine. Panning the map ends the mode natively — the `FollowPuck`
+property is synced back and `FollowPuckChanged` fires, so a "follow" button always reflects
+the real state. Your app must request location permission itself.
+
+**Event-driven**
+
+```csharp
+var status = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
+if (status == PermissionStatus.Granted)
+    Map.FollowPuck = true;                    // camera flies to the puck and stays on it
+
+Map.FollowPuckChanged += (_, e) =>
+    FollowButton.Text = e.IsActive ? "Following ✓" : "Follow me";
+```
+
+**MVVM**
+
+```xml
+<map:MapView FollowPuck="{Binding IsFollowing, Mode=TwoWay}"
+             FollowPuckZoom="16"
+             FollowPuckTrackBearing="False"
+             FollowPuckChangedCommand="{Binding FollowChangedCommand}" />
+```
+
+```csharp
+[ObservableProperty]
+private bool isFollowing;
+
+[RelayCommand]
+private void FollowChanged(FollowPuckChangedEventArgs e) => IsFollowing = e.IsActive;
+```
+
+`FollowPuckZoom` (default 16) sets the follow zoom; `FollowPuckTrackBearing` rotates the map
+with the puck's heading instead of keeping north up.
 
 ---
 

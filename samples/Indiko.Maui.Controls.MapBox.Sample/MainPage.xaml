@@ -18,7 +18,8 @@
                      PolylineClicked="OnPolylineClicked"
                      PolygonClicked="OnPolygonClicked"
                      OfflineRegionProgress="OnOfflineProgress"
-                     OfflineRegionCompleted="OnOfflineCompleted">
+                     OfflineRegionCompleted="OnOfflineCompleted"
+                     FollowPuckChanged="OnFollowPuckChanged">
             <map:MapView.Camera>
                 <mapModels:MapCameraPosition Latitude="47.3769" Longitude="8.5417" Zoom="11" />
             </map:MapView.Camera>
@@ -49,6 +50,7 @@
             <HorizontalStackLayout Spacing="8">
                 <Button Text="Offline laden" Clicked="OnDownloadOffline" />
                 <Button Text="AutoFit an/aus" Clicked="OnToggleAutoFit" />
+                <Button Text="Follow an/aus" Clicked="OnToggleFollow" />
             </HorizontalStackLayout>
         </VerticalStackLayout>
 
