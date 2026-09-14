@@ -21,7 +21,7 @@ on the UI thread; command parameters carry the same `EventArgs` object the event
 - 🗺️ All Mapbox styles (Standard, Streets, Dark, Satellite, … or any custom style URI)
 - 🎥 Camera control: declarative `Camera` property, animated `FlyTo`, live `CameraChanged`
 - 🔲 FitBounds: fit the camera to a bounding box or to all map content — manually or automatically (`AutoFitBounds`)
-- 📍 Markers (point annotations) with per-marker color, title, payload and click events
+- 📍 Markers (point annotations) with per-marker color, custom icon, title, payload and click events
 - ✋ Draggable markers with a drag-end event and automatic model sync
 - ➰ Polylines and polygons with styling and click events
 - 🧩 GeoJSON sources with fill/line/circle style layers (survive style switches automatically)
@@ -74,7 +74,7 @@ on the UI thread; command parameters carry the same `EventArgs` object the event
 | **Annotations** | | |
 | Point annotations (markers) | ✅ | `Annotations` collection: color, title, `Tag` payload, click events |
 | Draggable point annotations | ✅ | `IsDraggable` + `AnnotationDragged` (model auto-synced) |
-| Custom marker icons (own bitmaps/SVGs) | ❌ | colored pin glyph per marker |
+| Custom marker icons (PNG/JPEG bytes) | ✅ | `IconData` + `IconWidth`/`IconHeight` (dp) + `IconAnchor`; shared textures |
 | Polyline / polygon annotations | ✅ | `Polylines` / `Polygons` collections with click events |
 | Circle annotations | 🔶 | via GeoJSON circle layers, not as annotation objects |
 | View annotations (native views on the map) | ✅ | `ViewAnnotations` — **MAUI views incl. working gesture recognizers** |
@@ -264,6 +264,24 @@ Map.Annotations.Add(new MapAnnotation
 });
 
 Map.AnnotationClicked += (_, e) => ShowDetails((Station)e.Annotation.Tag!);
+```
+
+**Custom icons** — provide PNG/JPEG bytes (e.g. from a MAUI asset); size is in
+device-independent units and renders identically on both platforms. Markers sharing
+the same bytes share one map texture.
+
+```csharp
+using var stream = await FileSystem.OpenAppPackageFileAsync("paw.png");
+using var buffer = new MemoryStream();
+await stream.CopyToAsync(buffer);
+
+Map.Annotations.Add(new MapAnnotation
+{
+    Latitude = 47.36, Longitude = 8.53,
+    IconData = buffer.ToArray(),
+    IconWidth = 44,                          // dp; height derived from aspect ratio
+    IconAnchor = MapIconAnchor.Center,       // or Bottom (pin-style, default)
+});
 ```
 
 **MVVM**

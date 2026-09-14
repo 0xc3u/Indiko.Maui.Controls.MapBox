@@ -249,8 +249,20 @@ public class IKMapView: UIView
             var annotation = PointAnnotation(
                 id: id,
                 coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lng))
-            annotation.image = .init(image: Self.pinImage(hex: colorHex), name: "ik-pin-\(colorHex)")
-            annotation.iconAnchor = .bottom
+
+            if let iconBase64 = item["icon"] as? String, !iconBase64.isEmpty,
+               let icon = customIcon(
+                   base64: iconBase64,
+                   width: item["iconWidth"] as? Double ?? 0,
+                   height: item["iconHeight"] as? Double ?? 0)
+            {
+                annotation.image = .init(image: icon.image, name: icon.name)
+            }
+            else
+            {
+                annotation.image = .init(image: Self.pinImage(hex: colorHex), name: "ik-pin-\(colorHex)")
+            }
+            annotation.iconAnchor = (item["anchor"] as? String == "center") ? .center : .bottom
             annotation.tapHandler = { [weak self] _ in
                 self?.lastAnnotationTap = CACurrentMediaTime()
                 self?.listener?.onMarkerClick(id: id)
@@ -809,6 +821,35 @@ public class IKMapView: UIView
     }
 
     // MARK: - Helpers
+
+    private var customIconCache: [String: UIImage] = [:]
+
+    /// Decodes a base64 PNG/JPEG and scales it to the requested size in points
+    /// (0 = natural pixel size treated as points, matching Android dp semantics).
+    private func customIcon(base64: String, width: Double, height: Double) -> (image: UIImage, name: String)?
+    {
+        let name = "ik-custom-\(base64.hashValue)-\(Int(width))x\(Int(height))"
+        if let cached = customIconCache[name]
+        {
+            return (cached, name)
+        }
+
+        guard let data = Data(base64Encoded: base64), let decoded = UIImage(data: data) else { return nil }
+
+        let naturalW = decoded.size.width * decoded.scale
+        let naturalH = decoded.size.height * decoded.scale
+        let targetW = width > 0 ? width : Double(naturalW)
+        let targetH = height > 0 ? height
+            : Double(naturalH) * (width > 0 ? width / Double(naturalW) : 1.0)
+        guard targetW > 0, targetH > 0 else { return nil }
+
+        let size = CGSize(width: targetW, height: targetH)
+        let scaled = UIGraphicsImageRenderer(size: size).image { _ in
+            decoded.draw(in: CGRect(origin: .zero, size: size))
+        }
+        customIconCache[name] = scaled
+        return (scaled, name)
+    }
 
     private static var pinCache: [String: UIImage] = [:]
 

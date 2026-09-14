@@ -16,9 +16,23 @@ public partial class MainPage : ContentPage
 		InitializeComponent();
 	}
 
-	private void OnMapReady(object? sender, EventArgs e)
+	private async void OnMapReady(object? sender, EventArgs e)
 	{
 		StatusLabel.Text = "Karte bereit — tippe für Marker, lang drücken für FlyTo";
+
+		using var pawStream = await FileSystem.OpenAppPackageFileAsync("paw.png");
+		using var pawBuffer = new MemoryStream();
+		await pawStream.CopyToAsync(pawBuffer);
+
+		Map.Annotations.Add(new MapAnnotation
+		{
+			Latitude = 47.3600,
+			Longitude = 8.5300,
+			Title = "Custom Icon",
+			IconData = pawBuffer.ToArray(),
+			IconWidth = 44,
+			IconAnchor = MapIconAnchor.Center,
+		});
 
 		Map.Annotations.AddRange(
 		[

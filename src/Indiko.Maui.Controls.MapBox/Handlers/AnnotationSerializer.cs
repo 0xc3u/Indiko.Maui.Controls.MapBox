@@ -27,6 +27,16 @@ internal static class AnnotationSerializer
             builder.Append(",\"lat\":").Append(annotation.Latitude.ToString(System.Globalization.CultureInfo.InvariantCulture));
             builder.Append(",\"lng\":").Append(annotation.Longitude.ToString(System.Globalization.CultureInfo.InvariantCulture));
             builder.Append(",\"color\":").Append(Quote(annotation.Color));
+            if (annotation.IconData is { Length: > 0 })
+            {
+                builder.Append(",\"icon\":").Append(Quote(Convert.ToBase64String(annotation.IconData)));
+                if (annotation.IconWidth > 0)
+                    builder.Append(",\"iconWidth\":").Append(Invariant(annotation.IconWidth));
+                if (annotation.IconHeight > 0)
+                    builder.Append(",\"iconHeight\":").Append(Invariant(annotation.IconHeight));
+            }
+            if (annotation.IconAnchor == MapIconAnchor.Center)
+                builder.Append(",\"anchor\":\"center\"");
             if (annotation.IsDraggable)
                 builder.Append(",\"draggable\":true");
             if (!string.IsNullOrEmpty(annotation.Title))

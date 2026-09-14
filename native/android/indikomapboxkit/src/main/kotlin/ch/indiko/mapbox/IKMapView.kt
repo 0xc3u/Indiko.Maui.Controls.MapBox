@@ -342,10 +342,19 @@ class IKMapView(
             if (lat.isNaN() || lng.isNaN()) continue
 
             val color = item.optString("color", "#E74C3C")
+            val iconBase64 = item.optString("icon")
+            val bitmap =
+                if (iconBase64.isNotEmpty())
+                    customIconBitmap(iconBase64, item.optDouble("iconWidth", 0.0), item.optDouble("iconHeight", 0.0))
+                else
+                    pinBitmap(color)
+            val anchor =
+                if (item.optString("anchor") == "center") IconAnchor.CENTER else IconAnchor.BOTTOM
+
             val options = PointAnnotationOptions()
                 .withPoint(Point.fromLngLat(lng, lat))
-                .withIconImage(pinBitmap(color))
-                .withIconAnchor(IconAnchor.BOTTOM)
+                .withIconImage(bitmap ?: pinBitmap(color))
+                .withIconAnchor(anchor)
                 .withDraggable(item.optBoolean("draggable", false))
 
             val annotation = manager.create(options)
@@ -913,6 +922,32 @@ class IKMapView(
         removeAllViews()
         mapView.onStop()
         mapView.onDestroy()
+    }
+
+    private val customIconCache = HashMap<String, Bitmap>()
+
+    /**
+     * Decodes a base64 PNG/JPEG and scales it to the requested size in dp
+     * (0 = natural pixel size treated as dp, matching iOS point semantics).
+     */
+    private fun customIconBitmap(base64: String, widthDp: Double, heightDp: Double): Bitmap?
+    {
+        val key = "${base64.hashCode()}-${widthDp}x$heightDp"
+        customIconCache[key]?.let { return it }
+
+        val bytes = try { android.util.Base64.decode(base64, android.util.Base64.DEFAULT) }
+        catch (_: IllegalArgumentException) { return null }
+        val decoded = android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return null
+
+        val density = resources.displayMetrics.density
+        val targetW = ((if (widthDp > 0) widthDp else decoded.width.toDouble()) * density).toInt()
+        val targetH = ((if (heightDp > 0) heightDp
+            else decoded.height.toDouble() * (if (widthDp > 0) widthDp / decoded.width else 1.0)) * density).toInt()
+        if (targetW <= 0 || targetH <= 0) return null
+
+        val scaled = Bitmap.createScaledBitmap(decoded, targetW, targetH, true)
+        customIconCache[key] = scaled
+        return scaled
     }
 
     private val pinCache = HashMap<String, Bitmap>()
