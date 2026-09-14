@@ -33,12 +33,17 @@ import com.mapbox.maps.extension.style.layers.generated.CircleLayer
 import com.mapbox.maps.extension.style.layers.generated.FillLayer
 import com.mapbox.maps.extension.style.layers.generated.LineLayer
 import com.mapbox.maps.extension.style.layers.generated.SymbolLayer
+import com.mapbox.maps.extension.style.layers.generated.skyLayer
+import com.mapbox.maps.extension.style.layers.properties.generated.SkyType
 import com.mapbox.maps.extension.style.layers.properties.generated.IconAnchor
 import com.mapbox.maps.extension.style.layers.properties.generated.TextAnchor
 import com.mapbox.maps.extension.style.sources.addSource
 import com.mapbox.maps.extension.style.sources.generated.GeoJsonSource
 import com.mapbox.maps.extension.style.sources.generated.geoJsonSource
+import com.mapbox.maps.extension.style.sources.generated.rasterDemSource
 import com.mapbox.maps.extension.style.sources.getSourceAs
+import com.mapbox.maps.extension.style.terrain.generated.removeTerrain
+import com.mapbox.maps.extension.style.terrain.generated.terrain
 import com.mapbox.maps.plugin.animation.MapAnimationOptions
 import com.mapbox.maps.plugin.animation.camera
 import com.mapbox.maps.plugin.annotation.annotations
@@ -144,6 +149,7 @@ class IKMapView(
     private val geoJsonSources = LinkedHashMap<String, String>()
     private val layerConfigs = LinkedHashMap<String, JSONObject>()
     private val clusterConfigs = LinkedHashMap<String, JSONObject>()
+    private var terrainExaggeration: Double? = null
 
     // Click-consumed semantics: taps handled by an annotation or cluster must not
     // surface as onMapClick. Annotation click listeners stamp this timestamp; the
@@ -174,6 +180,7 @@ class IKMapView(
             geoJsonSources.forEach { (id, geoJson) -> applyGeoJsonSource(id, geoJson) }
             layerConfigs.values.forEach { applyLayer(it) }
             clusterConfigs.values.forEach { applyClusteredSource(it) }
+            terrainExaggeration?.let { applyTerrain(it) }
             listener?.onStyleLoaded()
         }
         mapView.mapboxMap.subscribeCameraChanged { event ->
@@ -944,6 +951,52 @@ class IKMapView(
         else
         {
             mapView.viewport.idle()
+        }
+    }
+
+    /**
+     * Enables/disables 3D terrain (Mapbox DEM + sky atmosphere). Survives style
+     * switches — re-applied after every style load. Tilt the camera (pitch) to
+     * actually see the relief.
+     */
+    fun setTerrain(enabled: Boolean, exaggeration: Double)
+    {
+        if (enabled)
+        {
+            terrainExaggeration = exaggeration
+            applyTerrain(exaggeration)
+        }
+        else
+        {
+            terrainExaggeration = null
+            val style = mapView.mapboxMap.style ?: return
+            style.removeTerrain()
+            style.removeStyleLayer("ik-sky")
+            style.removeStyleSource("ik-dem")
+        }
+    }
+
+    private fun applyTerrain(exaggeration: Double)
+    {
+        val style = mapView.mapboxMap.style ?: return
+        if (!style.styleSourceExists("ik-dem"))
+        {
+            style.addSource(rasterDemSource("ik-dem") {
+                url("mapbox://mapbox.mapbox-terrain-dem-v1")
+                tileSize(514)
+                maxzoom(14)
+            })
+        }
+
+        terrain("ik-dem") { exaggeration(exaggeration) }.bindTo(style)
+
+        if (!style.styleLayerExists("ik-sky"))
+        {
+            style.addLayer(skyLayer("ik-sky") {
+                skyType(SkyType.ATMOSPHERE)
+                skyAtmosphereSun(listOf(0.0, 0.0))
+                skyAtmosphereSunIntensity(15.0)
+            })
         }
     }
 

@@ -389,6 +389,10 @@ SWIFT_CLASS_NAMED("IKMapView")
 /// location puck. The mode ends natively when the user pans the map — reported
 /// through onFollowPuckChanged.
 - (void)setFollowPuck:(BOOL)enabled zoom:(double)zoom trackBearing:(BOOL)trackBearing;
+/// Enables/disables 3D terrain (Mapbox DEM + sky atmosphere). Survives style
+/// switches — re-applied after every style load. Tilt the camera (pitch) to
+/// actually see the relief.
+- (void)setTerrainEnabled:(BOOL)enabled exaggeration:(double)exaggeration;
 /// Shows/hides the map ornaments. Compass and scale bar keep their adaptive
 /// behavior when visible. Note: hiding logo/attribution may require a Mapbox
 /// license that permits it — the consuming app is responsible for compliance.
@@ -806,6 +810,10 @@ SWIFT_CLASS_NAMED("IKMapView")
 /// location puck. The mode ends natively when the user pans the map — reported
 /// through onFollowPuckChanged.
 - (void)setFollowPuck:(BOOL)enabled zoom:(double)zoom trackBearing:(BOOL)trackBearing;
+/// Enables/disables 3D terrain (Mapbox DEM + sky atmosphere). Survives style
+/// switches — re-applied after every style load. Tilt the camera (pitch) to
+/// actually see the relief.
+- (void)setTerrainEnabled:(BOOL)enabled exaggeration:(double)exaggeration;
 /// Shows/hides the map ornaments. Compass and scale bar keep their adaptive
 /// behavior when visible. Note: hiding logo/attribution may require a Mapbox
 /// license that permits it — the consuming app is responsible for compliance.

@@ -68,6 +68,7 @@ public class IKMapView: UIView
     private var geoJsonSources: [String: String] = [:]
     private var layerConfigs: [(id: String, config: [String: Any])] = []
     private var clusterConfigs: [String: [String: Any]] = [:]
+    private var terrainExaggeration: Double?
 
     // Click-consumed semantics: taps handled by an annotation or cluster must not
     // surface as onMapClick. Annotation tap handlers stamp this timestamp; the
@@ -123,6 +124,10 @@ public class IKMapView: UIView
             for config in self.clusterConfigs.values
             {
                 self.applyClusteredSource(config)
+            }
+            if let exaggeration = self.terrainExaggeration
+            {
+                self.applyTerrain(exaggeration: exaggeration)
             }
             self.listener?.onStyleLoaded()
         }.store(in: &cancelables)
@@ -828,6 +833,53 @@ public class IKMapView: UIView
         else
         {
             mapView.viewport.idle()
+        }
+    }
+
+    // MARK: - 3D terrain
+
+    /// Enables/disables 3D terrain (Mapbox DEM + sky atmosphere). Survives style
+    /// switches — re-applied after every style load. Tilt the camera (pitch) to
+    /// actually see the relief.
+    @objc(setTerrainEnabled:exaggeration:)
+    public func setTerrain(enabled: Bool, exaggeration: Double)
+    {
+        if enabled
+        {
+            terrainExaggeration = exaggeration
+            applyTerrain(exaggeration: exaggeration)
+        }
+        else
+        {
+            terrainExaggeration = nil
+            mapView.mapboxMap.removeTerrain()
+            try? mapView.mapboxMap.removeLayer(withId: "ik-sky")
+            try? mapView.mapboxMap.removeSource(withId: "ik-dem")
+        }
+    }
+
+    private func applyTerrain(exaggeration: Double)
+    {
+        if !mapView.mapboxMap.sourceExists(withId: "ik-dem")
+        {
+            var dem = RasterDemSource(id: "ik-dem")
+            dem.url = "mapbox://mapbox.mapbox-terrain-dem-v1"
+            dem.tileSize = 514
+            dem.maxzoom = 14
+            try? mapView.mapboxMap.addSource(dem)
+        }
+
+        var terrain = Terrain(sourceId: "ik-dem")
+        terrain.exaggeration = .constant(exaggeration)
+        try? mapView.mapboxMap.setTerrain(terrain)
+
+        if !mapView.mapboxMap.layerExists(withId: "ik-sky")
+        {
+            var sky = SkyLayer(id: "ik-sky")
+            sky.skyType = .constant(.atmosphere)
+            sky.skyAtmosphereSun = .constant([0, 0])
+            sky.skyAtmosphereSunIntensity = .constant(15)
+            try? mapView.mapboxMap.addLayer(sky)
         }
     }
 

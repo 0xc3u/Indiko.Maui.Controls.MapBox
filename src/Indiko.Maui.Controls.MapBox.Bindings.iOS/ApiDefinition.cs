@@ -171,6 +171,9 @@ interface IKMapView
     [Export("setFollowPuck:zoom:trackBearing:")]
     void SetFollowPuck(bool enabled, double zoom, bool trackBearing);
 
+    [Export("setTerrainEnabled:exaggeration:")]
+    void SetTerrain(bool enabled, double exaggeration);
+
     [Export("setOrnamentsCompass:scaleBar:logo:attribution:")]
     void SetOrnaments(bool compass, bool scaleBar, bool logo, bool attribution);
 

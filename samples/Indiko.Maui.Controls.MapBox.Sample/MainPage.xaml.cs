@@ -392,6 +392,22 @@ public partial class MainPage : ContentPage
 		StatusLabel.Text = show ? "Ornaments sichtbar" : "Ornaments ausgeblendet";
 	}
 
+	private void OnToggle3D(object? sender, EventArgs e)
+	{
+		Map.TerrainEnabled = !Map.TerrainEnabled;
+		if (Map.TerrainEnabled)
+		{
+			// Tilted camera over the Bernese Alps — pitch makes the relief visible.
+			Map.FlyTo(new MapCameraPosition(46.60, 7.91, 12, bearing: 0, pitch: 65), 2500);
+			StatusLabel.Text = "3D-Terrain aktiv (Lauterbrunnental)";
+		}
+		else
+		{
+			Map.FlyTo(new MapCameraPosition(46.60, 7.91, 12, bearing: 0, pitch: 0), 1000);
+			StatusLabel.Text = "3D-Terrain aus";
+		}
+	}
+
 	private void OnShowVisibleBounds(object? sender, EventArgs e)
 	{
 		var bounds = Map.GetVisibleBounds();

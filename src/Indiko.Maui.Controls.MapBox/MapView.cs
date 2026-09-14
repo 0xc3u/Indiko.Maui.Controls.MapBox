@@ -186,6 +186,29 @@ public class MapView : View
         set => SetValue(PitchEnabledProperty, value);
     }
 
+    public static readonly BindableProperty TerrainEnabledProperty = BindableProperty.Create(
+        nameof(TerrainEnabled), typeof(bool), typeof(MapView), false);
+
+    /// <summary>
+    /// Renders 3D terrain (Mapbox DEM + sky atmosphere). Survives style switches.
+    /// Tilt the camera (<see cref="MapCameraPosition.Pitch"/>) to see the relief.
+    /// </summary>
+    public bool TerrainEnabled
+    {
+        get => (bool)GetValue(TerrainEnabledProperty);
+        set => SetValue(TerrainEnabledProperty, value);
+    }
+
+    public static readonly BindableProperty TerrainExaggerationProperty = BindableProperty.Create(
+        nameof(TerrainExaggeration), typeof(double), typeof(MapView), 1.5);
+
+    /// <summary>Vertical exaggeration of the terrain (1.0 = realistic, default 1.5).</summary>
+    public double TerrainExaggeration
+    {
+        get => (double)GetValue(TerrainExaggerationProperty);
+        set => SetValue(TerrainExaggerationProperty, value);
+    }
+
     public static readonly BindableProperty ShowCompassProperty = BindableProperty.Create(
         nameof(ShowCompass), typeof(bool), typeof(MapView), true);
 

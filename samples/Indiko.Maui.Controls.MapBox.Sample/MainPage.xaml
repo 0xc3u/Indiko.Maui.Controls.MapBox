@@ -56,6 +56,7 @@
             <HorizontalStackLayout Spacing="8">
                 <Button Text="Ornaments an/aus" Clicked="OnToggleOrnaments" />
                 <Button Text="Bounds anzeigen" Clicked="OnShowVisibleBounds" />
+                <Button Text="3D an/aus" Clicked="OnToggle3D" />
             </HorizontalStackLayout>
         </VerticalStackLayout>
 

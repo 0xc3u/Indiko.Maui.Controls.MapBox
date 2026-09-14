@@ -30,6 +30,7 @@ on the UI thread; command parameters carry the same `EventArgs` object the event
 - 📴 Offline regions (style pack + tiles) with download progress events
 - 🧭 Compass on rotation, scale bar, user-location puck, per-gesture configuration
 - 🎛️ Ornament visibility: compass, scale bar, Mapbox logo and attribution individually switchable
+- 🏔️ 3D terrain (Mapbox DEM + sky atmosphere) with configurable exaggeration — switchable, style-switch-safe
 - 🎯 Follow-puck mode: camera follows the user's position — switchable, with state-change events
 - 🔭 `GetVisibleBounds()` returns the exact viewport bounding box (e.g. for offline downloads)
 - ⏳ Imperative calls (`AddGeoJsonSource`, `AddLayer`, …) issued before the handler is attached are queued and replayed automatically
@@ -110,7 +111,8 @@ on the UI thread; command parameters carry the same `EventArgs` object the event
 | **Other** | | |
 | Lifecycle events (`MapReady`, `StyleLoaded`, `CameraChanged`) | ✅ | events + bindable commands (full MVVM parity) |
 | Snapshotter (static map images) | ❌ | |
-| 3D terrain, globe, custom projections | ❌ | whatever the chosen style ships by default |
+| 3D terrain (raster-DEM + sky atmosphere) | ✅ | `TerrainEnabled` + `TerrainExaggeration` |
+| Globe, custom projections | ❌ | whatever the chosen style ships by default |
 
 ## Getting started
 
@@ -660,6 +662,31 @@ with the puck's heading instead of keeping north up.
 - A **compass ornament appears automatically** (top-right) whenever the map is rotated away
   from north and hides again when facing north; tapping it resets the bearing to 0.
   It indicates the map's north, not the device's magnetometer heading.
+
+---
+
+## 3D terrain
+
+Renders real elevation (Mapbox DEM) with a sky atmosphere. The terrain survives
+style switches automatically. Tilt the camera (pitch) to actually see the relief.
+
+**XAML / MVVM:**
+
+```xml
+<map:MapView TerrainEnabled="{Binding Is3D}"
+             TerrainExaggeration="1.5" />
+```
+
+**Code / event-driven:**
+
+```csharp
+map.TerrainEnabled = true;                 // adds DEM source + sky atmosphere
+map.TerrainExaggeration = 1.5;             // 1.0 = realistic
+map.FlyTo(new MapCameraPosition(46.60, 7.91, 12, bearing: 0, pitch: 65), 2500);
+```
+
+> Terrain tiles are streamed from `mapbox.mapbox-terrain-dem-v1` and are billed
+> like map tiles. Offline regions do not include DEM tiles.
 
 ---
 

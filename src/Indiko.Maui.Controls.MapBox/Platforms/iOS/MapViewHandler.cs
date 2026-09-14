@@ -36,6 +36,8 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
             [nameof(MapView.ZoomEnabled)] = MapGestures,
             [nameof(MapView.RotateEnabled)] = MapGestures,
             [nameof(MapView.PitchEnabled)] = MapGestures,
+            [nameof(MapView.TerrainEnabled)] = MapTerrain,
+            [nameof(MapView.TerrainExaggeration)] = MapTerrain,
             [nameof(MapView.ShowCompass)] = MapOrnaments,
             [nameof(MapView.ShowScaleBar)] = MapOrnaments,
             [nameof(MapView.ShowMapboxLogo)] = MapOrnaments,
@@ -176,6 +178,11 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
     {
         handler.PlatformView.SetOrnaments(
             view.ShowCompass, view.ShowScaleBar, view.ShowMapboxLogo, view.ShowAttribution);
+    }
+
+    private static void MapTerrain(MapViewHandler handler, MapView view)
+    {
+        handler.PlatformView.SetTerrain(view.TerrainEnabled, view.TerrainExaggeration);
     }
 
     /* ------------------------------ Command mappers ------------------------------- */
