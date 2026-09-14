@@ -1,3 +1,16 @@
+# [1.1.0](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/compare/v1.0.0...v1.1.0) (2026-09-14)
+
+
+### Bug Fixes
+
+* apply PrivateAssets=all to binding references only while packing ([9aaab93](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/commit/9aaab93fada252b57c5ca97fef3f4ffb37647307))
+* wrap plain-JAR Mapbox dependencies into AARs so their classes reach the app ([89fc31e](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/commit/89fc31e469635d548f637de65e60fda04085bdc1))
+
+
+### Features
+
+* FitBounds — fit camera to bounds or content, with switchable AutoFitBounds ([34db8b9](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/commit/34db8b9e781d238966d37ec6e1538d61ee92e5b0))
+
 # 1.0.0 (2026-09-13)
 
 
