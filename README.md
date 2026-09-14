@@ -44,6 +44,68 @@ on the UI thread; command parameters carry the same `EventArgs` object the event
 | **Offline regions** (Android shown in airplane mode) | <img src="https://raw.githubusercontent.com/0xc3u/Indiko.Maui.Controls.MapBox/main/docs/images/ios-offline.png" width="260" alt="iOS offline region downloaded" /> | <img src="https://raw.githubusercontent.com/0xc3u/Indiko.Maui.Controls.MapBox/main/docs/images/android-offline-airplane.png" width="260" alt="Android rendering offline in airplane mode" /> |
 | **AutoFitBounds / draggable markers** | <img src="https://raw.githubusercontent.com/0xc3u/Indiko.Maui.Controls.MapBox/main/docs/images/ios-autofit.png" width="260" alt="iOS auto fit bounds" /> | <img src="https://raw.githubusercontent.com/0xc3u/Indiko.Maui.Controls.MapBox/main/docs/images/android-marker-dragged.png" width="260" alt="Android marker dragged to a new position" /> |
 
+## Compatibility
+
+### Versions
+
+| Component | Version |
+|---|---|
+| .NET / MAUI | net10.0-android, net10.0-ios (MAUI 10) |
+| Minimum OS | Android 11 (API 30) · iOS 14.2 |
+| Mapbox Maps SDK Android | 11.30.1 (pinned) |
+| Mapbox Maps SDK iOS | 11.26.0 (pinned) |
+
+### Feature matrix vs. the official Mapbox Maps SDK v11
+
+✅ supported · 🔶 partial · ❌ not yet — feature requests and PRs are welcome.
+
+| Mapbox SDK area | Status | This control's API / notes |
+|---|:---:|---|
+| **Map display & styles** | | |
+| Style URIs (Standard, Classic, custom `mapbox://styles/…`) | ✅ | `StyleUri`, `MapStyles` constants |
+| Runtime style switching | ✅ | runtime sources/layers/clusters are re-applied automatically |
+| Standard style configuration (light preset, theme, 3D objects) | ❌ | style renders with its defaults |
+| Style JSON strings | ❌ | URIs only |
+| **Camera** | | |
+| Set camera (center, zoom, bearing, pitch) | ✅ | `Camera` property (one-way), `CurrentCamera` (live) |
+| Animated camera (`flyTo`) | ✅ | `FlyTo(camera, durationMs)` |
+| Fit to bounding box (`cameraForCoordinateBounds`) | ✅ | `FitBounds`, `FitBoundsToContent`, switchable `AutoFitBounds` |
+| Camera padding / anchor offsets | 🔶 | uniform `FitBoundsPadding` only |
+| **Annotations** | | |
+| Point annotations (markers) | ✅ | `Annotations` collection: color, title, `Tag` payload, click events |
+| Draggable point annotations | ✅ | `IsDraggable` + `AnnotationDragged` (model auto-synced) |
+| Custom marker icons (own bitmaps/SVGs) | ❌ | colored pin glyph per marker |
+| Polyline / polygon annotations | ✅ | `Polylines` / `Polygons` collections with click events |
+| Circle annotations | 🔶 | via GeoJSON circle layers, not as annotation objects |
+| View annotations (native views on the map) | ✅ | `ViewAnnotations` — **MAUI views incl. working gesture recognizers** |
+| **Data-driven styling** | | |
+| GeoJSON sources (add / live-update / remove) | ✅ | `AddGeoJsonSource` (add-or-update semantics) |
+| Fill / line / circle layers | ✅ | `AddLayer(MapLayer)` with color, opacity, width, radius, insert position |
+| Symbol, heatmap, fill-extrusion, raster, hillshade, sky layers | ❌ | |
+| Vector / raster / image sources | ❌ | GeoJSON only |
+| Expressions | 🔶 | used internally (cluster steps); not exposed as API |
+| Clustering | ✅ | `AddClusteredSource` — managed layers, counts, tap-to-expand zoom |
+| **Gestures & interaction** | | |
+| Map tap / long-press with coordinates | ✅ | events + commands; taps on markers/shapes/clusters are consumed |
+| Per-gesture enable/disable | ✅ | `ScrollEnabled`, `ZoomEnabled`, `RotateEnabled`, `PitchEnabled` |
+| `queryRenderedFeatures` | 🔶 | used internally (cluster tap); not exposed as API |
+| **Location** | | |
+| Location puck | ✅ | `ShowUserLocation` (2D puck with bearing) |
+| Follow-puck viewport | ✅ | `FollowPuck` (+ zoom/bearing options), state synced back on user pan |
+| Custom puck appearance | ❌ | |
+| **Offline** | | |
+| Style pack + tile region download | ✅ | `DownloadOfflineRegion` with progress/completed events |
+| Cancel / delete regions | ✅ | `RemoveOfflineRegion` |
+| List regions, size estimates | ❌ | |
+| **Ornaments** | | |
+| Compass (auto-shows on rotation, tap resets north) | ✅ | SDK default behavior |
+| Scale bar | ✅ | SDK default behavior |
+| Ornament configuration (visibility, position) | ❌ | Mapbox logo/attribution stay visible (Mapbox ToS) |
+| **Other** | | |
+| Lifecycle events (`MapReady`, `StyleLoaded`, `CameraChanged`) | ✅ | events + bindable commands (full MVVM parity) |
+| Snapshotter (static map images) | ❌ | |
+| 3D terrain, globe, custom projections | ❌ | whatever the chosen style ships by default |
+
 ## Getting started
 
 ```
