@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/compare/v1.1.0...v1.2.0) (2026-09-14)
+
+
+### Features
+
+* follow-puck mode — camera follows the user location, switchable with state sync ([a776ced](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/commit/a776cedcfbad47f1cf7a051c1295600a8c0aaf1e))
+
 # [1.1.0](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/compare/v1.0.0...v1.1.0) (2026-09-14)
 
 
