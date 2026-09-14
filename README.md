@@ -32,6 +32,18 @@ on the UI thread; command parameters carry the same `EventArgs` object the event
 - 🎯 Follow-puck mode: camera follows the user's position — switchable, with state-change events
 - 👆 Click-consumed semantics: `MapClicked` fires only for taps on empty map
 
+## Screenshots
+
+| | iOS | Android |
+|---|---|---|
+| **Map, markers, polyline & polygon** | <img src="https://raw.githubusercontent.com/0xc3u/Indiko.Maui.Controls.MapBox/main/docs/images/ios-map-shapes.png" width="260" alt="iOS map with markers and shapes" /> | <img src="https://raw.githubusercontent.com/0xc3u/Indiko.Maui.Controls.MapBox/main/docs/images/android-map-shapes.png" width="260" alt="Android map with markers and shapes" /> |
+| **GeoJSON sources & layers** (survive style switches) | <img src="https://raw.githubusercontent.com/0xc3u/Indiko.Maui.Controls.MapBox/main/docs/images/ios-geojson.png" width="260" alt="iOS GeoJSON layers" /> | <img src="https://raw.githubusercontent.com/0xc3u/Indiko.Maui.Controls.MapBox/main/docs/images/android-geojson-dark.png" width="260" alt="Android GeoJSON layers on dark style" /> |
+| **Clustering with tap-to-expand** | <img src="https://raw.githubusercontent.com/0xc3u/Indiko.Maui.Controls.MapBox/main/docs/images/ios-clustering.png" width="260" alt="iOS clustering" /> | <img src="https://raw.githubusercontent.com/0xc3u/Indiko.Maui.Controls.MapBox/main/docs/images/android-cluster-expand.png" width="260" alt="Android cluster expanded after tap" /> |
+| **View annotations** (MAUI views on the map) | <img src="https://raw.githubusercontent.com/0xc3u/Indiko.Maui.Controls.MapBox/main/docs/images/ios-view-annotation.png" width="260" alt="iOS view annotation bubble" /> | <img src="https://raw.githubusercontent.com/0xc3u/Indiko.Maui.Controls.MapBox/main/docs/images/android-view-annotation.png" width="260" alt="Android view annotation with tapped MAUI gesture" /> |
+| **Follow-puck mode** | <img src="https://raw.githubusercontent.com/0xc3u/Indiko.Maui.Controls.MapBox/main/docs/images/ios-follow-puck.png" width="260" alt="iOS follow puck" /> | <img src="https://raw.githubusercontent.com/0xc3u/Indiko.Maui.Controls.MapBox/main/docs/images/android-follow-puck.png" width="260" alt="Android follow puck" /> |
+| **Offline regions** (Android shown in airplane mode) | <img src="https://raw.githubusercontent.com/0xc3u/Indiko.Maui.Controls.MapBox/main/docs/images/ios-offline.png" width="260" alt="iOS offline region downloaded" /> | <img src="https://raw.githubusercontent.com/0xc3u/Indiko.Maui.Controls.MapBox/main/docs/images/android-offline-airplane.png" width="260" alt="Android rendering offline in airplane mode" /> |
+| **AutoFitBounds / draggable markers** | <img src="https://raw.githubusercontent.com/0xc3u/Indiko.Maui.Controls.MapBox/main/docs/images/ios-autofit.png" width="260" alt="iOS auto fit bounds" /> | <img src="https://raw.githubusercontent.com/0xc3u/Indiko.Maui.Controls.MapBox/main/docs/images/android-marker-dragged.png" width="260" alt="Android marker dragged to a new position" /> |
+
 ## Getting started
 
 ```
