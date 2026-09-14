@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/compare/v1.5.0...v1.6.0) (2026-09-14)
+
+
+### Features
+
+* ornament visibility, GetVisibleBounds and deferred imperative call queue ([dfaf5cd](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/commit/dfaf5cd8d36fab0e5e40be363fce1d2933e48dbb))
+
 # [1.5.0](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/compare/v1.4.0...v1.5.0) (2026-09-14)
 
 
