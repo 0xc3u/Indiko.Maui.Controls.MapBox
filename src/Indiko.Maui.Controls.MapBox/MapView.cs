@@ -233,6 +233,15 @@ public class MapView : View
         set => SetValue(AnnotationClickedCommandProperty, value);
     }
 
+    public static readonly BindableProperty AnnotationDraggedCommandProperty = BindableProperty.Create(
+        nameof(AnnotationDraggedCommand), typeof(ICommand), typeof(MapView));
+
+    public ICommand? AnnotationDraggedCommand
+    {
+        get => (ICommand?)GetValue(AnnotationDraggedCommandProperty);
+        set => SetValue(AnnotationDraggedCommandProperty, value);
+    }
+
     public static readonly BindableProperty PolylineClickedCommandProperty = BindableProperty.Create(
         nameof(PolylineClickedCommand), typeof(ICommand), typeof(MapView));
 
@@ -294,6 +303,7 @@ public class MapView : View
     public event EventHandler<MapClickedEventArgs>? MapClicked;
     public event EventHandler<MapClickedEventArgs>? MapLongPressed;
     public event EventHandler<AnnotationClickedEventArgs>? AnnotationClicked;
+    public event EventHandler<AnnotationDraggedEventArgs>? AnnotationDragged;
     public event EventHandler<PolylineClickedEventArgs>? PolylineClicked;
     public event EventHandler<PolygonClickedEventArgs>? PolygonClicked;
     public event EventHandler<CameraChangedEventArgs>? CameraChanged;
@@ -449,6 +459,23 @@ public class MapView : View
         AnnotationClicked?.Invoke(this, args);
         if (AnnotationClickedCommand?.CanExecute(args) == true)
             AnnotationClickedCommand.Execute(args);
+    }
+
+    internal void SendAnnotationDragged(string annotationId, double latitude, double longitude)
+    {
+        var annotation = Annotations?.FirstOrDefault(a => a.Id == annotationId);
+        if (annotation is null)
+            return;
+
+        // Keep the model in sync so a later collection push re-creates the marker
+        // at its dragged position.
+        annotation.Latitude = latitude;
+        annotation.Longitude = longitude;
+
+        var args = new AnnotationDraggedEventArgs(annotation, latitude, longitude);
+        AnnotationDragged?.Invoke(this, args);
+        if (AnnotationDraggedCommand?.CanExecute(args) == true)
+            AnnotationDraggedCommand.Execute(args);
     }
 
     internal void SendPolylineClicked(string polylineId)

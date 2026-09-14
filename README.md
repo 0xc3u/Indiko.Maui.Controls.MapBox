@@ -22,6 +22,7 @@ on the UI thread; command parameters carry the same `EventArgs` object the event
 - 🎥 Camera control: declarative `Camera` property, animated `FlyTo`, live `CameraChanged`
 - 🔲 FitBounds: fit the camera to a bounding box or to all map content — manually or automatically (`AutoFitBounds`)
 - 📍 Markers (point annotations) with per-marker color, title, payload and click events
+- ✋ Draggable markers with a drag-end event and automatic model sync
 - ➰ Polylines and polygons with styling and click events
 - 🧩 GeoJSON sources with fill/line/circle style layers (survive style switches automatically)
 - 🔵 Point clustering with managed layers and tap-to-expand zoom
@@ -210,6 +211,41 @@ public void LoadStations(IEnumerable<Station> stations) =>
 [RelayCommand]
 private void PinTapped(AnnotationClickedEventArgs e) =>
     SelectedStation = (Station)e.Annotation.Tag!;
+```
+
+---
+
+## Draggable markers
+
+Set `IsDraggable` on a marker and the user can move it: on Android by dragging the icon
+directly, on iOS via long-press + drag. The final position is written back to the
+annotation's `Latitude`/`Longitude` automatically, and `AnnotationDragged` reports it.
+Drags never surface as map clicks or long-presses.
+
+**Event-driven**
+
+```csharp
+Map.Annotations.Add(new MapAnnotation
+{
+    Latitude = 47.3769, Longitude = 8.5417,
+    Title = "Route point 3", IsDraggable = true, Tag = routePoint,
+});
+
+Map.AnnotationDragged += (_, e) =>
+    UpdateRoutePoint((RoutePoint)e.Annotation.Tag!, e.Latitude, e.Longitude);
+```
+
+**MVVM**
+
+```xml
+<map:MapView Annotations="{Binding RoutePoints}"
+             AnnotationDraggedCommand="{Binding PointMovedCommand}" />
+```
+
+```csharp
+[RelayCommand]
+private void PointMoved(AnnotationDraggedEventArgs e) =>
+    Route.MovePoint((RoutePoint)e.Annotation.Tag!, e.Latitude, e.Longitude);
 ```
 
 ---

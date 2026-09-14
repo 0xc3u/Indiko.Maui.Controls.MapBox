@@ -22,6 +22,21 @@ public class AnnotationClickedEventArgs : EventArgs
     }
 }
 
+public class AnnotationDraggedEventArgs : EventArgs
+{
+    /// <summary>The dragged annotation; Latitude/Longitude already hold the new position.</summary>
+    public MapAnnotation Annotation { get; }
+    public double Latitude { get; }
+    public double Longitude { get; }
+
+    public AnnotationDraggedEventArgs(MapAnnotation annotation, double latitude, double longitude)
+    {
+        Annotation = annotation;
+        Latitude = latitude;
+        Longitude = longitude;
+    }
+}
+
 public class PolylineClickedEventArgs : EventArgs
 {
     public MapPolyline Polyline { get; }

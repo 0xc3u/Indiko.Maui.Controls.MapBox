@@ -333,6 +333,7 @@ SWIFT_PROTOCOL_NAMED("IKMapEventListener")
 - (void)onOfflineRegionProgress:(NSString * _Nonnull)id progress:(double)progress;
 - (void)onOfflineRegionCompleted:(NSString * _Nonnull)id success:(BOOL)success error:(NSString * _Nullable)error;
 - (void)onFollowPuckChanged:(BOOL)active;
+- (void)onMarkerDragEnd:(NSString * _Nonnull)id latitude:(double)latitude longitude:(double)longitude;
 @end
 
 @class NSCoder;

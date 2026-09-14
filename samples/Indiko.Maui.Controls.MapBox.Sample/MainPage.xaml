@@ -19,7 +19,8 @@
                      PolygonClicked="OnPolygonClicked"
                      OfflineRegionProgress="OnOfflineProgress"
                      OfflineRegionCompleted="OnOfflineCompleted"
-                     FollowPuckChanged="OnFollowPuckChanged">
+                     FollowPuckChanged="OnFollowPuckChanged"
+                     AnnotationDragged="OnAnnotationDragged">
             <map:MapView.Camera>
                 <mapModels:MapCameraPosition Latitude="47.3769" Longitude="8.5417" Zoom="11" />
             </map:MapView.Camera>

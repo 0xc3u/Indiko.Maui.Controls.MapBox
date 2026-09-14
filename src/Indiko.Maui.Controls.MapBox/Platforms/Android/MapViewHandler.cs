@@ -412,5 +412,8 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
 
         public void OnFollowPuckChanged(bool active) =>
             Dispatch(v => v.SendFollowPuckChanged(active));
+
+        public void OnMarkerDragEnd(string id, double latitude, double longitude) =>
+            Dispatch(v => v.SendAnnotationDragged(id, latitude, longitude));
     }
 }

@@ -22,7 +22,7 @@ public partial class MainPage : ContentPage
 
 		Map.Annotations.AddRange(
 		[
-			new MapAnnotation { Latitude = 47.3769, Longitude = 8.5417, Title = "Zürich", Color = "#E74C3C" },
+			new MapAnnotation { Latitude = 47.3769, Longitude = 8.5417, Title = "Zürich", Color = "#E74C3C", IsDraggable = true },
 			new MapAnnotation { Latitude = 47.3667, Longitude = 8.5500, Title = "Zürichsee", Color = "#2980B9" },
 		]);
 
@@ -98,6 +98,11 @@ public partial class MainPage : ContentPage
 	{
 		StatusLabel.Text = $"FlyTo: {e.Latitude:F5}, {e.Longitude:F5}";
 		Map.FlyTo(new MapCameraPosition(e.Latitude, e.Longitude, 14), 1500);
+	}
+
+	private void OnAnnotationDragged(object? sender, AnnotationDraggedEventArgs e)
+	{
+		StatusLabel.Text = $"Marker verschoben: {e.Latitude:F5}, {e.Longitude:F5}";
 	}
 
 	private void OnAnnotationClicked(object? sender, AnnotationClickedEventArgs e)

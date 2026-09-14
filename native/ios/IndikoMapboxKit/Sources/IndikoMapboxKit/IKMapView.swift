@@ -48,6 +48,7 @@ public protocol IKMapEventListener
     @objc(onOfflineRegionProgress:progress:) func onOfflineRegionProgress(id: String, progress: Double)
     @objc(onOfflineRegionCompleted:success:error:) func onOfflineRegionCompleted(id: String, success: Bool, error: String?)
     @objc(onFollowPuckChanged:) func onFollowPuckChanged(active: Bool)
+    @objc(onMarkerDragEnd:latitude:longitude:) func onMarkerDragEnd(id: String, latitude: Double, longitude: Double)
 }
 
 /// Thin facade over MapboxMaps.MapView exposing exactly the surface the
@@ -153,9 +154,20 @@ public class IKMapView: UIView
         }.store(in: &cancelables)
 
         mapView.gestures.onMapLongPress.observe { [weak self] context in
-            self?.listener?.onMapLongPress(
-                latitude: context.coordinate.latitude,
-                longitude: context.coordinate.longitude)
+            guard let self else { return }
+            let latitude = context.coordinate.latitude
+            let longitude = context.coordinate.longitude
+            // Deferred like onMapTap: a long-press that starts an annotation drag
+            // stamps lastAnnotationTap and must not surface as a map long-press.
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                let annotationConsumed =
+                    CACurrentMediaTime() - self.lastAnnotationTap < Self.annotationTapWindow
+                if !annotationConsumed
+                {
+                    self.listener?.onMapLongPress(latitude: latitude, longitude: longitude)
+                }
+            }
         }.store(in: &cancelables)
     }
 
@@ -243,6 +255,21 @@ public class IKMapView: UIView
                 self?.lastAnnotationTap = CACurrentMediaTime()
                 self?.listener?.onMarkerClick(id: id)
                 return true
+            }
+            if item["draggable"] as? Bool == true
+            {
+                annotation.isDraggable = true
+                annotation.dragBeginHandler = { [weak self] _, _ in
+                    self?.lastAnnotationTap = CACurrentMediaTime()
+                    return true
+                }
+                annotation.dragEndHandler = { [weak self] dragged, _ in
+                    self?.lastAnnotationTap = CACurrentMediaTime()
+                    self?.listener?.onMarkerDragEnd(
+                        id: id,
+                        latitude: dragged.point.coordinates.latitude,
+                        longitude: dragged.point.coordinates.longitude)
+                }
             }
             annotations.append(annotation)
         }

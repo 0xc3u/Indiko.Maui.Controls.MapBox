@@ -81,6 +81,10 @@ interface IKMapEventListener
     [Abstract]
     [Export("onFollowPuckChanged:")]
     void OnFollowPuckChanged(bool active);
+
+    [Abstract]
+    [Export("onMarkerDragEnd:latitude:longitude:")]
+    void OnMarkerDragEnd(string id, double latitude, double longitude);
 }
 
 [BaseType(typeof(UIView), Name = "IKMapView")]

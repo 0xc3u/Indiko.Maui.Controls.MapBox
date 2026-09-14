@@ -27,6 +27,8 @@ internal static class AnnotationSerializer
             builder.Append(",\"lat\":").Append(annotation.Latitude.ToString(System.Globalization.CultureInfo.InvariantCulture));
             builder.Append(",\"lng\":").Append(annotation.Longitude.ToString(System.Globalization.CultureInfo.InvariantCulture));
             builder.Append(",\"color\":").Append(Quote(annotation.Color));
+            if (annotation.IsDraggable)
+                builder.Append(",\"draggable\":true");
             if (!string.IsNullOrEmpty(annotation.Title))
                 builder.Append(",\"title\":").Append(Quote(annotation.Title));
             builder.Append('}');

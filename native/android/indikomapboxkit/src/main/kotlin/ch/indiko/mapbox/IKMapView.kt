@@ -41,6 +41,8 @@ import com.mapbox.maps.extension.style.sources.getSourceAs
 import com.mapbox.maps.plugin.animation.MapAnimationOptions
 import com.mapbox.maps.plugin.animation.camera
 import com.mapbox.maps.plugin.annotation.annotations
+import com.mapbox.maps.plugin.annotation.generated.OnPointAnnotationDragListener
+import com.mapbox.maps.plugin.annotation.generated.PointAnnotation
 import com.mapbox.maps.plugin.annotation.generated.PointAnnotationManager
 import com.mapbox.maps.plugin.annotation.generated.PointAnnotationOptions
 import com.mapbox.maps.plugin.annotation.generated.PolygonAnnotationManager
@@ -106,6 +108,7 @@ interface IKMapEventListener
     fun onOfflineRegionProgress(id: String, progress: Double)
     fun onOfflineRegionCompleted(id: String, success: Boolean, error: String?)
     fun onFollowPuckChanged(active: Boolean)
+    fun onMarkerDragEnd(id: String, latitude: Double, longitude: Double)
 }
 
 /**
@@ -198,7 +201,18 @@ class IKMapView(
             false
         }
         mapView.gestures.addOnMapLongClickListener { point ->
-            listener?.onMapLongPress(point.latitude(), point.longitude())
+            val latitude = point.latitude()
+            val longitude = point.longitude()
+            // Deferred like onMapClick: a long-press that starts an annotation drag
+            // stamps lastAnnotationTapMs and must not surface as a map long-press.
+            post {
+                val annotationConsumed =
+                    android.os.SystemClock.uptimeMillis() - lastAnnotationTapMs < ANNOTATION_TAP_WINDOW_MS
+                if (!annotationConsumed)
+                {
+                    listener?.onMapLongPress(latitude, longitude)
+                }
+            }
             false
         }
 
@@ -293,6 +307,25 @@ class IKMapView(
                 markerIdsByAnnotationId[annotation.id]?.let { listener?.onMarkerClick(it) }
                 true
             }
+            created.addDragListener(object : OnPointAnnotationDragListener {
+                override fun onAnnotationDragStarted(annotation: com.mapbox.maps.plugin.annotation.Annotation<*>)
+                {
+                    lastAnnotationTapMs = android.os.SystemClock.uptimeMillis()
+                }
+
+                override fun onAnnotationDrag(annotation: com.mapbox.maps.plugin.annotation.Annotation<*>)
+                {
+                }
+
+                override fun onAnnotationDragFinished(annotation: com.mapbox.maps.plugin.annotation.Annotation<*>)
+                {
+                    lastAnnotationTapMs = android.os.SystemClock.uptimeMillis()
+                    val dragged = annotation as? PointAnnotation ?: return
+                    markerIdsByAnnotationId[dragged.id]?.let {
+                        listener?.onMarkerDragEnd(it, dragged.point.latitude(), dragged.point.longitude())
+                    }
+                }
+            })
             pointManager = created
         }
 
@@ -313,6 +346,7 @@ class IKMapView(
                 .withPoint(Point.fromLngLat(lng, lat))
                 .withIconImage(pinBitmap(color))
                 .withIconAnchor(IconAnchor.BOTTOM)
+                .withDraggable(item.optBoolean("draggable", false))
 
             val annotation = manager.create(options)
             markerIdsByAnnotationId[annotation.id] = id
