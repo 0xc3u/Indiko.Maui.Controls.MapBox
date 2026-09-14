@@ -1,3 +1,11 @@
+# [1.5.0](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/compare/v1.4.0...v1.5.0) (2026-09-14)
+
+
+### Features
+
+* custom marker icons — PNG/JPEG bytes with dp sizing and anchor ([f78a9dc](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/commit/f78a9dc5ab67072a6d5b36b4408bbbeba5945188))
+* symbol layers — data-driven labels and icons from feature properties ([2fda146](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/commit/2fda1464d432c8ede3301385499e59ccf32386d2))
+
 # [1.4.0](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/compare/v1.3.0...v1.4.0) (2026-09-14)
 
 
