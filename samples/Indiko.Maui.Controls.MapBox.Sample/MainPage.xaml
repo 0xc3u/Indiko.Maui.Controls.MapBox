@@ -4,13 +4,60 @@
              xmlns:map="clr-namespace:Indiko.Maui.Controls.MapBox;assembly=Indiko.Maui.Controls.MapBox"
              xmlns:mapModels="clr-namespace:Indiko.Maui.Controls.MapBox.Models;assembly=Indiko.Maui.Controls.MapBox"
              x:Class="Indiko.Maui.Controls.MapBox.Sample.MainPage"
+             Shell.NavBarIsVisible="False"
              Title="Indiko MapBox">
 
-    <Grid RowDefinitions="*,Auto">
+    <ContentPage.Resources>
+        <Color x:Key="Accent">#6AA127</Color>
+        <Color x:Key="AccentDark">#517D1E</Color>
+        <Color x:Key="Surface">#FFFFFF</Color>
+        <Color x:Key="Ink">#1F2937</Color>
+        <Color x:Key="InkSubtle">#6B7280</Color>
+        <Color x:Key="HairlineColor">#E5E7EB</Color>
 
+        <!-- Pill chip used for style switcher and feature toggles.
+             No Shadow in styles: a shared Shadow instance across elements
+             hangs MAUI layout — outlines give the depth instead. -->
+        <Style x:Key="Chip" TargetType="Button">
+            <Setter Property="BackgroundColor" Value="{StaticResource Surface}" />
+            <Setter Property="TextColor" Value="{StaticResource Ink}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontAttributes" Value="Bold" />
+            <Setter Property="CornerRadius" Value="18" />
+            <Setter Property="Padding" Value="14,0" />
+            <Setter Property="HeightRequest" Value="36" />
+            <Setter Property="MinimumWidthRequest" Value="0" />
+            <Setter Property="BorderWidth" Value="1" />
+            <Setter Property="BorderColor" Value="{StaticResource HairlineColor}" />
+        </Style>
+
+        <!-- Round floating action button -->
+        <Style x:Key="Fab" TargetType="Button">
+            <Setter Property="BackgroundColor" Value="{StaticResource Surface}" />
+            <Setter Property="TextColor" Value="{StaticResource Ink}" />
+            <Setter Property="FontSize" Value="17" />
+            <Setter Property="FontAttributes" Value="Bold" />
+            <Setter Property="CornerRadius" Value="24" />
+            <Setter Property="WidthRequest" Value="48" />
+            <Setter Property="HeightRequest" Value="48" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="BorderWidth" Value="1" />
+            <Setter Property="BorderColor" Value="{StaticResource HairlineColor}" />
+        </Style>
+
+        <Style x:Key="SectionHeader" TargetType="Label">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontAttributes" Value="Bold" />
+            <Setter Property="CharacterSpacing" Value="1.2" />
+            <Setter Property="TextColor" Value="{StaticResource InkSubtle}" />
+        </Style>
+    </ContentPage.Resources>
+
+    <Grid>
+
+        <!-- ═══════════ Full-bleed map ═══════════ -->
         <map:MapView x:Name="Map"
-                     Grid.Row="0"
-                     StyleUri="{x:Static mapModels:MapStyles.Streets}"
+                     StyleUri="{x:Static mapModels:MapStyles.Outdoors}"
                      MapReady="OnMapReady"
                      MapClicked="OnMapClicked"
                      MapLongPressed="OnMapLongPressed"
@@ -26,39 +73,98 @@
             </map:MapView.Camera>
         </map:MapView>
 
-        <Label x:Name="StatusLabel"
-               Grid.Row="0"
-               VerticalOptions="Start"
-               Margin="12"
-               Padding="10,6"
-               BackgroundColor="#CC000000"
-               TextColor="White"
-               FontSize="12"
-               Text="Warte auf Karte…" />
+        <!-- ═══════════ Style switcher (top) ═══════════ -->
+        <HorizontalStackLayout Spacing="8"
+                               VerticalOptions="Start"
+                               HorizontalOptions="Center"
+                               Margin="14,60,14,0">
+            <Button x:Name="ChipOutdoor" Text="Outdoor" Style="{StaticResource Chip}" Clicked="OnStyleChipClicked" />
+            <Button x:Name="ChipStreets" Text="Streets" Style="{StaticResource Chip}" Clicked="OnStyleChipClicked" />
+            <Button x:Name="ChipSatellite" Text="Satellit" Style="{StaticResource Chip}" Clicked="OnStyleChipClicked" />
+            <Button x:Name="ChipDark" Text="Dark" Style="{StaticResource Chip}" Clicked="OnStyleChipClicked" />
+        </HorizontalStackLayout>
 
-        <VerticalStackLayout Grid.Row="1" Spacing="8" Padding="12">
-            <HorizontalStackLayout Spacing="8">
-                <Button Text="Zürich" Clicked="OnFlyToZurich" />
-                <Button Text="Bern" Clicked="OnFlyToBern" />
-                <Button Text="Style" Clicked="OnToggleStyle" />
-                <Button Text="Marker löschen" Clicked="OnClearMarkers" />
-            </HorizontalStackLayout>
-            <HorizontalStackLayout Spacing="8">
-                <Button Text="GeoJSON an/aus" Clicked="OnToggleGeoJson" />
-                <Button Text="Cluster an/aus" Clicked="OnToggleCluster" />
-                <Button Text="Bubble an/aus" Clicked="OnToggleBubble" />
-            </HorizontalStackLayout>
-            <HorizontalStackLayout Spacing="8">
-                <Button Text="Offline laden" Clicked="OnDownloadOffline" />
-                <Button Text="AutoFit an/aus" Clicked="OnToggleAutoFit" />
-                <Button Text="Follow an/aus" Clicked="OnToggleFollow" />
-            </HorizontalStackLayout>
-            <HorizontalStackLayout Spacing="8">
-                <Button Text="Ornaments an/aus" Clicked="OnToggleOrnaments" />
-                <Button Text="Bounds anzeigen" Clicked="OnShowVisibleBounds" />
-                <Button Text="3D an/aus" Clicked="OnToggle3D" />
-            </HorizontalStackLayout>
+        <!-- ═══════════ FAB column (right) ═══════════ -->
+        <VerticalStackLayout HorizontalOptions="End"
+                             VerticalOptions="End"
+                             Margin="0,0,14,380"
+                             Spacing="10">
+            <Button x:Name="FabFollow" Text="◎" FontSize="22" Style="{StaticResource Fab}" Clicked="OnToggleFollow" />
+            <Button x:Name="Fab3D" Text="3D" FontSize="15" Style="{StaticResource Fab}" Clicked="OnToggle3D" />
+            <Button x:Name="FabFit" Text="⛶" FontSize="20" Style="{StaticResource Fab}" Clicked="OnFitToContent" />
+            <Button Text="+" FontSize="22" Style="{StaticResource Fab}" Clicked="OnZoomIn" />
+            <Button Text="–" FontSize="22" Style="{StaticResource Fab}" Clicked="OnZoomOut" />
         </VerticalStackLayout>
+
+        <!-- ═══════════ Bottom sheet ═══════════ -->
+        <Border x:Name="Sheet"
+                VerticalOptions="End"
+                Background="{StaticResource Surface}"
+                StrokeThickness="0"
+                Padding="18,10,18,30">
+            <Border.Shadow>
+                <Shadow Brush="Black" Opacity="0.25" Radius="14" Offset="0,-3" />
+            </Border.Shadow>
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="22,22,0,0" />
+            </Border.StrokeShape>
+
+            <VerticalStackLayout Spacing="10">
+
+                <!-- Drag handle + status — always visible, taps collapse/expand -->
+                <VerticalStackLayout Spacing="8">
+                    <VerticalStackLayout.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnSheetHandleTapped" />
+                    </VerticalStackLayout.GestureRecognizers>
+                    <BoxView WidthRequest="42" HeightRequest="5" CornerRadius="2.5"
+                             Color="#D1D5DB" HorizontalOptions="Center" />
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label x:Name="StatusLabel"
+                               Grid.Column="0"
+                               Text="Karte lädt…"
+                               FontSize="13"
+                               TextColor="{StaticResource InkSubtle}"
+                               LineBreakMode="TailTruncation"
+                               VerticalOptions="Center" />
+                        <Label x:Name="SheetChevron"
+                               Grid.Column="1"
+                               Text="⌄"
+                               FontSize="18"
+                               FontAttributes="Bold"
+                               TextColor="{StaticResource InkSubtle}"
+                               VerticalOptions="Center" />
+                    </Grid>
+                </VerticalStackLayout>
+
+                <!-- Collapsible body -->
+                <VerticalStackLayout x:Name="SheetBody" Spacing="12">
+
+                    <BoxView HeightRequest="1" Color="{StaticResource HairlineColor}" />
+
+                    <Label Text="FEATURES" Style="{StaticResource SectionHeader}" />
+                    <HorizontalStackLayout Spacing="8">
+                        <Button x:Name="ChipGeoJson" Text="GeoJSON" Style="{StaticResource Chip}" Clicked="OnToggleGeoJson" />
+                        <Button x:Name="ChipCluster" Text="Cluster" Style="{StaticResource Chip}" Clicked="OnToggleCluster" />
+                        <Button x:Name="ChipBubble" Text="Bubble" Style="{StaticResource Chip}" Clicked="OnToggleBubble" />
+                        <Button x:Name="ChipAutoFit" Text="AutoFit" Style="{StaticResource Chip}" Clicked="OnToggleAutoFit" />
+                    </HorizontalStackLayout>
+                    <HorizontalStackLayout Spacing="8">
+                        <Button x:Name="ChipOrnaments" Text="Ornaments" Style="{StaticResource Chip}" Clicked="OnToggleOrnaments" />
+                        <Button x:Name="ChipOffline" Text="Offline" Style="{StaticResource Chip}" Clicked="OnDownloadOffline" />
+                        <Button Text="Bounds" Style="{StaticResource Chip}" Clicked="OnShowVisibleBounds" />
+                        <Button Text="Marker ×" Style="{StaticResource Chip}" Clicked="OnClearMarkers" />
+                    </HorizontalStackLayout>
+
+                    <Label Text="ORTE" Style="{StaticResource SectionHeader}" />
+                    <HorizontalStackLayout Spacing="8">
+                        <Button Text="Zürich" Style="{StaticResource Chip}" Clicked="OnFlyToZurich" />
+                        <Button Text="Bern" Style="{StaticResource Chip}" Clicked="OnFlyToBern" />
+                        <Button Text="Lauterbrunnen" Style="{StaticResource Chip}" Clicked="OnFlyToLauterbrunnen" />
+                    </HorizontalStackLayout>
+
+                </VerticalStackLayout>
+            </VerticalStackLayout>
+        </Border>
 
     </Grid>
 

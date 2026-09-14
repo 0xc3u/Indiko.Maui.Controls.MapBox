@@ -4,16 +4,70 @@ namespace Indiko.Maui.Controls.MapBox.Sample;
 
 public partial class MainPage : ContentPage
 {
-	private static readonly string[] Styles =
-	[
-		MapStyles.Streets, MapStyles.Dark, MapStyles.SatelliteStreets, MapStyles.Outdoors
-	];
-
-	private int styleIndex;
+	private static readonly Color Accent = Color.FromArgb("#6AA127");
+	private static readonly Color Surface = Colors.White;
+	private static readonly Color Ink = Color.FromArgb("#1F2937");
 
 	public MainPage()
 	{
 		InitializeComponent();
+		PaintChip(ChipOutdoor, true);
+	}
+
+	/* ------------------------------ Chrome helpers ------------------------------ */
+
+	private static void PaintChip(Button chip, bool active)
+	{
+		chip.BackgroundColor = active ? Accent : Surface;
+		chip.TextColor = active ? Colors.White : Ink;
+	}
+
+	private bool sheetCollapsed;
+
+	private void OnSheetHandleTapped(object? sender, TappedEventArgs e)
+	{
+		sheetCollapsed = !sheetCollapsed;
+		SheetChevron.Text = sheetCollapsed ? "⌃" : "⌄";
+		SheetBody.IsVisible = !sheetCollapsed;
+	}
+
+	private void OnStyleChipClicked(object? sender, EventArgs e)
+	{
+		if (sender is not Button chip)
+			return;
+
+		Map.StyleUri = chip == ChipStreets ? MapStyles.Streets
+			: chip == ChipSatellite ? MapStyles.SatelliteStreets
+			: chip == ChipDark ? MapStyles.Dark
+			: MapStyles.Outdoors;
+
+		foreach (var candidate in new[] { ChipOutdoor, ChipStreets, ChipSatellite, ChipDark })
+			PaintChip(candidate, candidate == chip);
+		StatusLabel.Text = $"Style: {chip.Text}";
+	}
+
+	private void OnFitToContent(object? sender, EventArgs e)
+	{
+		Map.FitBoundsToContent(800);
+		StatusLabel.Text = "Kamera auf Karteninhalt eingepasst";
+	}
+
+	private void OnZoomIn(object? sender, EventArgs e) => NudgeZoom(+1);
+
+	private void OnZoomOut(object? sender, EventArgs e) => NudgeZoom(-1);
+
+	private void NudgeZoom(double delta)
+	{
+		var camera = Map.CurrentCamera;
+		if (camera is not null)
+			Map.FlyTo(new MapCameraPosition(camera.Latitude, camera.Longitude, camera.Zoom + delta,
+				camera.Bearing, camera.Pitch), 200);
+	}
+
+	private void OnFlyToLauterbrunnen(object? sender, EventArgs e)
+	{
+		Map.FlyTo(new MapCameraPosition(46.60, 7.91, 12,
+			bearing: 0, pitch: Map.TerrainEnabled ? 65 : 0), 2000);
 	}
 
 	private async void OnMapReady(object? sender, EventArgs e)
@@ -134,13 +188,6 @@ public partial class MainPage : ContentPage
 		Map.FlyTo(new MapCameraPosition(46.9480, 7.4474, 12), 2000);
 	}
 
-	private void OnToggleStyle(object? sender, EventArgs e)
-	{
-		styleIndex = (styleIndex + 1) % Styles.Length;
-		Map.StyleUri = Styles[styleIndex];
-		StatusLabel.Text = $"Style: {Styles[styleIndex]}";
-	}
-
 	private void OnClearMarkers(object? sender, EventArgs e)
 	{
 		Map.Annotations.Clear();
@@ -214,6 +261,7 @@ public partial class MainPage : ContentPage
 		}
 
 		geoJsonActive = !geoJsonActive;
+		PaintChip(ChipGeoJson, geoJsonActive);
 	}
 
 	private bool clusterActive;
@@ -273,6 +321,7 @@ public partial class MainPage : ContentPage
 		}
 
 		clusterActive = !clusterActive;
+		PaintChip(ChipCluster, clusterActive);
 	}
 
 	private bool bubbleActive;
@@ -322,11 +371,13 @@ public partial class MainPage : ContentPage
 		}
 
 		bubbleActive = !bubbleActive;
+		PaintChip(ChipBubble, bubbleActive);
 	}
 
 	private void OnToggleAutoFit(object? sender, EventArgs e)
 	{
 		Map.AutoFitBounds = !Map.AutoFitBounds;
+		PaintChip(ChipAutoFit, Map.AutoFitBounds);
 		StatusLabel.Text = Map.AutoFitBounds
 			? "AutoFit aktiv — Kamera folgt dem Karteninhalt"
 			: "AutoFit aus";
@@ -349,6 +400,7 @@ public partial class MainPage : ContentPage
 
 	private void OnFollowPuckChanged(object? sender, FollowPuckChangedEventArgs e)
 	{
+		PaintChip(FabFollow, e.IsActive);
 		StatusLabel.Text = e.IsActive
 			? "Follow-Modus aktiv — Karte folgt deiner Position"
 			: "Follow-Modus beendet";
@@ -389,12 +441,14 @@ public partial class MainPage : ContentPage
 		Map.ShowScaleBar = show;
 		Map.ShowMapboxLogo = show;
 		Map.ShowAttribution = show;
+		PaintChip(ChipOrnaments, !show);
 		StatusLabel.Text = show ? "Ornaments sichtbar" : "Ornaments ausgeblendet";
 	}
 
 	private void OnToggle3D(object? sender, EventArgs e)
 	{
 		Map.TerrainEnabled = !Map.TerrainEnabled;
+		PaintChip(Fab3D, Map.TerrainEnabled);
 		if (Map.TerrainEnabled)
 		{
 			// Tilted camera over the Bernese Alps — pitch makes the relief visible.
@@ -403,7 +457,10 @@ public partial class MainPage : ContentPage
 		}
 		else
 		{
-			Map.FlyTo(new MapCameraPosition(46.60, 7.91, 12, bearing: 0, pitch: 0), 1000);
+			var camera = Map.CurrentCamera;
+			if (camera is not null)
+				Map.FlyTo(new MapCameraPosition(camera.Latitude, camera.Longitude, camera.Zoom,
+					camera.Bearing, pitch: 0), 800);
 			StatusLabel.Text = "3D-Terrain aus";
 		}
 	}
