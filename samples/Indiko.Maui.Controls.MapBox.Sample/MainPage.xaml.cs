@@ -381,4 +381,23 @@ public partial class MainPage : ContentPage
 			? $"Offline-Region '{e.RegionId}' fertig geladen ✓"
 			: $"Offline-Download fehlgeschlagen: {e.ErrorMessage}";
 	}
+
+	private void OnToggleOrnaments(object? sender, EventArgs e)
+	{
+		var show = !Map.ShowCompass;
+		Map.ShowCompass = show;
+		Map.ShowScaleBar = show;
+		Map.ShowMapboxLogo = show;
+		Map.ShowAttribution = show;
+		StatusLabel.Text = show ? "Ornaments sichtbar" : "Ornaments ausgeblendet";
+	}
+
+	private void OnShowVisibleBounds(object? sender, EventArgs e)
+	{
+		var bounds = Map.GetVisibleBounds();
+		StatusLabel.Text = bounds is null
+			? "VisibleBounds: nicht verfügbar"
+			: $"Bounds: {bounds.MinLatitude:F4},{bounds.MinLongitude:F4} → " +
+			  $"{bounds.MaxLatitude:F4},{bounds.MaxLongitude:F4}";
+	}
 }

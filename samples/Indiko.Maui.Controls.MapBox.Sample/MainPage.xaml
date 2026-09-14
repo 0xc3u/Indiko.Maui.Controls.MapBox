@@ -53,6 +53,10 @@
                 <Button Text="AutoFit an/aus" Clicked="OnToggleAutoFit" />
                 <Button Text="Follow an/aus" Clicked="OnToggleFollow" />
             </HorizontalStackLayout>
+            <HorizontalStackLayout Spacing="8">
+                <Button Text="Ornaments an/aus" Clicked="OnToggleOrnaments" />
+                <Button Text="Bounds anzeigen" Clicked="OnShowVisibleBounds" />
+            </HorizontalStackLayout>
         </VerticalStackLayout>
 
     </Grid>

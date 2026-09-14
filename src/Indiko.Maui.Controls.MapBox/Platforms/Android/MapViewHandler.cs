@@ -35,6 +35,10 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
             [nameof(MapView.ZoomEnabled)] = MapGestures,
             [nameof(MapView.RotateEnabled)] = MapGestures,
             [nameof(MapView.PitchEnabled)] = MapGestures,
+            [nameof(MapView.ShowCompass)] = MapOrnaments,
+            [nameof(MapView.ShowScaleBar)] = MapOrnaments,
+            [nameof(MapView.ShowMapboxLogo)] = MapOrnaments,
+            [nameof(MapView.ShowAttribution)] = MapOrnaments,
         };
 
     public static readonly CommandMapper<MapView, MapViewHandler> Commands =
@@ -50,6 +54,7 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
             [nameof(MapView.RemoveClusteredSource)] = MapRemoveClusteredSource,
             [nameof(MapView.DownloadOfflineRegion)] = MapDownloadOfflineRegion,
             [nameof(MapView.RemoveOfflineRegion)] = MapRemoveOfflineRegion,
+            [nameof(MapView.GetVisibleBounds)] = MapGetVisibleBounds,
         };
 
     public MapViewHandler() : base(Mapper, Commands)
@@ -166,6 +171,12 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
         handler.PlatformView.SetGestures(view.ScrollEnabled, view.ZoomEnabled, view.RotateEnabled, view.PitchEnabled);
     }
 
+    private static void MapOrnaments(MapViewHandler handler, MapView view)
+    {
+        handler.PlatformView.SetOrnaments(
+            view.ShowCompass, view.ShowScaleBar, view.ShowMapboxLogo, view.ShowAttribution);
+    }
+
     /* ------------------------------ Command mappers ------------------------------- */
 
     private static void MapFlyTo(MapViewHandler handler, MapView view, object? args)
@@ -224,6 +235,12 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
     {
         if (args is string regionId)
             handler.PlatformView.RemoveOfflineRegion(regionId);
+    }
+
+    private static void MapGetVisibleBounds(MapViewHandler handler, MapView view, object? args)
+    {
+        if (args is VisibleBoundsRequest request)
+            request.Bounds = AnnotationSerializer.ParseBounds(handler.PlatformView.VisibleBoundsJson());
     }
 
     private static void MapFitBounds(MapViewHandler handler, MapView view, object? args)

@@ -186,6 +186,52 @@ public class MapView : View
         set => SetValue(PitchEnabledProperty, value);
     }
 
+    public static readonly BindableProperty ShowCompassProperty = BindableProperty.Create(
+        nameof(ShowCompass), typeof(bool), typeof(MapView), true);
+
+    /// <summary>Shows the compass ornament while the map is rotated (default true).</summary>
+    public bool ShowCompass
+    {
+        get => (bool)GetValue(ShowCompassProperty);
+        set => SetValue(ShowCompassProperty, value);
+    }
+
+    public static readonly BindableProperty ShowScaleBarProperty = BindableProperty.Create(
+        nameof(ShowScaleBar), typeof(bool), typeof(MapView), true);
+
+    /// <summary>Shows the scale bar ornament (default true).</summary>
+    public bool ShowScaleBar
+    {
+        get => (bool)GetValue(ShowScaleBarProperty);
+        set => SetValue(ShowScaleBarProperty, value);
+    }
+
+    public static readonly BindableProperty ShowMapboxLogoProperty = BindableProperty.Create(
+        nameof(ShowMapboxLogo), typeof(bool), typeof(MapView), true);
+
+    /// <summary>
+    /// Shows the Mapbox logo ornament (default true). Hiding it may require a Mapbox
+    /// plan that permits white-labeling — the app is responsible for compliance.
+    /// </summary>
+    public bool ShowMapboxLogo
+    {
+        get => (bool)GetValue(ShowMapboxLogoProperty);
+        set => SetValue(ShowMapboxLogoProperty, value);
+    }
+
+    public static readonly BindableProperty ShowAttributionProperty = BindableProperty.Create(
+        nameof(ShowAttribution), typeof(bool), typeof(MapView), true);
+
+    /// <summary>
+    /// Shows the attribution ornament (default true). Hiding it may require a Mapbox
+    /// plan that permits it — the app is responsible for compliance.
+    /// </summary>
+    public bool ShowAttribution
+    {
+        get => (bool)GetValue(ShowAttributionProperty);
+        set => SetValue(ShowAttributionProperty, value);
+    }
+
     /* --------------------------------- Commands ---------------------------------- */
 
     public static readonly BindableProperty MapReadyCommandProperty = BindableProperty.Create(
@@ -316,16 +362,44 @@ public class MapView : View
 
     /* ------------------------------ Imperative API -------------------------------- */
 
+    // Imperative calls issued before the handler is attached (e.g. from a page
+    // constructor) are queued and replayed in order once the handler connects.
+    private readonly List<(string Command, object? Args)> pendingCommands = [];
+
+    private void InvokeOrQueue(string command, object? args)
+    {
+        if (Handler is null)
+        {
+            pendingCommands.Add((command, args));
+            return;
+        }
+
+        Handler.Invoke(command, args);
+    }
+
+    protected override void OnHandlerChanged()
+    {
+        base.OnHandlerChanged();
+
+        if (Handler is null || pendingCommands.Count == 0)
+            return;
+
+        var queued = pendingCommands.ToArray();
+        pendingCommands.Clear();
+        foreach (var (command, args) in queued)
+            Handler.Invoke(command, args);
+    }
+
     /// <summary>Animates the camera to the target position.</summary>
     public void FlyTo(MapCameraPosition camera, int durationMs = 2000)
     {
-        Handler?.Invoke(nameof(FlyTo), new FlyToRequest(camera, durationMs));
+        InvokeOrQueue(nameof(FlyTo), new FlyToRequest(camera, durationMs));
     }
 
     /// <summary>Moves the camera so the bounding box is fully visible. durationMs 0 jumps instantly.</summary>
     public void FitBounds(MapBounds bounds, double? padding = null, int durationMs = 1000)
     {
-        Handler?.Invoke(nameof(FitBounds),
+        InvokeOrQueue(nameof(FitBounds),
             new FitBoundsRequest(bounds, padding ?? FitBoundsPadding, durationMs));
     }
 
@@ -368,23 +442,23 @@ public class MapView : View
     /// </summary>
     public void AddGeoJsonSource(string sourceId, string geoJson)
     {
-        Handler?.Invoke(nameof(AddGeoJsonSource), new GeoJsonSourceRequest(sourceId, geoJson));
+        InvokeOrQueue(nameof(AddGeoJsonSource), new GeoJsonSourceRequest(sourceId, geoJson));
     }
 
     public void RemoveGeoJsonSource(string sourceId)
     {
-        Handler?.Invoke(nameof(RemoveGeoJsonSource), sourceId);
+        InvokeOrQueue(nameof(RemoveGeoJsonSource), sourceId);
     }
 
     /// <summary>Adds (or replaces) a style layer rendering a GeoJSON source.</summary>
     public void AddLayer(MapLayer layer)
     {
-        Handler?.Invoke(nameof(AddLayer), layer);
+        InvokeOrQueue(nameof(AddLayer), layer);
     }
 
     public void RemoveLayer(string layerId)
     {
-        Handler?.Invoke(nameof(RemoveLayer), layerId);
+        InvokeOrQueue(nameof(RemoveLayer), layerId);
     }
 
     /// <summary>
@@ -393,13 +467,13 @@ public class MapView : View
     /// </summary>
     public void AddClusteredSource(MapClusterSource source)
     {
-        Handler?.Invoke(nameof(AddClusteredSource), source);
+        InvokeOrQueue(nameof(AddClusteredSource), source);
     }
 
     /// <summary>Removes a clustered source including its managed layers.</summary>
     public void RemoveClusteredSource(string sourceId)
     {
-        Handler?.Invoke(nameof(RemoveClusteredSource), sourceId);
+        InvokeOrQueue(nameof(RemoveClusteredSource), sourceId);
     }
 
     /// <summary>
@@ -408,13 +482,27 @@ public class MapView : View
     /// </summary>
     public void DownloadOfflineRegion(MapOfflineRegion region)
     {
-        Handler?.Invoke(nameof(DownloadOfflineRegion), region);
+        InvokeOrQueue(nameof(DownloadOfflineRegion), region);
     }
 
     /// <summary>Cancels a running download and removes the region's tiles.</summary>
     public void RemoveOfflineRegion(string regionId)
     {
-        Handler?.Invoke(nameof(RemoveOfflineRegion), regionId);
+        InvokeOrQueue(nameof(RemoveOfflineRegion), regionId);
+    }
+
+    /// <summary>
+    /// Returns the currently visible viewport as a bounding box, or null while the
+    /// handler is not attached yet.
+    /// </summary>
+    public MapBounds? GetVisibleBounds()
+    {
+        if (Handler is null)
+            return null;
+
+        var request = new VisibleBoundsRequest();
+        Handler.Invoke(nameof(GetVisibleBounds), request);
+        return request.Bounds;
     }
 
     /* ------------------------- Internal event dispatchers ------------------------- */
@@ -569,6 +657,12 @@ public sealed class FitBoundsRequest
         Padding = padding;
         DurationMs = durationMs;
     }
+}
+
+/// <summary>Payload for the GetVisibleBounds command mapper — the handler fills Bounds.</summary>
+public sealed class VisibleBoundsRequest
+{
+    public MapBounds? Bounds { get; set; }
 }
 
 /// <summary>Payload for the FlyTo command mapper.</summary>

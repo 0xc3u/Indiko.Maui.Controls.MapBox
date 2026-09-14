@@ -389,6 +389,12 @@ SWIFT_CLASS_NAMED("IKMapView")
 /// location puck. The mode ends natively when the user pans the map — reported
 /// through onFollowPuckChanged.
 - (void)setFollowPuck:(BOOL)enabled zoom:(double)zoom trackBearing:(BOOL)trackBearing;
+/// Shows/hides the map ornaments. Compass and scale bar keep their adaptive
+/// behavior when visible. Note: hiding logo/attribution may require a Mapbox
+/// license that permits it — the consuming app is responsible for compliance.
+- (void)setOrnamentsCompass:(BOOL)compass scaleBar:(BOOL)scaleBar logo:(BOOL)logo attribution:(BOOL)attribution;
+/// Current viewport as a bounding box. JSON: {“minLat”,“minLng”,“maxLat”,“maxLng”}
+- (NSString * _Nonnull)visibleBoundsJson SWIFT_WARN_UNUSED_RESULT;
 - (void)setGesturesScroll:(BOOL)scroll zoom:(BOOL)zoom rotate:(BOOL)rotate pitch:(BOOL)pitch;
 - (void)destroy;
 - (nonnull instancetype)initWithFrame:(CGRect)frame SWIFT_UNAVAILABLE;
@@ -800,6 +806,12 @@ SWIFT_CLASS_NAMED("IKMapView")
 /// location puck. The mode ends natively when the user pans the map — reported
 /// through onFollowPuckChanged.
 - (void)setFollowPuck:(BOOL)enabled zoom:(double)zoom trackBearing:(BOOL)trackBearing;
+/// Shows/hides the map ornaments. Compass and scale bar keep their adaptive
+/// behavior when visible. Note: hiding logo/attribution may require a Mapbox
+/// license that permits it — the consuming app is responsible for compliance.
+- (void)setOrnamentsCompass:(BOOL)compass scaleBar:(BOOL)scaleBar logo:(BOOL)logo attribution:(BOOL)attribution;
+/// Current viewport as a bounding box. JSON: {“minLat”,“minLng”,“maxLat”,“maxLng”}
+- (NSString * _Nonnull)visibleBoundsJson SWIFT_WARN_UNUSED_RESULT;
 - (void)setGesturesScroll:(BOOL)scroll zoom:(BOOL)zoom rotate:(BOOL)rotate pitch:(BOOL)pitch;
 - (void)destroy;
 - (nonnull instancetype)initWithFrame:(CGRect)frame SWIFT_UNAVAILABLE;

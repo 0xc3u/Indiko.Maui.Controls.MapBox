@@ -168,6 +168,28 @@ internal static class AnnotationSerializer
         return builder.Append('}').ToString();
     }
 
+    /// <summary>Parses the facade's visible-bounds JSON: {"minLat","minLng","maxLat","maxLng"}.</summary>
+    public static MapBounds? ParseBounds(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return null;
+
+        try
+        {
+            using var document = System.Text.Json.JsonDocument.Parse(json);
+            var root = document.RootElement;
+            return new MapBounds(
+                root.GetProperty("minLat").GetDouble(),
+                root.GetProperty("minLng").GetDouble(),
+                root.GetProperty("maxLat").GetDouble(),
+                root.GetProperty("maxLng").GetDouble());
+        }
+        catch (Exception ex) when (ex is System.Text.Json.JsonException or KeyNotFoundException or InvalidOperationException)
+        {
+            return null;
+        }
+    }
+
     private static void AppendPoints(StringBuilder builder, IEnumerable<MapPosition>? points)
     {
         builder.Append(",\"points\":[");

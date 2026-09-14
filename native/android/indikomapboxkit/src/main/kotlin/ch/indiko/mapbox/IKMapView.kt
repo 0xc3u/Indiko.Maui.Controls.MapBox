@@ -53,9 +53,14 @@ import com.mapbox.maps.plugin.annotation.generated.PolylineAnnotationOptions
 import com.mapbox.maps.plugin.annotation.generated.createPointAnnotationManager
 import com.mapbox.maps.plugin.annotation.generated.createPolygonAnnotationManager
 import com.mapbox.maps.plugin.annotation.generated.createPolylineAnnotationManager
+import com.mapbox.maps.plugin.attribution.attribution
+import com.mapbox.maps.plugin.compass.compass
 import com.mapbox.maps.plugin.gestures.addOnMapClickListener
 import com.mapbox.maps.plugin.gestures.addOnMapLongClickListener
 import com.mapbox.maps.plugin.gestures.gestures
+import com.mapbox.maps.plugin.logo.logo
+import com.mapbox.maps.plugin.scalebar.scalebar
+import com.mapbox.maps.toCameraOptions
 import com.mapbox.maps.plugin.locationcomponent.createDefault2DPuck
 import com.mapbox.maps.plugin.locationcomponent.location
 import com.mapbox.maps.plugin.viewport.ViewportStatus
@@ -940,6 +945,34 @@ class IKMapView(
         {
             mapView.viewport.idle()
         }
+    }
+
+    /**
+     * Shows/hides the map ornaments. Note: hiding logo/attribution may require a
+     * Mapbox license that permits it — the consuming app is responsible for compliance.
+     */
+    fun setOrnaments(compass: Boolean, scaleBar: Boolean, logo: Boolean, attribution: Boolean)
+    {
+        mapView.compass.enabled = compass
+        mapView.scalebar.enabled = scaleBar
+        mapView.logo.enabled = logo
+        mapView.attribution.enabled = attribution
+    }
+
+    /**
+     * Current viewport as a bounding box. JSON: {"minLat","minLng","maxLat","maxLng"}
+     */
+    fun visibleBoundsJson(): String
+    {
+        val bounds = mapView.mapboxMap.coordinateBoundsForCamera(
+            mapView.mapboxMap.cameraState.toCameraOptions()
+        )
+        return JSONObject()
+            .put("minLat", bounds.southwest.latitude())
+            .put("minLng", bounds.southwest.longitude())
+            .put("maxLat", bounds.northeast.latitude())
+            .put("maxLng", bounds.northeast.longitude())
+            .toString()
     }
 
     fun setGestures(scroll: Boolean, zoom: Boolean, rotate: Boolean, pitch: Boolean)

@@ -29,7 +29,10 @@ on the UI thread; command parameters carry the same `EventArgs` object the event
 - 💬 View annotations — any MAUI view anchored to a coordinate, gestures included
 - 📴 Offline regions (style pack + tiles) with download progress events
 - 🧭 Compass on rotation, scale bar, user-location puck, per-gesture configuration
+- 🎛️ Ornament visibility: compass, scale bar, Mapbox logo and attribution individually switchable
 - 🎯 Follow-puck mode: camera follows the user's position — switchable, with state-change events
+- 🔭 `GetVisibleBounds()` returns the exact viewport bounding box (e.g. for offline downloads)
+- ⏳ Imperative calls (`AddGeoJsonSource`, `AddLayer`, …) issued before the handler is attached are queued and replayed automatically
 - 👆 Click-consumed semantics: `MapClicked` fires only for taps on empty map
 
 ## Screenshots
@@ -71,6 +74,7 @@ on the UI thread; command parameters carry the same `EventArgs` object the event
 | Animated camera (`flyTo`) | ✅ | `FlyTo(camera, durationMs)` |
 | Fit to bounding box (`cameraForCoordinateBounds`) | ✅ | `FitBounds`, `FitBoundsToContent`, switchable `AutoFitBounds` |
 | Camera padding / anchor offsets | 🔶 | uniform `FitBoundsPadding` only |
+| Visible viewport bounds (`coordinateBoundsForCamera`) | ✅ | `GetVisibleBounds()` |
 | **Annotations** | | |
 | Point annotations (markers) | ✅ | `Annotations` collection: color, title, `Tag` payload, click events |
 | Draggable point annotations | ✅ | `IsDraggable` + `AnnotationDragged` (model auto-synced) |
@@ -99,9 +103,10 @@ on the UI thread; command parameters carry the same `EventArgs` object the event
 | Cancel / delete regions | ✅ | `RemoveOfflineRegion` |
 | List regions, size estimates | ❌ | |
 | **Ornaments** | | |
-| Compass (auto-shows on rotation, tap resets north) | ✅ | SDK default behavior |
-| Scale bar | ✅ | SDK default behavior |
-| Ornament configuration (visibility, position) | ❌ | Mapbox logo/attribution stay visible (Mapbox ToS) |
+| Compass (auto-shows on rotation, tap resets north) | ✅ | SDK default behavior, switchable via `ShowCompass` |
+| Scale bar | ✅ | SDK default behavior, switchable via `ShowScaleBar` |
+| Ornament visibility | ✅ | `ShowCompass`, `ShowScaleBar`, `ShowMapboxLogo`, `ShowAttribution` (logo/attribution: check your Mapbox plan/ToS) |
+| Ornament position / margins | ❌ | SDK default positions |
 | **Other** | | |
 | Lifecycle events (`MapReady`, `StyleLoaded`, `CameraChanged`) | ✅ | events + bindable commands (full MVVM parity) |
 | Snapshotter (static map images) | ❌ | |
@@ -655,6 +660,90 @@ with the puck's heading instead of keeping north up.
 - A **compass ornament appears automatically** (top-right) whenever the map is rotated away
   from north and hides again when facing north; tapping it resets the bearing to 0.
   It indicates the map's north, not the device's magnetometer heading.
+
+---
+
+## Ornaments
+
+All four map ornaments are individually switchable (default: all visible).
+
+**XAML / MVVM** — plain bindable properties:
+
+```xml
+<map:MapView ShowCompass="{Binding CompassVisible}"
+             ShowScaleBar="False"
+             ShowMapboxLogo="True"
+             ShowAttribution="True" />
+```
+
+**Code / event-driven:**
+
+```csharp
+map.ShowScaleBar = false;   // hide the scale bar
+map.ShowCompass = true;     // compass keeps its adaptive show-on-rotation behavior
+```
+
+> ⚠️ `ShowMapboxLogo` and `ShowAttribution` can hide the Mapbox logo and attribution
+> button, but doing so may require a Mapbox plan that permits it — compliance is the
+> responsibility of the consuming app.
+
+---
+
+## Visible bounds
+
+`GetVisibleBounds()` returns the currently visible viewport as a `MapBounds` — the exact
+counterpart to `FitBounds`, useful e.g. to download the visible region for offline use:
+
+```csharp
+var bounds = map.GetVisibleBounds();      // null while the handler is not attached yet
+if (bounds is not null)
+{
+    map.DownloadOfflineRegion(new MapOfflineRegion
+    {
+        Id = "visible-region",
+        StyleUri = map.StyleUri,
+        MinLatitude = bounds.MinLatitude,
+        MinLongitude = bounds.MinLongitude,
+        MaxLatitude = bounds.MaxLatitude,
+        MaxLongitude = bounds.MaxLongitude,
+        MinZoom = 6,
+        MaxZoom = 14,
+    });
+}
+```
+
+In an MVVM setup, expose it to the view model via a delegate (the view model must not
+reference the view):
+
+```csharp
+// page
+viewModel.VisibleBoundsProvider = () => Map.GetVisibleBounds();
+
+// view model
+public Func<MapBounds?>? VisibleBoundsProvider { get; set; }
+```
+
+---
+
+## Deferred imperative calls
+
+Imperative methods (`AddGeoJsonSource`, `AddLayer`, `AddClusteredSource`, `FlyTo`,
+`FitBounds`, `DownloadOfflineRegion`, …) can be called **before the control's handler is
+attached** — for example from a page constructor or `OnAppearing`. The calls are queued
+and replayed in order as soon as the handler connects; runtime sources and layers
+additionally survive every style switch. No guards or `MapReady` gymnastics needed:
+
+```csharp
+public MyPage()
+{
+    InitializeComponent();
+    Map.AddGeoJsonSource("points", "{…}");   // safe — queued until the handler attaches
+    Map.AddLayer(new MapLayer { Id = "points-circles", SourceId = "points", Type = MapLayerType.Circle });
+}
+```
+
+`GetVisibleBounds()` is the one exception: it needs a live map and returns `null` before
+the handler is attached.
 
 ---
 

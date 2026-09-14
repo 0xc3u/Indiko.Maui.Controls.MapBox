@@ -171,6 +171,12 @@ interface IKMapView
     [Export("setFollowPuck:zoom:trackBearing:")]
     void SetFollowPuck(bool enabled, double zoom, bool trackBearing);
 
+    [Export("setOrnamentsCompass:scaleBar:logo:attribution:")]
+    void SetOrnaments(bool compass, bool scaleBar, bool logo, bool attribution);
+
+    [Export("visibleBoundsJson")]
+    string VisibleBoundsJson();
+
     [Export("setGesturesScroll:zoom:rotate:pitch:")]
     void SetGestures(bool scroll, bool zoom, bool rotate, bool pitch);
 

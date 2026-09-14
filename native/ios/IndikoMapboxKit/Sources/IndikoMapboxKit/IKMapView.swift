@@ -831,6 +831,30 @@ public class IKMapView: UIView
         }
     }
 
+    /// Shows/hides the map ornaments. Compass and scale bar keep their adaptive
+    /// behavior when visible. Note: hiding logo/attribution may require a Mapbox
+    /// license that permits it — the consuming app is responsible for compliance.
+    @objc(setOrnamentsCompass:scaleBar:logo:attribution:)
+    public func setOrnaments(compass: Bool, scaleBar: Bool, logo: Bool, attribution: Bool)
+    {
+        mapView.ornaments.options.compass.visibility = compass ? .adaptive : .hidden
+        mapView.ornaments.options.scaleBar.visibility = scaleBar ? .adaptive : .hidden
+        mapView.ornaments.logoView.isHidden = !logo
+        mapView.ornaments.attributionButton.isHidden = !attribution
+    }
+
+    /// Current viewport as a bounding box. JSON: {"minLat","minLng","maxLat","maxLng"}
+    @objc(visibleBoundsJson)
+    public func visibleBoundsJson() -> String
+    {
+        let bounds = mapView.mapboxMap.coordinateBounds(for: mapView.bounds)
+        return String(
+            format: "{\"minLat\":%.8f,\"minLng\":%.8f,\"maxLat\":%.8f,\"maxLng\":%.8f}",
+            locale: Locale(identifier: "en_US_POSIX"),
+            bounds.southwest.latitude, bounds.southwest.longitude,
+            bounds.northeast.latitude, bounds.northeast.longitude)
+    }
+
     @objc(setGesturesScroll:zoom:rotate:pitch:)
     public func setGestures(scroll: Bool, zoom: Bool, rotate: Bool, pitch: Bool)
     {
