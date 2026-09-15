@@ -1,3 +1,10 @@
+# [1.8.0](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/compare/v1.7.0...v1.8.0) (2026-09-15)
+
+
+### Features
+
+* allow disabling Mapbox location telemetry via UseMapbox ([ec78401](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/commit/ec78401ff755aee5157b54281188f7ecbdda9752))
+
 # [1.7.0](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/compare/v1.6.0...v1.7.0) (2026-09-14)
 
 
