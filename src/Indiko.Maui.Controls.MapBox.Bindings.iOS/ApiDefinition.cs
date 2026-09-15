@@ -11,6 +11,14 @@ interface IKMapbox
     [Static]
     [Export("setAccessToken:")]
     void SetAccessToken(string token);
+
+    // Mirrors the Android binding, where the Kotlin is/set pair collapses into this property.
+    [Static]
+    bool TelemetryEnabled
+    {
+        [Export("isTelemetryEnabled")] get;
+        [Export("setTelemetryEnabled:")] set;
+    }
 }
 
 [BaseType(typeof(NSObject), Name = "IKCameraState")]

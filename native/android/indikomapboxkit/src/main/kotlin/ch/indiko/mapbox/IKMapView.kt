@@ -1,5 +1,6 @@
 package ch.indiko.mapbox
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -9,6 +10,7 @@ import android.graphics.Path
 import android.widget.FrameLayout
 import com.mapbox.common.MapboxOptions
 import com.mapbox.common.NetworkRestriction
+import com.mapbox.common.TelemetryUtils
 import com.mapbox.common.TileRegionLoadOptions
 import com.mapbox.common.TileStore
 import com.mapbox.geojson.Point
@@ -90,6 +92,23 @@ object IKMapbox
     {
         MapboxOptions.accessToken = token
     }
+
+    /**
+     * Turns Mapbox's location telemetry on or off. Disabled means the SDK stops
+     * contributing device locations and map-usage events to Mapbox; only the
+     * billing turnstile event remains. This is the same switch the attribution
+     * dialog offers under "Make Mapbox Maps Better".
+     */
+    @JvmStatic
+    @SuppressLint("RestrictedApi")
+    fun setTelemetryEnabled(enabled: Boolean)
+    {
+        TelemetryUtils.setEventsCollectionState(enabled, null)
+    }
+
+    @JvmStatic
+    @SuppressLint("RestrictedApi")
+    fun isTelemetryEnabled(): Boolean = TelemetryUtils.getEventsCollectionState()
 }
 
 /**

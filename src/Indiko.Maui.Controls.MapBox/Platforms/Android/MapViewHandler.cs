@@ -112,6 +112,7 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
                 "Mapbox access token missing. Call builder.UseMapbox(\"pk.…\") in MauiProgram.cs.");
 
         IKMapbox.SetAccessToken(MapboxConfig.AccessToken);
+        IKMapbox.TelemetryEnabled = MapboxConfig.TelemetryEnabled;
         tokenApplied = true;
     }
 

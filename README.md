@@ -114,6 +114,7 @@ on the UI thread; command parameters carry the same `EventArgs` object the event
 | Snapshotter (static map images) | ❌ | |
 | 3D terrain (raster-DEM + sky atmosphere) | ✅ | `TerrainEnabled` + `TerrainExaggeration` |
 | Globe, custom projections | ❌ | whatever the chosen style ships by default |
+| Telemetry opt-out | ✅ | `UseMapbox(token, enableTelemetry: false)` — see [Telemetry](#telemetry) |
 
 ## Getting started
 
@@ -131,6 +132,22 @@ builder
     .UseMauiApp<App>()
     .UseMapbox("pk.YOUR_MAPBOX_ACCESS_TOKEN");
 ```
+
+### Telemetry
+
+The Mapbox Maps SDK collects **location telemetry by default** — it sends device
+locations and map-usage events to Mapbox, and Mapbox requires apps to offer an opt-out
+(the built-in attribution "i" button provides one under *Make Mapbox Maps Better*).
+
+If your app must not send locations to Mapbox at all, switch it off for every user:
+
+```csharp
+builder.UseMapbox("pk.YOUR_MAPBOX_ACCESS_TOKEN", enableTelemetry: false);
+```
+
+Only Mapbox's billing turnstile event remains. Worth knowing before you fill in an
+App Store privacy questionnaire or a Google Play Data Safety form: with telemetry on,
+precise location counts as collected **and** shared with a third party.
 
 Add the map to a page:
 

@@ -11,6 +11,28 @@ public class IKMapbox: NSObject
     {
         MapboxOptions.accessToken = token
     }
+
+    /// Turns Mapbox's location telemetry on or off. Disabled means the SDK stops
+    /// contributing device locations and map-usage events to Mapbox; only the
+    /// billing turnstile event remains. This is the same switch the attribution
+    /// dialog offers under "Make Mapbox Maps Better".
+    ///
+    /// MapboxMaps registers `MGLMapboxMetricsEnabled` with a default of `true` and
+    /// observes it via KVO, so writing the key is the public, supported way in — no
+    /// need to reach into MapboxCommon_Private.
+    @objc(setTelemetryEnabled:)
+    public static func setTelemetryEnabled(_ enabled: Bool)
+    {
+        UserDefaults.standard.set(enabled, forKey: metricsDefaultsKey)
+    }
+
+    @objc(isTelemetryEnabled)
+    public static func isTelemetryEnabled() -> Bool
+    {
+        UserDefaults.standard.bool(forKey: metricsDefaultsKey)
+    }
+
+    private static let metricsDefaultsKey = "MGLMapboxMetricsEnabled"
 }
 
 /// Immutable snapshot of the current camera, handed to the event listener.

@@ -408,6 +408,15 @@ SWIFT_CLASS_NAMED("IKMapView")
 SWIFT_CLASS_NAMED("IKMapbox")
 @interface IKMapbox : NSObject
 + (void)setAccessToken:(NSString * _Nonnull)token;
+/// Turns Mapbox’s location telemetry on or off. Disabled means the SDK stops
+/// contributing device locations and map-usage events to Mapbox; only the
+/// billing turnstile event remains. This is the same switch the attribution
+/// dialog offers under “Make Mapbox Maps Better”.
+/// MapboxMaps registers <code>MGLMapboxMetricsEnabled</code> with a default of <code>true</code> and
+/// observes it via KVO, so writing the key is the public, supported way in — no
+/// need to reach into MapboxCommon_Private.
++ (void)setTelemetryEnabled:(BOOL)enabled;
++ (BOOL)isTelemetryEnabled SWIFT_WARN_UNUSED_RESULT;
 - (nonnull instancetype)init OBJC_DESIGNATED_INITIALIZER;
 @end
 
@@ -829,6 +838,15 @@ SWIFT_CLASS_NAMED("IKMapView")
 SWIFT_CLASS_NAMED("IKMapbox")
 @interface IKMapbox : NSObject
 + (void)setAccessToken:(NSString * _Nonnull)token;
+/// Turns Mapbox’s location telemetry on or off. Disabled means the SDK stops
+/// contributing device locations and map-usage events to Mapbox; only the
+/// billing turnstile event remains. This is the same switch the attribution
+/// dialog offers under “Make Mapbox Maps Better”.
+/// MapboxMaps registers <code>MGLMapboxMetricsEnabled</code> with a default of <code>true</code> and
+/// observes it via KVO, so writing the key is the public, supported way in — no
+/// need to reach into MapboxCommon_Private.
++ (void)setTelemetryEnabled:(BOOL)enabled;
++ (BOOL)isTelemetryEnabled SWIFT_WARN_UNUSED_RESULT;
 - (nonnull instancetype)init OBJC_DESIGNATED_INITIALIZER;
 @end
 
