@@ -44,6 +44,11 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # The action defaults to "tools platform-tools"; Google removed the
+          # obsolete "tools" package from the SDK repository, which makes
+          # sdkmanager exit 1. Only platform-tools is needed here.
+          packages: platform-tools
 
       - name: Cache native artifacts
         id: native-cache
