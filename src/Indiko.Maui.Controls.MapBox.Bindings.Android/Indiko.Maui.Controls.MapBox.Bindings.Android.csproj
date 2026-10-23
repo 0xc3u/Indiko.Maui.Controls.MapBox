@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<TargetFrameworks>net10.0-android</TargetFrameworks>
@@ -28,11 +28,11 @@
 
 	<!-- Non-Mapbox Java/Kotlin dependencies mapped to their .NET binding packages. -->
 	<ItemGroup>
-		<PackageReference Include="Xamarin.Kotlin.StdLib" Version="2.2.0.1" />
-		<PackageReference Include="Xamarin.KotlinX.Coroutines.Android" Version="1.10.2.1" />
-		<PackageReference Include="Xamarin.AndroidX.AppCompat" Version="1.7.1.1" />
-		<PackageReference Include="Square.OkHttp3" Version="4.12.0.4" />
-		<PackageReference Include="GoogleGson" Version="2.13.1.1" />
+		<PackageReference Include="Xamarin.Kotlin.StdLib" Version="2.4.0.1" />
+		<PackageReference Include="Xamarin.KotlinX.Coroutines.Android" Version="1.11.0.1" />
+		<PackageReference Include="Xamarin.AndroidX.AppCompat" Version="1.8.0" />
+		<PackageReference Include="Square.OkHttp3" Version="5.5.0" />
+		<PackageReference Include="GoogleGson" Version="2.14.0.1" />
 	</ItemGroup>
 
 </Project>
