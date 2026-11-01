@@ -57,8 +57,12 @@ on the UI thread; command parameters carry the same `EventArgs` object the event
 |---|---|
 | .NET / MAUI | net10.0-android, net10.0-ios (MAUI 10) |
 | Minimum OS | Android 11 (API 30) · iOS 14.2 |
-| Mapbox Maps SDK Android | 11.30.1 (pinned) |
+| Mapbox Maps SDK Android | 11.30.1 `-ndk27` (pinned) |
 | Mapbox Maps SDK iOS | 11.26.0 (pinned) |
+
+The Android artifacts are the Mapbox `-ndk27` variants, whose native libraries are built
+with 16 KB page alignment — required by Google Play for new app bundles containing native
+code, and the reason .NET Android no longer reports `XA0141` for this package.
 
 ### Feature matrix vs. the official Mapbox Maps SDK v11
 
@@ -840,7 +844,7 @@ via `MAPBOX_DOWNLOADS_TOKEN` in `~/.gradle/gradle.properties` and `~/.netrc`.
 
 | Platform | Version | Pinned in |
 | -------- | ------- | --------- |
-| Android  | 11.30.1 | `native/android/indikomapboxkit/build.gradle.kts` |
+| Android  | 11.30.1 (`-ndk27` artifacts, 16 KB pages) | `native/android/indikomapboxkit/build.gradle.kts` |
 | iOS      | 11.26.0 | `native/ios/IndikoMapboxKit/project.yml` |
 
 Releases are automated via Semantic Release — conventional commits on `main` produce the
