@@ -1,3 +1,12 @@
+## [1.8.2](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/compare/v1.8.1...v1.8.2) (2026-11-02)
+
+### Bug Fixes
+
+* defer the native map teardown so a reopened page keeps rendering ([372f9df](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/commit/372f9df0e3dca55532bf97d38b1440f7307f8b66))
+* **deps:** align AppCompat with MAUI's AndroidX graph ([678617a](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/commit/678617ae29819f9c5570c3870a0954d9bf8cd474))
+* **deps:** update NuGet packages to their latest stable versions ([b8f21b1](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/commit/b8f21b1a7aaafafe7fa8f5af239ea1b371ceb660))
+
+
 ## [1.8.1](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/compare/v1.8.0...v1.8.1) (2026-11-02)
 
 ### Bug Fixes
