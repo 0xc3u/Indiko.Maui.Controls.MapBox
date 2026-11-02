@@ -1,3 +1,10 @@
+## [1.8.1](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/compare/v1.8.0...v1.8.1) (2026-11-02)
+
+### Bug Fixes
+
+* **android:** use Mapbox -ndk27 artifacts for 16 KB page support ([44d1545](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/commit/44d1545eb1fa89d2d182501c746de73a2fb51a15))
+
+
 # [1.8.0](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/compare/v1.7.0...v1.8.0) (2026-09-15)
 
 
