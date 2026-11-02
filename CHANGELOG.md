@@ -1,3 +1,10 @@
+## [1.8.4](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/compare/v1.8.3...v1.8.4) (2026-11-02)
+
+### Bug Fixes
+
+* **package:** add android/ios tags and release notes link to the NuGet metadata ([4cbfe90](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/commit/4cbfe9057b8dd660ca8a63329d9affcb70948cdc))
+
+
 ## [1.8.3](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/compare/v1.8.2...v1.8.3) (2026-11-02)
 
 ### Bug Fixes
