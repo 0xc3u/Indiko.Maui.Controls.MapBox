@@ -194,13 +194,20 @@ jobs:
       contents: read
       id-token: write
 
-    # After a release, or on a dispatch that names a version to publish
-    # again. `always()` is needed because the release job produces no release
-    # on a dispatch, and a skipped dependency would otherwise skip this too.
+    # After a release, or on any manual dispatch. A dispatch with an empty
+    # `republish` used to be skipped silently -- the condition only looked at
+    # the input -- so "Run workflow" without typing a version did nothing.
+    # Now a dispatch always publishes: the version named in `republish`, or
+    # else the newest tag (see "Decide the version to publish").
+    # `always()` is needed because the release job may produce no release,
+    # and a skipped or failed dependency would otherwise skip this too; the
+    # explicit result checks keep it from running after a real failure.
     if: >-
       ${{ always()
           && needs.build.result == 'success'
-          && (needs.release.outputs.released == 'true' || inputs.republish != '') }}
+          && needs.release.result == 'success'
+          && (needs.release.outputs.released == 'true'
+              || github.event_name == 'workflow_dispatch') }}
 
     steps:
       - uses: actions/checkout@v7
@@ -244,8 +251,18 @@ jobs:
         id: target
         run: |
           set -euo pipefail
-          version="${{ inputs.republish }}"
+          version="${{ github.event.inputs.republish }}"
+          version="${version#v}"
           [[ -z "$version" ]] && version="${{ needs.release.outputs.version }}"
+
+          # A dispatch without a version and without anything new to release
+          # publishes the newest tag. --skip-duplicate on the push makes this
+          # a no-op when that version is already on nuget.org.
+          if [[ -z "$version" && "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            git fetch --tags --quiet origin
+            version="$(git tag --list 'v[0-9]*' --sort=-v:refname | head -n 1)"
+            version="${version#v}"
+          fi
 
           if [[ -z "$version" ]]; then
             echo "No version to publish." >&2

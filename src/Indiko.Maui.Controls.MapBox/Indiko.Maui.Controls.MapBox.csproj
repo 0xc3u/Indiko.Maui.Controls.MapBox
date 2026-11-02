@@ -17,7 +17,8 @@
 		<PackageProjectUrl>https://github.com/0xc3u/Indiko.Maui.Controls.MapBox</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/0xc3u/Indiko.Maui.Controls.MapBox</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
-		<PackageTags>dotnet-maui;maui;ui;map;mapbox;control</PackageTags>
+		<PackageTags>dotnet-maui;maui;ui;map;mapbox;control;android;ios</PackageTags>
+		<PackageReleaseNotes>https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/blob/main/CHANGELOG.md</PackageReleaseNotes>
 		<IncludeSymbols>True</IncludeSymbols>
 		<PublishRepositoryUrl>true</PublishRepositoryUrl>
 		<EmbedUntrackedSources>true</EmbedUntrackedSources>
