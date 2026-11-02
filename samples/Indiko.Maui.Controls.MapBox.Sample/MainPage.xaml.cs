@@ -232,6 +232,11 @@ public partial class MainPage : ContentPage
 		StatusLabel.Text = "Marker gelöscht";
 	}
 
+	private async void OnOpenNavigationTest(object? sender, EventArgs e)
+	{
+		await Navigation.PushAsync(new NavigationTestPage());
+	}
+
 	private bool geoJsonActive;
 
 	// Tram/S-Bahn-Halte als Points + eine Verbindung als LineString (GeoJSON ist [lng, lat]!)

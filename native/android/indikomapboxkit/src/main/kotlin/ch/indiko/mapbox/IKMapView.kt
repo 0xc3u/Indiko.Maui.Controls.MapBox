@@ -7,7 +7,16 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
+import android.os.Handler
+import android.os.Looper
+import android.view.View
 import android.widget.FrameLayout
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LifecycleRegistry
+import androidx.lifecycle.ViewTreeLifecycleOwner
+import com.mapbox.common.Cancelable
 import com.mapbox.common.MapboxOptions
 import com.mapbox.common.NetworkRestriction
 import com.mapbox.common.TelemetryUtils
@@ -156,6 +165,39 @@ class IKMapView(
 ) : FrameLayout(context)
 {
     private val mapView: MapView
+
+    // Our own lifecycle, deliberately NOT the one from the view tree. In MAUI the
+    // ViewTreeLifecycleOwner is the Activity, which outlives the page by far — the
+    // Mapbox lifecycle plugin would then never see ON_DESTROY, so the map had to be
+    // torn down by hand, and a hand-destroyed MapView can still be restarted by a
+    // later attach. That is a permanently black map: a Mapbox MapView is strictly
+    // single-use, its render thread cannot be started again after onDestroy.
+    private val lifecycleOwner: LifecycleOwner = object : LifecycleOwner
+    {
+        override fun getLifecycle(): Lifecycle = lifecycleRegistry
+    }
+    private val lifecycleRegistry: LifecycleRegistry = LifecycleRegistry(lifecycleOwner)
+
+    // Lifecycle of the hosting Activity/Fragment, mirrored into lifecycleRegistry so
+    // the map stops rendering while the app is backgrounded and dies with its host.
+    private var hostLifecycle: Lifecycle? = null
+    private val hostObserver = object : DefaultLifecycleObserver
+    {
+        override fun onStart(owner: LifecycleOwner) = syncLifecycle()
+        override fun onResume(owner: LifecycleOwner) = syncLifecycle()
+        override fun onPause(owner: LifecycleOwner) = syncLifecycle()
+        override fun onStop(owner: LifecycleOwner) = syncLifecycle()
+        override fun onDestroy(owner: LifecycleOwner) = performDestroy()
+    }
+
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val cancelables = mutableListOf<Cancelable>()
+    private var attached = false
+    private var everAttached = false
+    private var disconnected = false
+    private var destroyed = false
+    private var pendingDestroy: Runnable? = null
+
     private var pointManager: PointAnnotationManager? = null
     private var polylineManager: PolylineAnnotationManager? = null
     private var polygonManager: PolygonAnnotationManager? = null
@@ -191,18 +233,26 @@ class IKMapView(
             .pitch(pitch)
             .build()
 
+        // Has to be in place before the inner MapView can ever attach: the Mapbox
+        // lifecycle plugin resolves its owner from the view tree on its first attach.
+        ViewTreeLifecycleOwner.set(this, lifecycleOwner)
+        lifecycleRegistry.currentState = Lifecycle.State.CREATED
+
         mapView = MapView(context, MapInitOptions(context = context, cameraOptions = camera, styleUri = styleUri))
         addView(mapView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
 
-        mapView.mapboxMap.subscribeMapLoaded { listener?.onMapReady() }
-        mapView.mapboxMap.subscribeStyleLoaded {
+        cancelables += mapView.mapboxMap.subscribeMapLoaded { listener?.onMapReady() }
+        cancelables += mapView.mapboxMap.subscribeStyleLoaded {
+            if (destroyed)
+                return@subscribeStyleLoaded
+
             geoJsonSources.forEach { (id, geoJson) -> applyGeoJsonSource(id, geoJson) }
             layerConfigs.values.forEach { applyLayer(it) }
             clusterConfigs.values.forEach { applyClusteredSource(it) }
             terrainExaggeration?.let { applyTerrain(it) }
             listener?.onStyleLoaded()
         }
-        mapView.mapboxMap.subscribeCameraChanged { event ->
+        cancelables += mapView.mapboxMap.subscribeCameraChanged { event ->
             val state = event.cameraState
             listener?.onCameraChanged(
                 IKCameraState(
@@ -265,11 +315,17 @@ class IKMapView(
 
     fun setStyleUri(uri: String)
     {
+        if (destroyed)
+            return
+
         mapView.mapboxMap.loadStyle(uri)
     }
 
     fun setCamera(latitude: Double, longitude: Double, zoom: Double, bearing: Double, pitch: Double)
     {
+        if (destroyed)
+            return
+
         mapView.mapboxMap.setCamera(
             CameraOptions.Builder()
                 .center(Point.fromLngLat(longitude, latitude))
@@ -282,6 +338,9 @@ class IKMapView(
 
     fun flyTo(latitude: Double, longitude: Double, zoom: Double, bearing: Double, pitch: Double, durationMs: Double)
     {
+        if (destroyed)
+            return
+
         mapView.camera.flyTo(
             CameraOptions.Builder()
                 .center(Point.fromLngLat(longitude, latitude))
@@ -300,6 +359,9 @@ class IKMapView(
     fun fitBounds(minLat: Double, minLng: Double, maxLat: Double, maxLng: Double,
                   paddingDp: Double, durationMs: Double)
     {
+        if (destroyed)
+            return
+
         val paddingPx = (paddingDp * resources.displayMetrics.density)
         val camera = mapView.mapboxMap.cameraForCoordinateBounds(
             CoordinateBounds(
@@ -333,6 +395,9 @@ class IKMapView(
      */
     fun setMarkersJson(json: String)
     {
+        if (destroyed)
+            return
+
         val manager = pointManager ?: mapView.annotations.createPointAnnotationManager().also { created ->
             created.addClickListener { annotation ->
                 lastAnnotationTapMs = android.os.SystemClock.uptimeMillis()
@@ -396,6 +461,9 @@ class IKMapView(
 
     fun clearMarkers()
     {
+        if (destroyed)
+            return
+
         pointManager?.deleteAll()
         markerIdsByAnnotationId.clear()
     }
@@ -410,6 +478,9 @@ class IKMapView(
      */
     fun setPolylinesJson(json: String)
     {
+        if (destroyed)
+            return
+
         val manager = polylineManager ?: mapView.annotations.createPolylineAnnotationManager().also { created ->
             created.addClickListener { annotation ->
                 lastAnnotationTapMs = android.os.SystemClock.uptimeMillis()
@@ -443,6 +514,9 @@ class IKMapView(
 
     fun clearPolylines()
     {
+        if (destroyed)
+            return
+
         polylineManager?.deleteAll()
         polylineIdsByAnnotationId.clear()
     }
@@ -453,6 +527,9 @@ class IKMapView(
      */
     fun setPolygonsJson(json: String)
     {
+        if (destroyed)
+            return
+
         val manager = polygonManager ?: mapView.annotations.createPolygonAnnotationManager().also { created ->
             created.addClickListener { annotation ->
                 lastAnnotationTapMs = android.os.SystemClock.uptimeMillis()
@@ -486,6 +563,9 @@ class IKMapView(
 
     fun clearPolygons()
     {
+        if (destroyed)
+            return
+
         polygonManager?.deleteAll()
         polygonIdsByAnnotationId.clear()
     }
@@ -497,6 +577,9 @@ class IKMapView(
      */
     fun addGeoJsonSource(id: String, geoJson: String)
     {
+        if (destroyed)
+            return
+
         val clusterConfig = clusterConfigs[id]
         if (clusterConfig != null)
         {
@@ -512,6 +595,9 @@ class IKMapView(
 
     fun removeGeoJsonSource(id: String)
     {
+        if (destroyed)
+            return
+
         geoJsonSources.remove(id)
         mapView.mapboxMap.style?.removeStyleSource(id)
     }
@@ -522,6 +608,9 @@ class IKMapView(
      */
     fun addLayerJson(json: String)
     {
+        if (destroyed)
+            return
+
         val config = JSONObject(json)
         val id = config.optString("id")
         if (id.isEmpty()) return
@@ -533,6 +622,9 @@ class IKMapView(
 
     fun removeLayer(id: String)
     {
+        if (destroyed)
+            return
+
         layerConfigs.remove(id)
         mapView.mapboxMap.style?.removeStyleLayer(id)
     }
@@ -655,6 +747,9 @@ class IKMapView(
     fun addViewAnnotation(id: String, view: android.view.View, latitude: Double, longitude: Double,
                           widthDp: Double, heightDp: Double)
     {
+        if (destroyed)
+            return
+
         removeViewAnnotation(id)
 
         val density = resources.displayMetrics.density
@@ -678,6 +773,9 @@ class IKMapView(
 
     fun removeViewAnnotation(id: String)
     {
+        if (destroyed)
+            return
+
         viewAnnotationViews.remove(id)?.let { mapView.viewAnnotationManager.removeViewAnnotation(it) }
     }
 
@@ -695,6 +793,9 @@ class IKMapView(
      */
     fun downloadOfflineRegionJson(json: String)
     {
+        if (destroyed)
+            return
+
         val config = JSONObject(json)
         val id = config.optString("id")
         if (id.isEmpty()) return
@@ -766,6 +867,9 @@ class IKMapView(
 
     fun removeOfflineRegion(id: String)
     {
+        if (destroyed)
+            return
+
         tileStore.removeTileRegion(id)
     }
 
@@ -781,6 +885,9 @@ class IKMapView(
      */
     fun addClusteredSourceJson(json: String)
     {
+        if (destroyed)
+            return
+
         val config = JSONObject(json)
         val id = config.optString("sourceId")
         if (id.isEmpty()) return
@@ -791,6 +898,9 @@ class IKMapView(
 
     fun removeClusteredSource(id: String)
     {
+        if (destroyed)
+            return
+
         clusterConfigs.remove(id)
         val style = mapView.mapboxMap.style ?: return
         for (suffix in listOf("-clusters", "-cluster-count", "-points"))
@@ -932,6 +1042,9 @@ class IKMapView(
 
     fun setUserLocationEnabled(enabled: Boolean)
     {
+        if (destroyed)
+            return
+
         mapView.location.updateSettings {
             this.enabled = enabled
             if (enabled)
@@ -948,6 +1061,9 @@ class IKMapView(
      */
     fun setFollowPuck(enabled: Boolean, zoom: Double, trackBearing: Boolean)
     {
+        if (destroyed)
+            return
+
         if (enabled)
         {
             mapView.location.updateSettings {
@@ -980,6 +1096,9 @@ class IKMapView(
      */
     fun setTerrain(enabled: Boolean, exaggeration: Double)
     {
+        if (destroyed)
+            return
+
         if (enabled)
         {
             terrainExaggeration = exaggeration
@@ -1025,6 +1144,9 @@ class IKMapView(
      */
     fun setOrnaments(compass: Boolean, scaleBar: Boolean, logo: Boolean, attribution: Boolean)
     {
+        if (destroyed)
+            return
+
         mapView.compass.enabled = compass
         mapView.scalebar.enabled = scaleBar
         mapView.logo.enabled = logo
@@ -1036,6 +1158,9 @@ class IKMapView(
      */
     fun visibleBoundsJson(): String
     {
+        if (destroyed)
+            return ""
+
         val bounds = mapView.mapboxMap.coordinateBoundsForCamera(
             mapView.mapboxMap.cameraState.toCameraOptions()
         )
@@ -1049,6 +1174,9 @@ class IKMapView(
 
     fun setGestures(scroll: Boolean, zoom: Boolean, rotate: Boolean, pitch: Boolean)
     {
+        if (destroyed)
+            return
+
         mapView.gestures.updateSettings {
             scrollEnabled = scroll
             pinchToZoomEnabled = zoom
@@ -1064,9 +1192,98 @@ class IKMapView(
 
     // region Lifecycle & helpers
 
+    override fun onAttachedToWindow()
+    {
+        attached = true
+        everAttached = true
+
+        // A teardown requested while the map was still on screen is cancelled when it
+        // comes back. MAUI disconnects handlers late (Page.SendNavigatedFrom defers to
+        // OnUnloaded, and an Android fragment swap creates the incoming view before it
+        // destroys the outgoing one), so a disconnect can arrive for a map that is
+        // being shown again — destroying it there is exactly what turns it black.
+        pendingDestroy?.let { mainHandler.removeCallbacks(it) }
+        pendingDestroy = null
+
+        if (!destroyed && hostLifecycle == null)
+        {
+            // Read from the parent, not from us: our own owner is already installed here.
+            hostLifecycle = (parent as? View)?.let { ViewTreeLifecycleOwner.get(it) }?.lifecycle
+            hostLifecycle?.addObserver(hostObserver)
+        }
+
+        syncLifecycle()
+        super.onAttachedToWindow()
+    }
+
+    override fun onDetachedFromWindow()
+    {
+        attached = false
+        syncLifecycle()
+        super.onDetachedFromWindow()
+        scheduleDestroyIfIdle()
+    }
+
+    /**
+     * Teardown request from the MAUI handler's DisconnectHandler. The map is not
+     * destroyed while it is still attached to a window, and not before the main loop
+     * has turned once — see onAttachedToWindow for why.
+     */
     fun destroy()
     {
+        if (destroyed)
+            return
+
+        disconnected = true
         listener = null
+        scheduleDestroyIfIdle()
+    }
+
+    private fun syncLifecycle()
+    {
+        if (destroyed)
+            return
+
+        // Mirrors the host, capped by our own attachment: detached means the page is
+        // not on screen, so the map must stop rendering but stay alive.
+        val hostState = hostLifecycle?.currentState ?: Lifecycle.State.RESUMED
+        lifecycleRegistry.currentState = when
+        {
+            !attached || !hostState.isAtLeast(Lifecycle.State.STARTED) -> Lifecycle.State.CREATED
+            hostState.isAtLeast(Lifecycle.State.RESUMED) -> Lifecycle.State.RESUMED
+            else -> Lifecycle.State.STARTED
+        }
+    }
+
+    private fun scheduleDestroyIfIdle()
+    {
+        if (destroyed || !disconnected || attached || pendingDestroy != null)
+            return
+
+        val runnable = Runnable {
+            pendingDestroy = null
+            if (!attached)
+                performDestroy()
+        }
+        pendingDestroy = runnable
+        mainHandler.post(runnable)
+    }
+
+    private fun performDestroy()
+    {
+        if (destroyed)
+            return
+
+        destroyed = true
+        pendingDestroy?.let { mainHandler.removeCallbacks(it) }
+        pendingDestroy = null
+        listener = null
+
+        cancelables.forEach { it.cancel() }
+        cancelables.clear()
+        hostLifecycle?.removeObserver(hostObserver)
+        hostLifecycle = null
+
         mapView.viewAnnotationManager.removeAllViewAnnotations()
         viewAnnotationViews.clear()
         pointManager = null
@@ -1075,9 +1292,25 @@ class IKMapView(
         markerIdsByAnnotationId.clear()
         polylineIdsByAnnotationId.clear()
         polygonIdsByAnnotationId.clear()
+        geoJsonSources.clear()
+        layerConfigs.clear()
+        clusterConfigs.clear()
+
+        // Driving our own registry to DESTROYED is what tears the map down: the Mapbox
+        // lifecycle plugin forwards ON_DESTROY to MapView.onDestroy() and runs its own
+        // cleanup, which unregisters the ComponentCallbacks2 it put on the Activity
+        // context. Calling MapView.onDestroy() by hand skips that and leaks the map.
+        if (lifecycleRegistry.currentState.isAtLeast(Lifecycle.State.CREATED))
+            lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
+
+        // Never attached means the plugin never bound — nothing else will destroy it.
+        if (!everAttached)
+            mapView.onDestroy()
+
         removeAllViews()
-        mapView.onStop()
-        mapView.onDestroy()
+        ViewTreeLifecycleOwner.set(this, null)
+        customIconCache.clear()
+        pinCache.clear()
     }
 
     private val customIconCache = HashMap<String, Bitmap>()

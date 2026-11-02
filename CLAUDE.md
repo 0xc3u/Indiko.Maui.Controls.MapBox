@@ -85,6 +85,21 @@ Markers cross the boundary as a JSON array (see `AnnotationSerializer`). Consequ
 - **Handlers**: follow the Chat plugin conventions — `ConnectHandler`/`DisconnectHandler`,
   listeners hold only a `WeakReference<MapView>` (NSObject subclasses leak on circular refs on
   Apple platforms), events are dispatched to the UI thread via `view.Dispatcher`.
+- **Map lifecycle / teardown**: a Mapbox `MapView` is strictly single-use — after `onDestroy`
+  its render thread is gone for good and the map stays black. So `DisconnectHandler` only
+  *requests* teardown: both facades defer it until the view has left the window and the main
+  loop has turned once, and a re-attach in between cancels it. MAUI disconnects handlers late
+  (`Page.SendNavigatedFrom` defers to `OnUnloaded`, and an Android fragment swap creates the
+  incoming view before destroying the outgoing one), so a disconnect can arrive for a map that
+  is being shown again. Every public facade member is a no-op once destroyed.
+  On Android the facade also installs **its own** `LifecycleRegistry` as the subtree's
+  `ViewTreeLifecycleOwner` (mirroring the host, capped by attachment) instead of letting the
+  Mapbox lifecycle plugin bind to the Activity, which outlives the page: the plugin then
+  delivers `ON_DESTROY` and runs its own cleanup, and the registry's terminal `DESTROYED` state
+  makes a dead map unrestartable. `androidx.lifecycle` is `compileOnly` in Gradle (Mapbox pins
+  it strictly to 2.5.1; only `ViewTreeLifecycleOwner.set/get` statics are used, which are
+  binary-identical in the 2.11 the .NET side gets from NuGet). Regression check:
+  the sample's "Navigation" chip pushes `NavigationTestPage` — push/pop it repeatedly.
 - **Annotations**: `ObservableRangeCollection<MapAnnotation>` (also Polylines/Polygons) with
   replace-all JSON push on every collection change (spike-level; diffing is a later optimization).
 - **GeoJSON sources/layers**: imperative MapView API (`AddGeoJsonSource`/`AddLayer`/`Remove*`) via

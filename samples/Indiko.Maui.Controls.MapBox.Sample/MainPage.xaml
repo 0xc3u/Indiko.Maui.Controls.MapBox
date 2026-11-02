@@ -154,6 +154,10 @@
                         <Button Text="Bounds" Style="{StaticResource Chip}" Clicked="OnShowVisibleBounds" />
                         <Button Text="Marker ×" Style="{StaticResource Chip}" Clicked="OnClearMarkers" />
                     </HorizontalStackLayout>
+                    <HorizontalStackLayout Spacing="8">
+                        <!-- Push/pop regression check for issue #1 (black map on reopen). -->
+                        <Button Text="Navigation" Style="{StaticResource Chip}" Clicked="OnOpenNavigationTest" />
+                    </HorizontalStackLayout>
 
                     <Label Text="ORTE" Style="{StaticResource SectionHeader}" />
                     <HorizontalStackLayout Spacing="8">

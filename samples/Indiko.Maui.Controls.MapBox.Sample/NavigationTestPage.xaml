@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:map="clr-namespace:Indiko.Maui.Controls.MapBox;assembly=Indiko.Maui.Controls.MapBox"
+             xmlns:mapModels="clr-namespace:Indiko.Maui.Controls.MapBox.Models;assembly=Indiko.Maui.Controls.MapBox"
+             x:Class="Indiko.Maui.Controls.MapBox.Sample.NavigationTestPage"
+             Title="Navigation">
+
+    <!--
+      Regression page for issue #1 "Black map upon reopening page": push this page,
+      go back, push it again. Every push builds a fresh MapView, so the map has to
+      render on the second and every later visit. A Mapbox MapView is single-use —
+      if its teardown runs too early, what comes back is a black rectangle.
+    -->
+    <Grid RowDefinitions="*,Auto">
+
+        <map:MapView x:Name="Map"
+                     StyleUri="{x:Static mapModels:MapStyles.Outdoors}"
+                     ShowUserLocation="True"
+                     MapReady="OnMapReady"
+                     StyleLoaded="OnStyleLoaded">
+            <map:MapView.Camera>
+                <mapModels:MapCameraPosition Latitude="46.5934" Longitude="7.9089" Zoom="12" />
+            </map:MapView.Camera>
+        </map:MapView>
+
+        <VerticalStackLayout Grid.Row="1" Padding="16" Spacing="6" BackgroundColor="#FFFFFF">
+            <Label x:Name="StatusLabel" Text="Warte auf MapReady …" FontSize="13" TextColor="#1F2937" />
+            <Label Text="Zurück und wieder hierher navigieren — die Karte muss jedes Mal rendern."
+                   FontSize="12" TextColor="#6B7280" />
+            <Button Text="Zurück" Clicked="OnBack" BackgroundColor="#6AA127" TextColor="#FFFFFF"
+                    CornerRadius="18" HeightRequest="38" />
+        </VerticalStackLayout>
+
+    </Grid>
+
+</ContentPage>

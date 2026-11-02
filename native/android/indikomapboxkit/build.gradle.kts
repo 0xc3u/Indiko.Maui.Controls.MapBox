@@ -32,6 +32,12 @@ dependencies {
     // this as XA0141). -ndk27 pulls the 16 KB-aligned variants of the whole SDK —
     // base/maps/android-core-ndk27 11.30.1 and common-ndk27 24.30.1 — transitively.
     api("com.mapbox.maps:android-ndk27:11.30.1")
+
+    // LifecycleRegistry / ViewTreeLifecycleOwner: IKMapView owns the map's lifecycle
+    // instead of inheriting the Activity's. compileOnly like every other non-Mapbox
+    // dependency — exportMapboxDeps only exports com.mapbox.*, the .NET side gets
+    // AndroidX from NuGet (Xamarin.AndroidX.Lifecycle.Runtime, via AppCompat).
+    compileOnly("androidx.lifecycle:lifecycle-runtime:2.5.1")
 }
 
 // Exports the com.mapbox.* runtime AARs so the .NET binding project can reference

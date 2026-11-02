@@ -85,6 +85,14 @@ public class IKMapView: UIView
     private var polygonManager: PolygonAnnotationManager?
     private var cancelables = Set<AnyCancelable>()
 
+    // Teardown state, mirroring IKMapView.kt. The map is never torn down while it is
+    // still on screen: MAUI disconnects handlers late (Page.SendNavigatedFrom defers
+    // to OnUnloaded), so a disconnect can arrive for a map that is being shown again,
+    // and after destroy() this facade's mapView is gone for good.
+    private var disconnected = false
+    private var destroyed = false
+    private var destroyScheduled = false
+
     // Registry of runtime sources/layers — Mapbox drops them on every style
     // reload, so they are re-applied after each onStyleLoaded.
     private var geoJsonSources: [String: String] = [:]
@@ -134,7 +142,7 @@ public class IKMapView: UIView
         }.store(in: &cancelables)
 
         mapView.mapboxMap.onStyleLoaded.observe { [weak self] _ in
-            guard let self else { return }
+            guard let self, !self.destroyed else { return }
             for (id, geoJson) in self.geoJsonSources
             {
                 self.applyGeoJsonSource(id: id, geoJson: geoJson)
@@ -203,12 +211,16 @@ public class IKMapView: UIView
     @objc(setStyleUri:)
     public func setStyleUri(_ uri: String)
     {
+        if destroyed { return }
+
         mapView.mapboxMap.loadStyle(StyleURI(rawValue: uri) ?? .streets)
     }
 
     @objc(setCamera:longitude:zoom:bearing:pitch:)
     public func setCamera(latitude: Double, longitude: Double, zoom: Double, bearing: Double, pitch: Double)
     {
+        if destroyed { return }
+
         mapView.mapboxMap.setCamera(to: CameraOptions(
             center: CLLocationCoordinate2D(latitude: latitude, longitude: longitude),
             zoom: zoom, bearing: bearing, pitch: pitch))
@@ -218,6 +230,8 @@ public class IKMapView: UIView
     public func flyTo(latitude: Double, longitude: Double, zoom: Double, bearing: Double,
                       pitch: Double, durationMs: Double)
     {
+        if destroyed { return }
+
         mapView.camera.fly(to: CameraOptions(
             center: CLLocationCoordinate2D(latitude: latitude, longitude: longitude),
             zoom: zoom, bearing: bearing, pitch: pitch),
@@ -230,6 +244,8 @@ public class IKMapView: UIView
     public func fitBounds(minLat: Double, minLng: Double, maxLat: Double, maxLng: Double,
                           padding: Double, durationMs: Double)
     {
+        if destroyed { return }
+
         let bounds = CoordinateBounds(
             southwest: CLLocationCoordinate2D(latitude: minLat, longitude: minLng),
             northeast: CLLocationCoordinate2D(latitude: maxLat, longitude: maxLng))
@@ -255,6 +271,8 @@ public class IKMapView: UIView
     @objc(setMarkersJson:)
     public func setMarkers(json: String)
     {
+        if destroyed { return }
+
         guard let data = json.data(using: .utf8),
               let items = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
         else { return }
@@ -319,6 +337,8 @@ public class IKMapView: UIView
     @objc(clearMarkers)
     public func clearMarkers()
     {
+        if destroyed { return }
+
         pointManager?.annotations = []
     }
 
@@ -329,6 +349,8 @@ public class IKMapView: UIView
     @objc(setPolylinesJson:)
     public func setPolylines(json: String)
     {
+        if destroyed { return }
+
         guard let data = json.data(using: .utf8),
               let items = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
         else { return }
@@ -363,6 +385,8 @@ public class IKMapView: UIView
     @objc(clearPolylines)
     public func clearPolylines()
     {
+        if destroyed { return }
+
         polylineManager?.annotations = []
     }
 
@@ -371,6 +395,8 @@ public class IKMapView: UIView
     @objc(setPolygonsJson:)
     public func setPolygons(json: String)
     {
+        if destroyed { return }
+
         guard let data = json.data(using: .utf8),
               let items = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
         else { return }
@@ -408,6 +434,8 @@ public class IKMapView: UIView
     @objc(clearPolygons)
     public func clearPolygons()
     {
+        if destroyed { return }
+
         polygonManager?.annotations = []
     }
 
@@ -417,6 +445,8 @@ public class IKMapView: UIView
     @objc(addGeoJsonSource:geoJson:)
     public func addGeoJsonSource(id: String, geoJson: String)
     {
+        if destroyed { return }
+
         if var config = clusterConfigs[id]
         {
             // Clustered source: only its data is replaced, cluster config stays.
@@ -433,6 +463,8 @@ public class IKMapView: UIView
     @objc(removeGeoJsonSource:)
     public func removeGeoJsonSource(id: String)
     {
+        if destroyed { return }
+
         geoJsonSources.removeValue(forKey: id)
         try? mapView.mapboxMap.removeSource(withId: id)
     }
@@ -442,6 +474,8 @@ public class IKMapView: UIView
     @objc(addLayerJson:)
     public func addLayer(json: String)
     {
+        if destroyed { return }
+
         guard let data = json.data(using: .utf8),
               let config = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let id = config["id"] as? String
@@ -455,6 +489,8 @@ public class IKMapView: UIView
     @objc(removeLayer:)
     public func removeLayer(id: String)
     {
+        if destroyed { return }
+
         layerConfigs.removeAll { $0.id == id }
         try? mapView.mapboxMap.removeLayer(withId: id)
     }
@@ -528,6 +564,8 @@ public class IKMapView: UIView
     public func addViewAnnotation(id: String, view: UIView, latitude: Double, longitude: Double,
                                   width: Double, height: Double)
     {
+        if destroyed { return }
+
         removeViewAnnotation(id: id)
 
         view.frame = CGRect(x: 0, y: 0, width: width, height: height)
@@ -543,6 +581,8 @@ public class IKMapView: UIView
     @objc(removeViewAnnotation:)
     public func removeViewAnnotation(id: String)
     {
+        if destroyed { return }
+
         viewAnnotationsById.removeValue(forKey: id)?.remove()
     }
 
@@ -557,6 +597,8 @@ public class IKMapView: UIView
     @objc(downloadOfflineRegionJson:)
     public func downloadOfflineRegion(json: String)
     {
+        if destroyed { return }
+
         guard let data = json.data(using: .utf8),
               let config = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let id = config["id"] as? String,
@@ -627,6 +669,8 @@ public class IKMapView: UIView
     @objc(removeOfflineRegion:)
     public func removeOfflineRegion(id: String)
     {
+        if destroyed { return }
+
         tileRegionCancelables.removeValue(forKey: id)?.cancel()
         TileStore.default.removeTileRegion(forId: id)
     }
@@ -683,6 +727,8 @@ public class IKMapView: UIView
     @objc(addClusteredSourceJson:)
     public func addClusteredSource(json: String)
     {
+        if destroyed { return }
+
         guard let data = json.data(using: .utf8),
               let config = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let id = config["sourceId"] as? String
@@ -695,6 +741,8 @@ public class IKMapView: UIView
     @objc(removeClusteredSource:)
     public func removeClusteredSource(id: String)
     {
+        if destroyed { return }
+
         clusterConfigs.removeValue(forKey: id)
         for suffix in ["-clusters", "-cluster-count", "-points"]
         {
@@ -829,6 +877,8 @@ public class IKMapView: UIView
     @objc(setUserLocationEnabled:)
     public func setUserLocationEnabled(_ enabled: Bool)
     {
+        if destroyed { return }
+
         mapView.location.options.puckType = enabled ? .puck2D(.makeDefault(showBearing: true)) : nil
     }
 
@@ -838,6 +888,8 @@ public class IKMapView: UIView
     @objc(setFollowPuck:zoom:trackBearing:)
     public func setFollowPuck(enabled: Bool, zoom: Double, trackBearing: Bool)
     {
+        if destroyed { return }
+
         if enabled
         {
             if mapView.location.options.puckType == nil
@@ -866,6 +918,8 @@ public class IKMapView: UIView
     @objc(setTerrainEnabled:exaggeration:)
     public func setTerrain(enabled: Bool, exaggeration: Double)
     {
+        if destroyed { return }
+
         if enabled
         {
             terrainExaggeration = exaggeration
@@ -911,6 +965,8 @@ public class IKMapView: UIView
     @objc(setOrnamentsCompass:scaleBar:logo:attribution:)
     public func setOrnaments(compass: Bool, scaleBar: Bool, logo: Bool, attribution: Bool)
     {
+        if destroyed { return }
+
         mapView.ornaments.options.compass.visibility = compass ? .adaptive : .hidden
         mapView.ornaments.options.scaleBar.visibility = scaleBar ? .adaptive : .hidden
         mapView.ornaments.logoView.isHidden = !logo
@@ -921,6 +977,8 @@ public class IKMapView: UIView
     @objc(visibleBoundsJson)
     public func visibleBoundsJson() -> String
     {
+        if destroyed { return "" }
+
         let bounds = mapView.mapboxMap.coordinateBounds(for: mapView.bounds)
         return String(
             format: "{\"minLat\":%.8f,\"minLng\":%.8f,\"maxLat\":%.8f,\"maxLng\":%.8f}",
@@ -932,6 +990,8 @@ public class IKMapView: UIView
     @objc(setGesturesScroll:zoom:rotate:pitch:)
     public func setGestures(scroll: Bool, zoom: Bool, rotate: Bool, pitch: Bool)
     {
+        if destroyed { return }
+
         mapView.gestures.options.panEnabled = scroll
         mapView.gestures.options.pinchZoomEnabled = zoom
         mapView.gestures.options.doubleTapToZoomInEnabled = zoom
@@ -943,9 +1003,45 @@ public class IKMapView: UIView
 
     // MARK: - Lifecycle
 
+    public override func didMoveToWindow()
+    {
+        super.didMoveToWindow()
+        scheduleDestroyIfIdle()
+    }
+
+    /// Teardown request from the MAUI handler's DisconnectHandler. Deferred until the
+    /// map has left the window and the run loop has turned once — a detach/re-attach
+    /// inside a single navigation transition must not count as "gone".
     @objc(destroy)
     public func destroy()
     {
+        if destroyed { return }
+
+        disconnected = true
+        listener = nil
+        scheduleDestroyIfIdle()
+    }
+
+    private func scheduleDestroyIfIdle()
+    {
+        if destroyed || !disconnected || window != nil || destroyScheduled { return }
+
+        destroyScheduled = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.destroyScheduled = false
+            if self.window == nil && self.disconnected
+            {
+                self.performDestroy()
+            }
+        }
+    }
+
+    private func performDestroy()
+    {
+        if destroyed { return }
+
+        destroyed = true
         cancelables.removeAll()
         listener = nil
         pointManager = nil
@@ -1030,6 +1126,8 @@ extension IKMapView: ViewportStatusObserver
     public func viewportStatusDidChange(from fromStatus: ViewportStatus, to toStatus: ViewportStatus,
                                         reason: ViewportStatusChangeReason)
     {
+        if destroyed { return }
+
         let active = Self.isFollowPuck(toStatus)
         listener?.onFollowPuckChanged(active: active)
     }
