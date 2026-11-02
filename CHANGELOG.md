@@ -1,3 +1,10 @@
+## [1.8.3](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/compare/v1.8.2...v1.8.3) (2026-11-02)
+
+### Bug Fixes
+
+* **ios:** rebuild the facade XCFramework with the deferred teardown ([b93bacb](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/commit/b93bacb8f9f424593c027da80d824f26e9188717))
+
+
 ## [1.8.2](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/compare/v1.8.1...v1.8.2) (2026-11-02)
 
 ### Bug Fixes
