@@ -26,7 +26,12 @@ android {
 }
 
 dependencies {
-    api("com.mapbox.maps:android:11.30.1")
+    // The -ndk27 variant is required, not the default artifact: Google Play rejects new
+    // app bundles whose native libraries are not 16 KB page-size compatible, and the
+    // default Mapbox .so files are linked with 4 KB LOAD alignment (.NET Android reports
+    // this as XA0141). -ndk27 pulls the 16 KB-aligned variants of the whole SDK —
+    // base/maps/android-core-ndk27 11.30.1 and common-ndk27 24.30.1 — transitively.
+    api("com.mapbox.maps:android-ndk27:11.30.1")
 }
 
 // Exports the com.mapbox.* runtime AARs so the .NET binding project can reference

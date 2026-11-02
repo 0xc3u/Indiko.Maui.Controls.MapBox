@@ -49,7 +49,7 @@ MapView (src/Indiko.Maui.Controls.MapBox/MapView.cs — BindableProperties, even
     └── MapViewHandler (Platforms/Android + Platforms/iOS — PropertyMapper + CommandMapper)
             └── Binding projects (Bindings.Android: AAR; Bindings.iOS: hand-written ApiDefinition.cs)
                     └── IndikoMapboxKit facade (native/android Kotlin; native/ios Swift @objc)
-                            └── Mapbox Maps SDK v11 (Android 11.30.1, iOS 11.26.0 — pinned)
+                            └── Mapbox Maps SDK v11 (Android 11.30.1 -ndk27, iOS 11.26.0 — pinned)
 ```
 
 ### The facade principle (key design decision)
@@ -75,6 +75,9 @@ Markers cross the boundary as a JSON array (see `AnnotationSerializer`). Consequ
   the build script sets JAVA_HOME/ANDROID_HOME automatically. The `exportMapboxDeps` task copies
   all `com.mapbox.*` runtime AARs/JARs for the binding project (`Bind="false"`); non-Mapbox Java
   deps (Kotlin stdlib, coroutines, OkHttp, AndroidX, Gson) come from NuGet instead.
+  The Mapbox dependency must stay on the `-ndk27` variant (`com.mapbox.maps:android-ndk27`):
+  its `.so` files are 16 KB page aligned, which Google Play requires for new app bundles with
+  native code. The default artifacts are 4 KB aligned and make .NET Android report `XA0141`.
 - **Bindings.Android**: `EnableDefaultAndroidItems=false` is required — default globbing would
   re-add every AAR with `Bind=true` and try to bind the whole Mapbox SDK (~1200 errors).
   The Kotlin interface binds as `IKMapEventListener` (no extra `I` prefix). Namespace is forced
