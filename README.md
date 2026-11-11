@@ -29,6 +29,7 @@ on the UI thread; command parameters carry the same `EventArgs` object the event
 - 💬 View annotations — any MAUI view anchored to a coordinate, gestures included
 - 📴 Offline regions (style pack + tiles, optionally terrain) with download progress events; list and delete regions without a map (`MapboxOffline`)
 - ⛰️ `QueryTerrainElevation()` returns the ground elevation at any coordinate, corrected for the terrain exaggeration
+- 🚧 Camera constraints — restrict panning to a bounding box and clamp zoom/pitch
 - ⚠️ `MapLoadError` reports style/source/tile/sprite/glyph load failures instead of failing silently
 - 🧭 Compass on rotation, scale bar, user-location puck, per-gesture configuration
 - 🎛️ Ornament visibility: compass, scale bar, Mapbox logo and attribution individually switchable
@@ -81,6 +82,7 @@ code, and the reason .NET Android no longer reports `XA0141` for this package.
 | Set camera (center, zoom, bearing, pitch) | ✅ | `Camera` property (one-way), `CurrentCamera` (live) |
 | Animated camera (`flyTo`) | ✅ | `FlyTo(camera, durationMs)` |
 | Fit to bounding box (`cameraForCoordinateBounds`) | ✅ | `FitBounds`, `FitBoundsToContent`, switchable `AutoFitBounds` |
+| Camera constraints (bounds, min/max zoom & pitch) | ✅ | `CameraBounds`, `MinZoom`, `MaxZoom`, `MinPitch`, `MaxPitch` |
 | Camera padding / anchor offsets | 🔶 | uniform `FitBoundsPadding` only |
 | Visible viewport bounds (`coordinateBoundsForCamera`) | ✅ | `GetVisibleBounds()` |
 | **Annotations** | | |
@@ -787,6 +789,36 @@ meters. The result is independent of `TerrainExaggeration`.
 > if that cache entry is lost while the region survives (clearing the app's ambient cache):
 > the DEM source then reports `Online connectivity is disabled` and `QueryTerrainElevation`
 > returns `null` until the device has been online once.
+
+---
+
+## Camera constraints
+
+Keeps the camera inside a region and within a zoom/pitch range — useful when your data only
+covers one area, or when zooming out past a certain level makes no sense. All five are plain
+bindable properties; `null` means "SDK default".
+
+```xml
+<map:MapView MinZoom="7" MaxZoom="14" MaxPitch="60" />
+```
+
+```csharp
+map.CameraBounds = new MapBounds(45.80, 5.95, 47.81, 10.50);   // Switzerland
+map.MinZoom = 7;
+map.MaxZoom = 14;
+
+map.CameraBounds = null;                                       // lift the restriction
+```
+
+| Property | Default | Notes |
+|---|---|---|
+| `CameraBounds` | null | pan restriction; `null` resets it to the whole world |
+| `MinZoom` / `MaxZoom` | 0 / 22 | |
+| `MinPitch` / `MaxPitch` | 0 / 85 | degrees |
+
+> The *camera centre* is constrained, not the viewport — zoomed out far enough the visible
+> area still extends past the box. A `FlyTo` outside the box is clamped to its edge rather
+> than rejected, so always read `CurrentCamera` if you need to know where you ended up.
 
 ---
 

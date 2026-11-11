@@ -413,6 +413,10 @@ SWIFT_CLASS_NAMED("IKMapView")
 /// that includes terrain). Mapbox reports the elevation multiplied by the
 /// terrain exaggeration; this returns the real value.
 - (double)queryTerrainElevation:(double)latitude longitude:(double)longitude SWIFT_WARN_UNUSED_RESULT;
+/// Constrains the camera. Any argument may be NaN, which means “leave at the SDK
+/// default”. The four bounds values are all-or-nothing: pass NaN for all of them to
+/// lift a pan restriction.
+- (void)setCameraBoundsMinLat:(double)minLat minLng:(double)minLng maxLat:(double)maxLat maxLng:(double)maxLng minZoom:(double)minZoom maxZoom:(double)maxZoom minPitch:(double)minPitch maxPitch:(double)maxPitch;
 - (void)setGesturesScroll:(BOOL)scroll zoom:(BOOL)zoom rotate:(BOOL)rotate pitch:(BOOL)pitch;
 - (void)didMoveToWindow;
 /// Teardown request from the MAUI handler’s DisconnectHandler. Deferred until the
@@ -871,6 +875,10 @@ SWIFT_CLASS_NAMED("IKMapView")
 /// that includes terrain). Mapbox reports the elevation multiplied by the
 /// terrain exaggeration; this returns the real value.
 - (double)queryTerrainElevation:(double)latitude longitude:(double)longitude SWIFT_WARN_UNUSED_RESULT;
+/// Constrains the camera. Any argument may be NaN, which means “leave at the SDK
+/// default”. The four bounds values are all-or-nothing: pass NaN for all of them to
+/// lift a pan restriction.
+- (void)setCameraBoundsMinLat:(double)minLat minLng:(double)minLng maxLat:(double)maxLat maxLng:(double)maxLng minZoom:(double)minZoom maxZoom:(double)maxZoom minPitch:(double)minPitch maxPitch:(double)maxPitch;
 - (void)setGesturesScroll:(BOOL)scroll zoom:(BOOL)zoom rotate:(BOOL)rotate pitch:(BOOL)pitch;
 - (void)didMoveToWindow;
 /// Teardown request from the MAUI handler’s DisconnectHandler. Deferred until the

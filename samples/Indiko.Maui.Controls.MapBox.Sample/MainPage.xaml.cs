@@ -56,12 +56,20 @@ public partial class MainPage : ContentPage
 
 	private void OnZoomOut(object? sender, EventArgs e) => NudgeZoom(-1);
 
-	private void NudgeZoom(double delta)
+	private async void NudgeZoom(double delta)
 	{
 		var camera = Map.CurrentCamera;
-		if (camera is not null)
-			Map.FlyTo(new MapCameraPosition(camera.Latitude, camera.Longitude, camera.Zoom + delta,
-				camera.Bearing, camera.Pitch), 200);
+		if (camera is null)
+			return;
+
+		Map.FlyTo(new MapCameraPosition(camera.Latitude, camera.Longitude, camera.Zoom + delta,
+			camera.Bearing, camera.Pitch), 200);
+
+		// Report the zoom the map actually settled on — with MinZoom/MaxZoom set it can
+		// differ from what was requested.
+		await Task.Delay(350);
+		if (Map.CurrentCamera is { } settled)
+			StatusLabel.Text = $"Zoom {settled.Zoom:F1}";
 	}
 
 	private void OnFlyToLauterbrunnen(object? sender, EventArgs e)
@@ -205,6 +213,38 @@ public partial class MainPage : ContentPage
 		StatusLabel.Text = e.SourceId is { } source
 			? $"\u26A0 {e.Type} '{source}': {e.Message}"
 			: $"\u26A0 {e.Type}: {e.Message}";
+	}
+
+	/// <summary>
+	/// Restricts the camera to Switzerland and zoom 7–14, then flies towards Paris to show
+	/// the clamping: the camera stops at the western edge of the box instead.
+	/// </summary>
+	private async void OnToggleCameraLimit(object? sender, EventArgs e)
+	{
+		var enable = Map.CameraBounds is null;
+		PaintChip(ChipCameraLimit, enable);
+
+		if (!enable)
+		{
+			Map.CameraBounds = null;
+			Map.MinZoom = null;
+			Map.MaxZoom = null;
+			StatusLabel.Text = "Kamera-Limit aufgehoben";
+			return;
+		}
+
+		Map.CameraBounds = new MapBounds(45.80, 5.95, 47.81, 10.50);
+		Map.MinZoom = 7;
+		Map.MaxZoom = 14;
+		StatusLabel.Text = "Limit: Schweiz, Zoom 7–14 — FlyTo Paris…";
+
+		Map.FlyTo(new MapCameraPosition(48.8566, 2.3522, 10), 2000);
+		await Task.Delay(2600);
+
+		var camera = Map.CurrentCamera;
+		StatusLabel.Text = camera is null
+			? "Limit aktiv"
+			: $"Limit aktiv — Paris geblockt bei {camera.Latitude:F2}, {camera.Longitude:F2} (Zoom {camera.Zoom:F1})";
 	}
 
 	private void OnPolylineClicked(object? sender, PolylineClickedEventArgs e)

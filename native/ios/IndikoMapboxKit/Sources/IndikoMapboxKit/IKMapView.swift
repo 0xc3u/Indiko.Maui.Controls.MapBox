@@ -1129,6 +1129,37 @@ public class IKMapView: UIView
         return elevation / exaggeration
     }
 
+    /// Constrains the camera. Any argument may be NaN, which means "leave at the SDK
+    /// default". The four bounds values are all-or-nothing: pass NaN for all of them to
+    /// lift a pan restriction.
+    @objc(setCameraBoundsMinLat:minLng:maxLat:maxLng:minZoom:maxZoom:minPitch:maxPitch:)
+    public func setCameraBounds(
+        minLat: Double, minLng: Double, maxLat: Double, maxLng: Double,
+        minZoom: Double, maxZoom: Double, minPitch: Double, maxPitch: Double)
+    {
+        if destroyed { return }
+
+        let bounds: CoordinateBounds
+        if !minLat.isNaN && !minLng.isNaN && !maxLat.isNaN && !maxLng.isNaN
+        {
+            bounds = CoordinateBounds(
+                southwest: CLLocationCoordinate2D(latitude: minLat, longitude: minLng),
+                northeast: CLLocationCoordinate2D(latitude: maxLat, longitude: maxLng))
+        }
+        else
+        {
+            // Mapbox keeps the previous restriction unless it is explicitly reset.
+            bounds = CoordinateBounds.world
+        }
+
+        try? mapView.mapboxMap.setCameraBounds(with: CameraBoundsOptions(
+            bounds: bounds,
+            maxZoom: maxZoom.isNaN ? nil : maxZoom,
+            minZoom: minZoom.isNaN ? nil : minZoom,
+            maxPitch: maxPitch.isNaN ? nil : maxPitch,
+            minPitch: minPitch.isNaN ? nil : minPitch))
+    }
+
     @objc(setGesturesScroll:zoom:rotate:pitch:)
     public func setGestures(scroll: Bool, zoom: Bool, rotate: Bool, pitch: Bool)
     {

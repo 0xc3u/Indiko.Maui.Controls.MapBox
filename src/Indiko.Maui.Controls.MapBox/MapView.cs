@@ -150,6 +150,59 @@ public class MapView : View
         set => SetValue(ShowUserLocationProperty, value);
     }
 
+    public static readonly BindableProperty CameraBoundsProperty = BindableProperty.Create(
+        nameof(CameraBounds), typeof(MapBounds), typeof(MapView));
+
+    /// <summary>
+    /// Restricts panning to a bounding box. Null lifts the restriction. The camera is
+    /// kept inside the box, so the visible area can still extend past it when zoomed out.
+    /// </summary>
+    public MapBounds? CameraBounds
+    {
+        get => (MapBounds?)GetValue(CameraBoundsProperty);
+        set => SetValue(CameraBoundsProperty, value);
+    }
+
+    public static readonly BindableProperty MinZoomProperty = BindableProperty.Create(
+        nameof(MinZoom), typeof(double?), typeof(MapView));
+
+    /// <summary>Lowest zoom the user can reach; null = SDK default (0).</summary>
+    public double? MinZoom
+    {
+        get => (double?)GetValue(MinZoomProperty);
+        set => SetValue(MinZoomProperty, value);
+    }
+
+    public static readonly BindableProperty MaxZoomProperty = BindableProperty.Create(
+        nameof(MaxZoom), typeof(double?), typeof(MapView));
+
+    /// <summary>Highest zoom the user can reach; null = SDK default (22).</summary>
+    public double? MaxZoom
+    {
+        get => (double?)GetValue(MaxZoomProperty);
+        set => SetValue(MaxZoomProperty, value);
+    }
+
+    public static readonly BindableProperty MinPitchProperty = BindableProperty.Create(
+        nameof(MinPitch), typeof(double?), typeof(MapView));
+
+    /// <summary>Lowest camera pitch in degrees; null = SDK default (0).</summary>
+    public double? MinPitch
+    {
+        get => (double?)GetValue(MinPitchProperty);
+        set => SetValue(MinPitchProperty, value);
+    }
+
+    public static readonly BindableProperty MaxPitchProperty = BindableProperty.Create(
+        nameof(MaxPitch), typeof(double?), typeof(MapView));
+
+    /// <summary>Highest camera pitch in degrees; null = SDK default (85).</summary>
+    public double? MaxPitch
+    {
+        get => (double?)GetValue(MaxPitchProperty);
+        set => SetValue(MaxPitchProperty, value);
+    }
+
     public static readonly BindableProperty ScrollEnabledProperty = BindableProperty.Create(
         nameof(ScrollEnabled), typeof(bool), typeof(MapView), true);
 

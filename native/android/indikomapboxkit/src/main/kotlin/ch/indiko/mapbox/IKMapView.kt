@@ -26,6 +26,7 @@ import com.mapbox.common.TileStore
 import com.mapbox.geojson.Point
 import com.mapbox.geojson.Feature
 import com.mapbox.geojson.Polygon
+import com.mapbox.maps.CameraBoundsOptions
 import com.mapbox.maps.CameraOptions
 import com.mapbox.maps.CoordinateBounds
 import com.mapbox.maps.EdgeInsets
@@ -1295,6 +1296,43 @@ class IKMapView(
         val elevation = mapView.mapboxMap.getElevation(Point.fromLngLat(longitude, latitude))
             ?: return Double.NaN
         return elevation / exaggeration
+    }
+
+    /**
+     * Constrains the camera. Any argument may be NaN, which means "leave at the SDK
+     * default". The four bounds values are all-or-nothing: pass NaN for all of them to
+     * lift a pan restriction.
+     */
+    fun setCameraBounds(
+        minLat: Double, minLng: Double, maxLat: Double, maxLng: Double,
+        minZoom: Double, maxZoom: Double, minPitch: Double, maxPitch: Double,
+    )
+    {
+        if (destroyed)
+            return
+
+        val options = CameraBoundsOptions.Builder()
+        if (!minLat.isNaN() && !minLng.isNaN() && !maxLat.isNaN() && !maxLng.isNaN())
+        {
+            options.bounds(
+                CoordinateBounds(
+                    Point.fromLngLat(minLng, minLat),
+                    Point.fromLngLat(maxLng, maxLat),
+                )
+            )
+        }
+        else
+        {
+            // Mapbox keeps the previous restriction unless it is explicitly reset.
+            options.bounds(CoordinateBounds.world())
+        }
+
+        options.minZoom(if (minZoom.isNaN()) null else minZoom)
+        options.maxZoom(if (maxZoom.isNaN()) null else maxZoom)
+        options.minPitch(if (minPitch.isNaN()) null else minPitch)
+        options.maxPitch(if (maxPitch.isNaN()) null else maxPitch)
+
+        mapView.mapboxMap.setBounds(options.build())
     }
 
     fun setGestures(scroll: Boolean, zoom: Boolean, rotate: Boolean, pitch: Boolean)

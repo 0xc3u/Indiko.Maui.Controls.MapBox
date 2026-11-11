@@ -157,6 +157,7 @@
                     <HorizontalStackLayout Spacing="8">
                         <!-- Push/pop regression check for issue #1 (black map on reopen). -->
                         <Button Text="Navigation" Style="{StaticResource Chip}" Clicked="OnOpenNavigationTest" />
+                        <Button x:Name="ChipCameraLimit" Text="Kamera-Limit" Style="{StaticResource Chip}" Clicked="OnToggleCameraLimit" />
                     </HorizontalStackLayout>
 
                     <Label Text="TERRAIN &amp; OFFLINE" Style="{StaticResource SectionHeader}" />

@@ -206,6 +206,10 @@ interface IKMapView
     [Export("queryTerrainElevation:longitude:")]
     double QueryTerrainElevation(double latitude, double longitude);
 
+    [Export("setCameraBoundsMinLat:minLng:maxLat:maxLng:minZoom:maxZoom:minPitch:maxPitch:")]
+    void SetCameraBounds(double minLat, double minLng, double maxLat, double maxLng,
+        double minZoom, double maxZoom, double minPitch, double maxPitch);
+
     [Export("setGesturesScroll:zoom:rotate:pitch:")]
     void SetGestures(bool scroll, bool zoom, bool rotate, bool pitch);
 

@@ -36,6 +36,11 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
             [nameof(MapView.ZoomEnabled)] = MapGestures,
             [nameof(MapView.RotateEnabled)] = MapGestures,
             [nameof(MapView.PitchEnabled)] = MapGestures,
+            [nameof(MapView.CameraBounds)] = MapCameraBounds,
+            [nameof(MapView.MinZoom)] = MapCameraBounds,
+            [nameof(MapView.MaxZoom)] = MapCameraBounds,
+            [nameof(MapView.MinPitch)] = MapCameraBounds,
+            [nameof(MapView.MaxPitch)] = MapCameraBounds,
             [nameof(MapView.TerrainEnabled)] = MapTerrain,
             [nameof(MapView.TerrainExaggeration)] = MapTerrain,
             [nameof(MapView.ShowCompass)] = MapOrnaments,
@@ -180,6 +185,20 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
     {
         handler.PlatformView.SetOrnaments(
             view.ShowCompass, view.ShowScaleBar, view.ShowMapboxLogo, view.ShowAttribution);
+    }
+
+    private static void MapCameraBounds(MapViewHandler handler, MapView view)
+    {
+        var bounds = view.CameraBounds;
+        handler.PlatformView.SetCameraBounds(
+            bounds?.MinLatitude ?? double.NaN,
+            bounds?.MinLongitude ?? double.NaN,
+            bounds?.MaxLatitude ?? double.NaN,
+            bounds?.MaxLongitude ?? double.NaN,
+            view.MinZoom ?? double.NaN,
+            view.MaxZoom ?? double.NaN,
+            view.MinPitch ?? double.NaN,
+            view.MaxPitch ?? double.NaN);
     }
 
     private static void MapTerrain(MapViewHandler handler, MapView view)
