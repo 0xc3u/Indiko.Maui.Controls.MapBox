@@ -276,6 +276,7 @@ public class IKMapView: UIView
             self.applyStyleImportConfig()
             self.applyProjection()
             self.applyAtmosphere()
+            if self.skyConfig != nil { self.applySky() }
             self.listener?.onStyleLoaded()
         }.store(in: &cancelables)
 
@@ -1172,14 +1173,7 @@ public class IKMapView: UIView
         terrain.exaggeration = .constant(exaggeration)
         try? mapView.mapboxMap.setTerrain(terrain)
 
-        if !mapView.mapboxMap.layerExists(withId: "ik-sky")
-        {
-            var sky = SkyLayer(id: "ik-sky")
-            sky.skyType = .constant(.atmosphere)
-            sky.skyAtmosphereSun = .constant([0, 0])
-            sky.skyAtmosphereSunIntensity = .constant(15)
-            try? mapView.mapboxMap.addLayer(sky)
-        }
+        applySky()
     }
 
     /// Shows/hides the map ornaments. Compass and scale bar keep their adaptive
@@ -1505,6 +1499,57 @@ public class IKMapView: UIView
     /// Sets the atmosphere (fog) as raw style-spec JSON — keys such as "color",
     /// "high-color", "space-color", "horizon-blend", "star-intensity". An empty payload
     /// removes it. Re-applied after every style load.
+    /// Configures the sky layer. JSON: {"type":"atmosphere"|"gradient","sunAzimuth",
+    /// "sunElevation","sunIntensity","opacity"} — all optional. An empty payload drops
+    /// back to the defaults terrain uses, and removes the layer entirely when terrain is
+    /// off. The sky is most visible with a pitched camera.
+    @objc(setSkyJson:)
+    public func setSky(json: String)
+    {
+        if destroyed { return }
+
+        if json.isEmpty || json == "{}"
+        {
+            skyConfig = nil
+        }
+        else if let data = json.data(using: .utf8),
+                let config = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        {
+            skyConfig = config
+        }
+
+        if skyConfig == nil && terrainExaggeration == nil
+        {
+            try? mapView.mapboxMap.removeLayer(withId: "ik-sky")
+            return
+        }
+        applySky()
+    }
+
+    private var skyConfig: [String: Any]?
+
+    /// Shared by the terrain feature and the public setter, so there is one sky layer.
+    private func applySky()
+    {
+        if mapView.mapboxMap.layerExists(withId: "ik-sky")
+        {
+            try? mapView.mapboxMap.removeLayer(withId: "ik-sky")
+        }
+
+        var sky = SkyLayer(id: "ik-sky")
+        sky.skyType = .constant(skyConfig?["type"] as? String == "gradient" ? .gradient : .atmosphere)
+        sky.skyAtmosphereSun = .constant([
+            skyConfig?["sunAzimuth"] as? Double ?? 0,
+            skyConfig?["sunElevation"] as? Double ?? 0,
+        ])
+        sky.skyAtmosphereSunIntensity = .constant(skyConfig?["sunIntensity"] as? Double ?? 15)
+        if let opacity = skyConfig?["opacity"] as? Double
+        {
+            sky.skyOpacity = .constant(opacity)
+        }
+        try? mapView.mapboxMap.addLayer(sky)
+    }
+
     @objc(setAtmosphereJson:)
     public func setAtmosphere(json: String)
     {

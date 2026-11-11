@@ -141,6 +141,11 @@ public partial class MainPage : ContentPage
 			OnToggleExpressions(this, EventArgs.Empty);
 			CollapseSheet();
 		}
+		if (Environment.GetEnvironmentVariable("DEMO_SKY") == "1")
+		{
+			OnToggleSky(this, EventArgs.Empty);
+			CollapseSheet();
+		}
 		if (Environment.GetEnvironmentVariable("DEMO_ATMOSPHERE") == "1")
 		{
 			OnToggleAtmosphere(this, EventArgs.Empty);
@@ -793,6 +798,41 @@ public partial class MainPage : ContentPage
 		StatusLabel.Text = custom
 			? "Atmosphäre: eigene Farben, Sterne an"
 			: "Atmosphäre: Style-Standard";
+	}
+
+	/// <summary>
+	/// A low sun over the Lauterbrunnen valley. Terrain and a pitched camera come with it:
+	/// at pitch 0 you look straight down and never see the horizon the sky is drawn above.
+	/// </summary>
+	private void OnToggleSky(object? sender, EventArgs e)
+	{
+		var custom = Map.Sky is null;
+		PaintChip(ChipSky, custom);
+
+		if (custom)
+		{
+			Map.Projection = MapProjection.Mercator;
+			Map.Atmosphere = null;
+			PaintChip(ChipGlobe, false);
+			PaintChip(ChipAtmosphere, false);
+
+			Map.TerrainEnabled = true;
+			PaintChip(Fab3D, true);
+			Map.Sky = new MapSky
+			{
+				Type = MapSkyType.Atmosphere,
+				SunAzimuth = 270,
+				SunElevation = 3,
+				SunIntensity = 30,
+			};
+			Map.FlyTo(new MapCameraPosition(46.59, 7.91, 12.2, bearing: 250, pitch: 75), 1500);
+			StatusLabel.Text = "Himmel: tiefe Sonne im Westen";
+		}
+		else
+		{
+			Map.Sky = null;
+			StatusLabel.Text = "Himmel: Standard";
+		}
 	}
 
 	private void OnPolylineClicked(object? sender, PolylineClickedEventArgs e)

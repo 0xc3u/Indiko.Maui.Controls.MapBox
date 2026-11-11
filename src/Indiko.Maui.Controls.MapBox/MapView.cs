@@ -205,6 +205,19 @@ public class MapView : View
         set => SetValue(MapLanguageProperty, value);
     }
 
+    public static readonly BindableProperty SkyProperty = BindableProperty.Create(
+        nameof(Sky), typeof(MapSky), typeof(MapView));
+
+    /// <summary>
+    /// The sky above the horizon; null falls back to the defaults
+    /// <see cref="TerrainEnabled"/> uses. Only visible with a pitched camera.
+    /// </summary>
+    public MapSky? Sky
+    {
+        get => (MapSky?)GetValue(SkyProperty);
+        set => SetValue(SkyProperty, value);
+    }
+
     public static readonly BindableProperty AtmosphereProperty = BindableProperty.Create(
         nameof(Atmosphere), typeof(MapAtmosphere), typeof(MapView));
 

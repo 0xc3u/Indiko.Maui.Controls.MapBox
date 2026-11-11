@@ -323,6 +323,28 @@ internal static class AnnotationSerializer
     }
 
     /// <summary>
+    /// Serializes the sky. A null sky becomes an empty object, which both facades read as
+    /// "use the terrain defaults, or remove the sky when terrain is off".
+    /// </summary>
+    public static string ToSkyJson(MapSky? sky)
+    {
+        if (sky is null)
+            return "{}";
+
+        var builder = new StringBuilder("{");
+        builder.Append("\"type\":").Append(Quote(sky.Type == MapSkyType.Gradient ? "gradient" : "atmosphere"));
+        if (sky.SunAzimuth is { } azimuth)
+            builder.Append(",\"sunAzimuth\":").Append(Invariant(azimuth));
+        if (sky.SunElevation is { } elevation)
+            builder.Append(",\"sunElevation\":").Append(Invariant(elevation));
+        if (sky.SunIntensity is { } intensity)
+            builder.Append(",\"sunIntensity\":").Append(Invariant(intensity));
+        if (sky.Opacity is { } opacity)
+            builder.Append(",\"opacity\":").Append(Invariant(opacity));
+        return builder.Append('}').ToString();
+    }
+
+    /// <summary>
     /// Serializes the atmosphere into style-spec keys. Unset values are omitted so the
     /// style keeps its own; a null atmosphere serializes to an empty object, which both
     /// facades read as "remove it".

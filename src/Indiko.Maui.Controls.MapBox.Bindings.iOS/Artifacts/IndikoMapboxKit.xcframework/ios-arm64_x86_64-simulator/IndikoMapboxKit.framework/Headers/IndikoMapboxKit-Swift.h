@@ -463,6 +463,11 @@ SWIFT_CLASS_NAMED("IKMapView")
 /// Sets the atmosphere (fog) as raw style-spec JSON — keys such as “color”,
 /// “high-color”, “space-color”, “horizon-blend”, “star-intensity”. An empty payload
 /// removes it. Re-applied after every style load.
+/// Configures the sky layer. JSON: {“type”:“atmosphere”|“gradient”,“sunAzimuth”,
+/// “sunElevation”,“sunIntensity”,“opacity”} — all optional. An empty payload drops
+/// back to the defaults terrain uses, and removes the layer entirely when terrain is
+/// off. The sky is most visible with a pitched camera.
+- (void)setSkyJson:(NSString * _Nonnull)json;
 - (void)setAtmosphereJson:(NSString * _Nonnull)json;
 - (void)setProjection:(NSString * _Nonnull)name;
 - (void)setStyleImportConfigJson:(NSString * _Nonnull)json;
@@ -975,6 +980,11 @@ SWIFT_CLASS_NAMED("IKMapView")
 /// Sets the atmosphere (fog) as raw style-spec JSON — keys such as “color”,
 /// “high-color”, “space-color”, “horizon-blend”, “star-intensity”. An empty payload
 /// removes it. Re-applied after every style load.
+/// Configures the sky layer. JSON: {“type”:“atmosphere”|“gradient”,“sunAzimuth”,
+/// “sunElevation”,“sunIntensity”,“opacity”} — all optional. An empty payload drops
+/// back to the defaults terrain uses, and removes the layer entirely when terrain is
+/// off. The sky is most visible with a pitched camera.
+- (void)setSkyJson:(NSString * _Nonnull)json;
 - (void)setAtmosphereJson:(NSString * _Nonnull)json;
 - (void)setProjection:(NSString * _Nonnull)name;
 - (void)setStyleImportConfigJson:(NSString * _Nonnull)json;

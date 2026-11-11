@@ -37,6 +37,7 @@ on the UI thread; command parameters carry the same `EventArgs` object the event
 - ✨ Feature state — selection and hover styling without touching the source data
 - 🌍 Globe projection — a real 3D globe when zoomed out
 - 🌅 Atmosphere — fog colours, horizon blend and stars
+- 🌤️ Configurable sky — sun position and intensity, with or without terrain
 - 🌑 Standard-style configuration — `LightPreset` day/dusk/night, theme and 3D objects
 - 🤚 Individual zoom gestures switchable — double-tap, quick-zoom and pinch separately
 - 🔥 Heatmaps and 3D fill extrusions, driven by your feature data
@@ -110,7 +111,7 @@ code, and the reason .NET Android no longer reports `XA0141` for this package.
 | Fill / line / circle layers | ✅ | `AddLayer(MapLayer)` with color, opacity, width, radius, insert position |
 | Symbol layers (data-driven labels + icons) | ✅ | `MapLayerType.Symbol`: `TextField` property labels, halo, icon bytes, overlap |
 | Heatmap, fill-extrusion, raster, hillshade layers | ✅ | `MapLayerType`, styled through `MapLayer.Properties` |
-| Sky layer | ❌ | the terrain feature adds one internally |
+| Sky layer | ✅ | `Sky` — type, sun position and intensity |
 | Vector / raster / image sources | ✅ | `MapSource` + `AddSource` — TileJSON or XYZ templates, `SourceLayer` for vector |
 | Expressions | ✅ | `MapExpression` + `MapLayer.Properties` — any style-spec property, data- or zoom-driven |
 | Clustering | ✅ | `AddClusteredSource` — managed layers, counts, tap-to-expand zoom |
@@ -842,6 +843,33 @@ Results are ordered top-most first, so `hits[0]` is what the user visually hit.
 
 The `radius` parameter (default 8) widens the hit area in device-independent units — thin
 lines and small circles are otherwise hard to hit with a finger. `0` queries the exact point.
+
+---
+
+## Sky
+
+The sky above the horizon. Until now it was created implicitly by
+[`TerrainEnabled`](#3d-terrain) with fixed values; `Sky` makes it configurable and usable
+without terrain.
+
+```csharp
+map.Sky = new MapSky
+{
+    Type = MapSkyType.Atmosphere,   // or Gradient
+    SunAzimuth = 270,               // degrees, 0 = north
+    SunElevation = 3,               // degrees, 0 = at the horizon
+    SunIntensity = 30,
+};
+
+map.Sky = null;                     // back to the terrain defaults
+```
+
+> **Pitch the camera.** At pitch 0 you look straight down and the horizon is not on screen,
+> so the sky is invisible no matter how it is configured. The sample's demo pitches to 75°.
+
+`Sky` and `TerrainEnabled` share one layer, so they cannot fight over it: terrain creates
+the sky with defaults, `Sky` overrides them, and setting `Sky` back to null returns to
+those defaults — or removes the sky entirely when terrain is off.
 
 ---
 

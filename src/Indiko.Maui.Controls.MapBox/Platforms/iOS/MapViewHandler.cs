@@ -43,6 +43,7 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
             [nameof(MapView.MapLanguage)] = MapLanguage,
             [nameof(MapView.Projection)] = MapProjection,
             [nameof(MapView.Atmosphere)] = MapAtmosphere,
+            [nameof(MapView.Sky)] = MapSky,
             [nameof(MapView.LightPreset)] = MapStyleImportConfig,
             [nameof(MapView.StyleTheme)] = MapStyleImportConfig,
             [nameof(MapView.Show3dObjects)] = MapStyleImportConfig,
@@ -214,6 +215,11 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
     private static void MapLanguage(MapViewHandler handler, MapView view)
     {
         handler.PlatformView.SetMapLanguage(view.MapLanguage ?? string.Empty);
+    }
+
+    private static void MapSky(MapViewHandler handler, MapView view)
+    {
+        handler.PlatformView.SetSkyJson(AnnotationSerializer.ToSkyJson(view.Sky));
     }
 
     private static void MapAtmosphere(MapViewHandler handler, MapView view)
