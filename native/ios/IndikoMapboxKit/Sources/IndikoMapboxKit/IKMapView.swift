@@ -274,6 +274,9 @@ public class IKMapView: UIView
             }
             self.applyMapLanguage()
             self.applyStyleImportConfig()
+            self.applyProjection()
+            self.applyAtmosphere()
+            if self.skyConfig != nil { self.applySky() }
             self.listener?.onStyleLoaded()
         }.store(in: &cancelables)
 
@@ -1170,14 +1173,7 @@ public class IKMapView: UIView
         terrain.exaggeration = .constant(exaggeration)
         try? mapView.mapboxMap.setTerrain(terrain)
 
-        if !mapView.mapboxMap.layerExists(withId: "ik-sky")
-        {
-            var sky = SkyLayer(id: "ik-sky")
-            sky.skyType = .constant(.atmosphere)
-            sky.skyAtmosphereSun = .constant([0, 0])
-            sky.skyAtmosphereSunIntensity = .constant(15)
-            try? mapView.mapboxMap.addLayer(sky)
-        }
+        applySky()
     }
 
     /// Shows/hides the map ornaments. Compass and scale bar keep their adaptive
@@ -1498,6 +1494,106 @@ public class IKMapView: UIView
     /// such as lightPreset, theme and show3dObjects. JSON: {"<key>": <value>, …}.
     /// Classic styles have no basemap import and ignore this. Re-applied after every
     /// style load, because a style reload resets the configuration.
+    /// Switches the map projection: "globe", "mercator", or "" to keep whatever the style
+    /// ships with. Re-applied after every style load, because a style reload resets it.
+    /// Sets the atmosphere (fog) as raw style-spec JSON — keys such as "color",
+    /// "high-color", "space-color", "horizon-blend", "star-intensity". An empty payload
+    /// removes it. Re-applied after every style load.
+    /// Configures the sky layer. JSON: {"type":"atmosphere"|"gradient","sunAzimuth",
+    /// "sunElevation","sunIntensity","opacity"} — all optional. An empty payload drops
+    /// back to the defaults terrain uses, and removes the layer entirely when terrain is
+    /// off. The sky is most visible with a pitched camera.
+    @objc(setSkyJson:)
+    public func setSky(json: String)
+    {
+        if destroyed { return }
+
+        if json.isEmpty || json == "{}"
+        {
+            skyConfig = nil
+        }
+        else if let data = json.data(using: .utf8),
+                let config = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        {
+            skyConfig = config
+        }
+
+        if skyConfig == nil && terrainExaggeration == nil
+        {
+            try? mapView.mapboxMap.removeLayer(withId: "ik-sky")
+            return
+        }
+        applySky()
+    }
+
+    private var skyConfig: [String: Any]?
+
+    /// Shared by the terrain feature and the public setter, so there is one sky layer.
+    private func applySky()
+    {
+        if mapView.mapboxMap.layerExists(withId: "ik-sky")
+        {
+            try? mapView.mapboxMap.removeLayer(withId: "ik-sky")
+        }
+
+        var sky = SkyLayer(id: "ik-sky")
+        sky.skyType = .constant(skyConfig?["type"] as? String == "gradient" ? .gradient : .atmosphere)
+        sky.skyAtmosphereSun = .constant([
+            skyConfig?["sunAzimuth"] as? Double ?? 0,
+            skyConfig?["sunElevation"] as? Double ?? 0,
+        ])
+        sky.skyAtmosphereSunIntensity = .constant(skyConfig?["sunIntensity"] as? Double ?? 15)
+        if let opacity = skyConfig?["opacity"] as? Double
+        {
+            sky.skyOpacity = .constant(opacity)
+        }
+        try? mapView.mapboxMap.addLayer(sky)
+    }
+
+    @objc(setAtmosphereJson:)
+    public func setAtmosphere(json: String)
+    {
+        if destroyed { return }
+
+        if json.isEmpty || json == "{}"
+        {
+            atmosphereProperties = nil
+        }
+        else if let data = json.data(using: .utf8),
+                let properties = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        {
+            atmosphereProperties = properties
+        }
+        applyAtmosphere()
+    }
+
+    private var atmosphereProperties: [String: Any]?
+
+    private func applyAtmosphere()
+    {
+        // An empty property bag is how Mapbox clears the atmosphere.
+        try? mapView.mapboxMap.setAtmosphere(properties: atmosphereProperties ?? [:])
+    }
+
+    @objc(setProjection:)
+    public func setProjection(name: String)
+    {
+        if destroyed { return }
+
+        projectionName = name.isEmpty ? nil : name
+        applyProjection()
+    }
+
+    private var projectionName: String?
+
+    private func applyProjection()
+    {
+        guard let name = projectionName else { return }
+
+        let projection: StyleProjectionName = name == "globe" ? .globe : .mercator
+        try? mapView.mapboxMap.setProjection(StyleProjection(name: projection))
+    }
+
     @objc(setStyleImportConfigJson:)
     public func setStyleImportConfig(json: String)
     {

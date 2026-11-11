@@ -49,6 +49,7 @@ import com.mapbox.maps.extension.style.layers.addLayer
 import com.mapbox.maps.extension.style.layers.addLayerBelow
 import com.mapbox.maps.extension.style.layers.generated.CircleLayer
 import com.mapbox.maps.extension.style.layers.generated.HeatmapLayer
+import com.mapbox.maps.extension.style.atmosphere.generated.removeAtmosphere
 import com.mapbox.maps.extension.style.layers.generated.FillExtrusionLayer
 import com.mapbox.maps.extension.style.layers.generated.FillLayer
 import com.mapbox.maps.extension.style.layers.generated.HillshadeLayer
@@ -346,6 +347,9 @@ class IKMapView(
             terrainExaggeration?.let { applyTerrain(it) }
             applyMapLanguage()
             applyStyleImportConfig()
+            applyProjection()
+            applyAtmosphere()
+            if (skyJson != null) applySky()
             listener?.onStyleLoaded()
         }
         cancelables += mapView.mapboxMap.subscribeCameraChanged { event ->
@@ -1335,14 +1339,7 @@ class IKMapView(
 
         terrain("ik-dem") { exaggeration(exaggeration) }.bindTo(style)
 
-        if (!style.styleLayerExists("ik-sky"))
-        {
-            style.addLayer(skyLayer("ik-sky") {
-                skyType(SkyType.ATMOSPHERE)
-                skyAtmosphereSun(listOf(0.0, 0.0))
-                skyAtmosphereSunIntensity(15.0)
-            })
-        }
+        applySky()
     }
 
     /**
@@ -1716,6 +1713,106 @@ class IKMapView(
      * Classic styles have no basemap import and ignore this. Re-applied after every
      * style load, because a style reload resets the configuration.
      */
+    /**
+     * Switches the map projection: "globe", "mercator", or "" to keep whatever the style
+     * ships with. Re-applied after every style load, because a style reload resets it.
+     */
+    /**
+     * Sets the atmosphere (fog) as raw style-spec JSON — keys such as "color",
+     * "high-color", "space-color", "horizon-blend", "star-intensity". An empty payload
+     * removes it. Re-applied after every style load.
+     */
+    /**
+     * Configures the sky layer. JSON: {"type":"atmosphere"|"gradient","sunAzimuth",
+     * "sunElevation","sunIntensity","opacity"} — all optional. An empty payload drops
+     * back to the defaults terrain uses, and removes the layer entirely when terrain is
+     * off. The sky is most visible with a pitched camera.
+     */
+    fun setSkyJson(json: String)
+    {
+        if (destroyed)
+            return
+
+        skyJson = json.takeIf { it.isNotEmpty() && it != "{}" }
+        if (skyJson == null && terrainExaggeration == null)
+        {
+            mapView.mapboxMap.style?.removeStyleLayer("ik-sky")
+            return
+        }
+        applySky()
+    }
+
+    private var skyJson: String? = null
+
+    /** Shared by the terrain feature and the public setter, so there is one sky layer. */
+    private fun applySky()
+    {
+        val style = mapView.mapboxMap.style ?: return
+        val config = skyJson?.let { runCatching { JSONObject(it) }.getOrNull() }
+
+        if (style.styleLayerExists("ik-sky"))
+            style.removeStyleLayer("ik-sky")
+
+        style.addLayer(skyLayer("ik-sky") {
+            skyType(
+                if (config?.optString("type") == "gradient") SkyType.GRADIENT else SkyType.ATMOSPHERE
+            )
+            skyAtmosphereSun(
+                listOf(
+                    config?.optDouble("sunAzimuth", 0.0) ?: 0.0,
+                    config?.optDouble("sunElevation", 0.0) ?: 0.0,
+                )
+            )
+            skyAtmosphereSunIntensity(config?.optDouble("sunIntensity", 15.0) ?: 15.0)
+            if (config != null && config.has("opacity"))
+                skyOpacity(config.optDouble("opacity", 1.0))
+        })
+    }
+
+    fun setAtmosphereJson(json: String)
+    {
+        if (destroyed)
+            return
+
+        atmosphereJson = json.takeIf { it.isNotEmpty() && it != "{}" }
+        applyAtmosphere()
+    }
+
+    private var atmosphereJson: String? = null
+
+    private fun applyAtmosphere()
+    {
+        val style = mapView.mapboxMap.style ?: return
+        val json = atmosphereJson
+        if (json == null)
+        {
+            style.removeAtmosphere()
+            return
+        }
+
+        val value = Value.fromJson(json).value ?: return
+        style.setStyleAtmosphere(value)
+    }
+
+    fun setProjection(name: String)
+    {
+        if (destroyed)
+            return
+
+        projectionName = name.takeIf { it.isNotEmpty() }
+        applyProjection()
+    }
+
+    private var projectionName: String? = null
+
+    private fun applyProjection()
+    {
+        val name = projectionName ?: return
+        val style = mapView.mapboxMap.style ?: return
+        val value = Value.fromJson("{\"name\":\"$name\"}").value ?: return
+        style.setStyleProjection(value)
+    }
+
     fun setStyleImportConfigJson(json: String)
     {
         if (destroyed)

@@ -322,6 +322,63 @@ internal static class AnnotationSerializer
         return builder.Append('}').ToString();
     }
 
+    /// <summary>
+    /// Serializes the sky. A null sky becomes an empty object, which both facades read as
+    /// "use the terrain defaults, or remove the sky when terrain is off".
+    /// </summary>
+    public static string ToSkyJson(MapSky? sky)
+    {
+        if (sky is null)
+            return "{}";
+
+        var builder = new StringBuilder("{");
+        builder.Append("\"type\":").Append(Quote(sky.Type == MapSkyType.Gradient ? "gradient" : "atmosphere"));
+        if (sky.SunAzimuth is { } azimuth)
+            builder.Append(",\"sunAzimuth\":").Append(Invariant(azimuth));
+        if (sky.SunElevation is { } elevation)
+            builder.Append(",\"sunElevation\":").Append(Invariant(elevation));
+        if (sky.SunIntensity is { } intensity)
+            builder.Append(",\"sunIntensity\":").Append(Invariant(intensity));
+        if (sky.Opacity is { } opacity)
+            builder.Append(",\"opacity\":").Append(Invariant(opacity));
+        return builder.Append('}').ToString();
+    }
+
+    /// <summary>
+    /// Serializes the atmosphere into style-spec keys. Unset values are omitted so the
+    /// style keeps its own; a null atmosphere serializes to an empty object, which both
+    /// facades read as "remove it".
+    /// </summary>
+    public static string ToAtmosphereJson(MapAtmosphere? atmosphere)
+    {
+        if (atmosphere is null)
+            return "{}";
+
+        var builder = new StringBuilder("{");
+        var first = true;
+
+        void Write(string key, string value)
+        {
+            if (!first)
+                builder.Append(',');
+            builder.Append(Quote(key)).Append(':').Append(value);
+            first = false;
+        }
+
+        if (!string.IsNullOrEmpty(atmosphere.Color))
+            Write("color", Quote(atmosphere.Color));
+        if (!string.IsNullOrEmpty(atmosphere.HighColor))
+            Write("high-color", Quote(atmosphere.HighColor));
+        if (!string.IsNullOrEmpty(atmosphere.SpaceColor))
+            Write("space-color", Quote(atmosphere.SpaceColor));
+        if (atmosphere.HorizonBlend is { } blend)
+            Write("horizon-blend", Invariant(blend));
+        if (atmosphere.StarIntensity is { } stars)
+            Write("star-intensity", Invariant(stars));
+
+        return builder.Append('}').ToString();
+    }
+
     /// <summary>Serializes every gesture flag into the payload the facades expect.</summary>
     public static string ToGestureOptionsJson(bool scroll, bool zoom, bool rotate, bool pitch,
         bool doubleTapToZoom, bool quickZoom, bool pinchToZoom, bool rotateAndZoom)

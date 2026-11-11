@@ -35,6 +35,9 @@ on the UI thread; command parameters carry the same `EventArgs` object the event
 - 🌍 `MapLanguage` — translate the style's place labels into any supported language
 - 🔍 `QueryFeaturesAsync()` reports which feature sits under a tap, with its properties
 - ✨ Feature state — selection and hover styling without touching the source data
+- 🌍 Globe projection — a real 3D globe when zoomed out
+- 🌅 Atmosphere — fog colours, horizon blend and stars
+- 🌤️ Configurable sky — sun position and intensity, with or without terrain
 - 🌑 Standard-style configuration — `LightPreset` day/dusk/night, theme and 3D objects
 - 🤚 Individual zoom gestures switchable — double-tap, quick-zoom and pinch separately
 - 🔥 Heatmaps and 3D fill extrusions, driven by your feature data
@@ -108,7 +111,7 @@ code, and the reason .NET Android no longer reports `XA0141` for this package.
 | Fill / line / circle layers | ✅ | `AddLayer(MapLayer)` with color, opacity, width, radius, insert position |
 | Symbol layers (data-driven labels + icons) | ✅ | `MapLayerType.Symbol`: `TextField` property labels, halo, icon bytes, overlap |
 | Heatmap, fill-extrusion, raster, hillshade layers | ✅ | `MapLayerType`, styled through `MapLayer.Properties` |
-| Sky layer | ❌ | the terrain feature adds one internally |
+| Sky layer | ✅ | `Sky` — type, sun position and intensity |
 | Vector / raster / image sources | ✅ | `MapSource` + `AddSource` — TileJSON or XYZ templates, `SourceLayer` for vector |
 | Expressions | ✅ | `MapExpression` + `MapLayer.Properties` — any style-spec property, data- or zoom-driven |
 | Clustering | ✅ | `AddClusteredSource` — managed layers, counts, tap-to-expand zoom |
@@ -139,7 +142,9 @@ code, and the reason .NET Android no longer reports `XA0141` for this package.
 | Snapshotter (static map images) | ❌ | |
 | 3D terrain (raster-DEM + sky atmosphere) | ✅ | `TerrainEnabled` + `TerrainExaggeration` |
 | Terrain elevation query (`getElevation`) | ✅ | `QueryTerrainElevation(lat, lon)` |
-| Globe, custom projections | ❌ | whatever the chosen style ships by default |
+| Globe / mercator projection | ✅ | `Projection` |
+| Atmosphere / fog | ✅ | `Atmosphere` — colours, horizon blend, star intensity |
+| Custom (non-Mapbox) projections | ❌ | globe and mercator only |
 | Telemetry opt-out | ✅ | `UseMapbox(token, enableTelemetry: false)` — see [Telemetry](#telemetry) |
 
 ## Getting started
@@ -838,6 +843,88 @@ Results are ordered top-most first, so `hits[0]` is what the user visually hit.
 
 The `radius` parameter (default 8) widens the hit area in device-independent units — thin
 lines and small circles are otherwise hard to hit with a finger. `0` queries the exact point.
+
+---
+
+## Sky
+
+The sky above the horizon. Until now it was created implicitly by
+[`TerrainEnabled`](#3d-terrain) with fixed values; `Sky` makes it configurable and usable
+without terrain.
+
+```csharp
+map.Sky = new MapSky
+{
+    Type = MapSkyType.Atmosphere,   // or Gradient
+    SunAzimuth = 270,               // degrees, 0 = north
+    SunElevation = 3,               // degrees, 0 = at the horizon
+    SunIntensity = 30,
+};
+
+map.Sky = null;                     // back to the terrain defaults
+```
+
+> **Pitch the camera.** At pitch 0 you look straight down and the horizon is not on screen,
+> so the sky is invisible no matter how it is configured. The sample's demo pitches to 75°.
+
+`Sky` and `TerrainEnabled` share one layer, so they cannot fight over it: terrain creates
+the sky with defaults, `Sky` overrides them, and setting `Sky` back to null returns to
+those defaults — or removes the sky entirely when terrain is off.
+
+---
+
+## Atmosphere (fog and space)
+
+The atmosphere is the haze around the map — on the globe it is the glow at the limb and
+the space behind the planet; on a flat map it is a band at the horizon.
+
+```csharp
+map.Projection = MapProjection.Globe;
+map.Atmosphere = new MapAtmosphere
+{
+    Color = "#B91C1C",          // lower atmosphere
+    HighColor = "#F59E0B",      // upper atmosphere
+    SpaceColor = "#1E1B4B",     // behind the globe
+    HorizonBlend = 0.4,         // 0–1, lower is a crisper edge
+    StarIntensity = 0.9,        // 0–1
+};
+
+map.Atmosphere = null;          // back to the style's own
+```
+
+Unset properties are omitted, so the style keeps its own value for them — you can change
+just `StarIntensity` without inheriting a library-chosen palette for everything else.
+
+> Pair it with [`Projection`](#projection-globe-or-mercator). On a flat, zoomed-in map an
+> atmosphere is barely visible, which makes the setting look like it did nothing.
+
+Like the projection, it is re-applied after every style switch.
+
+---
+
+## Projection (globe or mercator)
+
+```xml
+<map:MapView Projection="Globe" />
+```
+
+```csharp
+map.Projection = MapProjection.Globe;      // 3D globe when zoomed out
+map.Projection = MapProjection.Mercator;   // always flat
+map.Projection = MapProjection.Default;    // whatever the style ships with
+```
+
+| Value | Effect |
+|---|---|
+| `Default` | the style decides — the Standard styles use a globe above a certain zoom |
+| `Globe` | a 3D globe when zoomed out, flattening into mercator as you zoom in |
+| `Mercator` | the classic flat projection at every zoom |
+
+> The globe is only visibly a globe when zoomed far out — roughly zoom 5 and below. At
+> city zoom the two projections are indistinguishable, which makes a `Projection` change
+> look like it did nothing.
+
+The setting is re-applied after every style switch, because loading a style resets it.
 
 ---
 

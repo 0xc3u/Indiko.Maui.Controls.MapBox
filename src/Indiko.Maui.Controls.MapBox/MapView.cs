@@ -205,6 +205,46 @@ public class MapView : View
         set => SetValue(MapLanguageProperty, value);
     }
 
+    public static readonly BindableProperty SkyProperty = BindableProperty.Create(
+        nameof(Sky), typeof(MapSky), typeof(MapView));
+
+    /// <summary>
+    /// The sky above the horizon; null falls back to the defaults
+    /// <see cref="TerrainEnabled"/> uses. Only visible with a pitched camera.
+    /// </summary>
+    public MapSky? Sky
+    {
+        get => (MapSky?)GetValue(SkyProperty);
+        set => SetValue(SkyProperty, value);
+    }
+
+    public static readonly BindableProperty AtmosphereProperty = BindableProperty.Create(
+        nameof(Atmosphere), typeof(MapAtmosphere), typeof(MapView));
+
+    /// <summary>
+    /// The atmosphere (fog) around the map; null leaves the style's own. Most visible with
+    /// <see cref="MapProjection.Globe"/>, where it is the glow at the limb and the space
+    /// behind the planet.
+    /// </summary>
+    public MapAtmosphere? Atmosphere
+    {
+        get => (MapAtmosphere?)GetValue(AtmosphereProperty);
+        set => SetValue(AtmosphereProperty, value);
+    }
+
+    public static readonly BindableProperty ProjectionProperty = BindableProperty.Create(
+        nameof(Projection), typeof(MapProjection), typeof(MapView), MapProjection.Default);
+
+    /// <summary>
+    /// Map projection. <see cref="MapProjection.Globe"/> renders a 3D globe when zoomed
+    /// out; <see cref="MapProjection.Default"/> keeps the style's own choice.
+    /// </summary>
+    public MapProjection Projection
+    {
+        get => (MapProjection)GetValue(ProjectionProperty);
+        set => SetValue(ProjectionProperty, value);
+    }
+
     public static readonly BindableProperty LightPresetProperty = BindableProperty.Create(
         nameof(LightPreset), typeof(MapLightPreset), typeof(MapView), MapLightPreset.Default);
 

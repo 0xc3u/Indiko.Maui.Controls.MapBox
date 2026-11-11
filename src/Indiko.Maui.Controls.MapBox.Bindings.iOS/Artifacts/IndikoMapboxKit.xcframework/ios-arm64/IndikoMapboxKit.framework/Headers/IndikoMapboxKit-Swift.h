@@ -458,6 +458,18 @@ SWIFT_CLASS_NAMED("IKMapView")
 /// such as lightPreset, theme and show3dObjects. JSON: {”<key>”: <value>, …}.
 /// Classic styles have no basemap import and ignore this. Re-applied after every
 /// style load, because a style reload resets the configuration.
+/// Switches the map projection: “globe”, “mercator”, or “” to keep whatever the style
+/// ships with. Re-applied after every style load, because a style reload resets it.
+/// Sets the atmosphere (fog) as raw style-spec JSON — keys such as “color”,
+/// “high-color”, “space-color”, “horizon-blend”, “star-intensity”. An empty payload
+/// removes it. Re-applied after every style load.
+/// Configures the sky layer. JSON: {“type”:“atmosphere”|“gradient”,“sunAzimuth”,
+/// “sunElevation”,“sunIntensity”,“opacity”} — all optional. An empty payload drops
+/// back to the defaults terrain uses, and removes the layer entirely when terrain is
+/// off. The sky is most visible with a pitched camera.
+- (void)setSkyJson:(NSString * _Nonnull)json;
+- (void)setAtmosphereJson:(NSString * _Nonnull)json;
+- (void)setProjection:(NSString * _Nonnull)name;
 - (void)setStyleImportConfigJson:(NSString * _Nonnull)json;
 - (void)setGestureOptionsJson:(NSString * _Nonnull)json;
 - (void)setGesturesScroll:(BOOL)scroll zoom:(BOOL)zoom rotate:(BOOL)rotate pitch:(BOOL)pitch;
