@@ -1,3 +1,12 @@
+# [1.15.0](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/compare/v1.14.0...v1.15.0) (2026-11-11)
+
+### Features
+
+* configurable sky ([e1e9b31](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/commit/e1e9b310d52a7db8a1a512cf4f6cf993f38da845))
+* configure the atmosphere (fog and space) ([4748414](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/commit/4748414e05612c3197c4a0ccca1eab3ebb8c8356))
+* globe and mercator projection ([b62880f](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/commit/b62880facf0d3996d28fbae501a6c02ad612c977))
+
+
 # [1.14.0](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/compare/v1.13.0...v1.14.0) (2026-11-11)
 
 ### Features
