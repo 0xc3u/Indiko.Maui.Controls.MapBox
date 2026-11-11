@@ -115,6 +115,21 @@ internal static class AnnotationSerializer
         builder.Append(",\"circleRadius\":").Append(Invariant(layer.CircleRadius));
         if (!string.IsNullOrEmpty(layer.BelowLayerId))
             builder.Append(",\"belowLayerId\":").Append(Quote(layer.BelowLayerId));
+        if (layer.Properties.Count > 0)
+        {
+            // Raw style-spec values pass through verbatim; the facade hands each one to
+            // Mapbox' own property setter, so expressions and scalars take the same path.
+            builder.Append(",\"properties\":{");
+            var first = true;
+            foreach (var property in layer.Properties)
+            {
+                if (!first)
+                    builder.Append(',');
+                builder.Append(Quote(property.Key)).Append(':').Append(MapExpression.Encode(property.Value));
+                first = false;
+            }
+            builder.Append('}');
+        }
         if (layer.Type == MapLayerType.Symbol)
         {
             if (!string.IsNullOrEmpty(layer.TextField))

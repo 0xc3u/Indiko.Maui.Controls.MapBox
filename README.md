@@ -33,6 +33,7 @@ on the UI thread; command parameters carry the same `EventArgs` object the event
 - 📐 Ornament placement — anchor compass, scale bar, logo and attribution to any corner
 - 🪟 `CameraPadding` — keep the camera anchor out from behind a bottom sheet or tab bar
 - 🌍 `MapLanguage` — translate the style's place labels into any supported language
+- 🎨 Data-driven styling — `MapExpression` drives any style-spec layer property from feature data or zoom
 - ⚠️ `MapLoadError` reports style/source/tile/sprite/glyph load failures instead of failing silently
 - 🧭 Compass on rotation, scale bar, user-location puck, per-gesture configuration
 - 🎛️ Ornament visibility: compass, scale bar, Mapbox logo and attribution individually switchable
@@ -102,7 +103,7 @@ code, and the reason .NET Android no longer reports `XA0141` for this package.
 | Symbol layers (data-driven labels + icons) | ✅ | `MapLayerType.Symbol`: `TextField` property labels, halo, icon bytes, overlap |
 | Heatmap, fill-extrusion, raster, hillshade, sky layers | ❌ | |
 | Vector / raster / image sources | ❌ | GeoJSON only |
-| Expressions | 🔶 | used internally (cluster steps); not exposed as API |
+| Expressions | ✅ | `MapExpression` + `MapLayer.Properties` — any style-spec property, data- or zoom-driven |
 | Clustering | ✅ | `AddClusteredSource` — managed layers, counts, tap-to-expand zoom |
 | **Gestures & interaction** | | |
 | Map tap / long-press with coordinates | ✅ | events + commands; taps on markers/shapes/clusters are consumed |
@@ -793,6 +794,59 @@ meters. The result is independent of `TerrainExaggeration`.
 > if that cache entry is lost while the region survives (clearing the app's ambient cache):
 > the DEM source then reports `Online connectivity is disabled` and `QueryTerrainElevation`
 > returns `null` until the device has been online once.
+
+---
+
+## Data-driven styling (expressions)
+
+The typed layer properties (`Color`, `CircleRadius`, …) are constants: every feature looks
+the same. `MapLayer.Properties` takes raw Mapbox style-spec property names and lets a
+`MapExpression` compute the value per feature or per zoom level.
+
+```csharp
+var layer = new MapLayer { Id = "quakes", SourceId = "quakes-src", Type = MapLayerType.Circle };
+
+// radius grows with the feature's "magnitude" property
+layer.Properties["circle-radius"] = MapExpression.Interpolate(
+    MapExpression.Get("magnitude"), (1, 6.0), (6, 30.0));
+
+// colour per category, with a fallback
+layer.Properties["circle-color"] = MapExpression.Match(
+    MapExpression.Get("category"),
+    [("see", "#2563EB"), ("berg", "#16A34A"), ("stadt", "#F59E0B")],
+    "#9CA3AF");
+
+layer.Properties["circle-stroke-width"] = 2.0;      // plain values work too
+map.AddLayer(layer);
+```
+
+| Factory | Style-spec shape | Use for |
+|---|---|---|
+| `MapExpression.Get(name)` | `["get", name]` | read a feature property |
+| `MapExpression.Zoom()` | `["zoom"]` | drive a value from the zoom level |
+| `MapExpression.Interpolate(input, stops…)` | `["interpolate",["linear"],…]` | smooth gradients |
+| `MapExpression.Step(input, fallback, stops…)` | `["step",…]` | buckets instead of gradients |
+| `MapExpression.Match(input, cases, fallback)` | `["match",…]` | discrete categories |
+| `MapExpression.Raw(json)` | anything | the rest of the specification |
+
+`Raw` takes any expression from the
+[Mapbox style specification](https://docs.mapbox.com/style-spec/reference/expressions/)
+verbatim, so nothing is out of reach:
+
+```csharp
+layer.Properties["text-field"] = MapExpression.Raw(
+    "[\"concat\",[\"get\",\"name\"],\" · \",[\"to-string\",[\"get\",\"magnitude\"]]]");
+```
+
+Notes:
+
+- `Properties` is applied **after** the typed properties, so it wins when both set the same
+  thing — the snippet above overrides `TextField`.
+- Keys are style-spec names (`"circle-radius"`, not `CircleRadius`), which also makes this
+  the escape hatch for properties this library does not model, such as `"line-dasharray"`.
+- Expressions survive style switches along with the rest of the layer.
+- An invalid expression is rejected by the native SDK; the property then keeps its previous
+  value and no `MapLoadError` is raised, so check the shape against the style spec.
 
 ---
 

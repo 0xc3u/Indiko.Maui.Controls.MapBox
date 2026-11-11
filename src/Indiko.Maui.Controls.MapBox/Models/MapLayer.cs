@@ -63,4 +63,23 @@ public class MapLayer
 
     /// <summary>Render all symbols even when they collide (symbol layers).</summary>
     public bool AllowOverlap { get; set; }
+
+    /* ------------------------- Style-spec properties ------------------------- */
+
+    /// <summary>
+    /// Raw Mapbox style-spec properties, applied after the typed properties above — the
+    /// way to make a layer data-driven, and the escape hatch for anything this model does
+    /// not cover. Keys are style-spec property names (<c>"circle-radius"</c>,
+    /// <c>"line-dasharray"</c>); values are a scalar (string, number, bool) or a
+    /// <see cref="MapExpression"/>.
+    /// </summary>
+    /// <remarks>
+    /// These win over the typed properties when both set the same thing, because they are
+    /// applied last. They survive style switches like the rest of the layer.
+    /// <code>
+    /// layer.Properties["circle-radius"] = MapExpression.Interpolate(
+    ///     MapExpression.Get("magnitude"), (1, 4.0), (6, 28.0));
+    /// </code>
+    /// </remarks>
+    public Dictionary<string, object?> Properties { get; } = [];
 }

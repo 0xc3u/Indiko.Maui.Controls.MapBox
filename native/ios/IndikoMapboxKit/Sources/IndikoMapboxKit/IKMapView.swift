@@ -662,6 +662,21 @@ public class IKMapView: UIView
 
         let position = (config["belowLayerId"] as? String).map { LayerPosition.below($0) }
         try? mapView.mapboxMap.addLayer(layer, layerPosition: position)
+
+        applyLayerProperties(id: id, properties: config["properties"] as? [String: Any])
+    }
+
+    /// Applies raw style-spec properties on top of the typed ones. JSONSerialization has
+    /// already turned the payload into the native types Mapbox' property setter expects,
+    /// so a scalar and an expression take the same path.
+    private func applyLayerProperties(id: String, properties: [String: Any]?)
+    {
+        guard let properties else { return }
+
+        for (key, value) in properties
+        {
+            try? mapView.mapboxMap.setLayerProperty(for: id, property: key, value: value)
+        }
     }
 
     // MARK: - View annotations
