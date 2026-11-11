@@ -345,6 +345,7 @@ class IKMapView(
             clusterConfigs.values.forEach { applyClusteredSource(it) }
             terrainExaggeration?.let { applyTerrain(it) }
             applyMapLanguage()
+            applyStyleImportConfig()
             listener?.onStyleLoaded()
         }
         cancelables += mapView.mapboxMap.subscribeCameraChanged { event ->
@@ -1709,6 +1710,38 @@ class IKMapView(
      * matter. JSON: {"scroll","zoom","rotate","pitch","doubleTapToZoom","quickZoom",
      * "pinchToZoom","rotateAndZoom"} — all booleans, missing keys default to true.
      */
+    /**
+     * Configures the style's "basemap" import — the Mapbox Standard style's own options
+     * such as lightPreset, theme and show3dObjects. JSON: {"<key>": <value>, …}.
+     * Classic styles have no basemap import and ignore this. Re-applied after every
+     * style load, because a style reload resets the configuration.
+     */
+    fun setStyleImportConfigJson(json: String)
+    {
+        if (destroyed)
+            return
+
+        styleImportConfig = json.takeIf { it.isNotEmpty() && it != "{}" }
+        applyStyleImportConfig()
+    }
+
+    private var styleImportConfig: String? = null
+
+    private fun applyStyleImportConfig()
+    {
+        val json = styleImportConfig ?: return
+        val config = runCatching { JSONObject(json) }.getOrNull() ?: return
+        val style = mapView.mapboxMap.style ?: return
+
+        for (key in config.keys())
+        {
+            val node = config.get(key)
+            val text = if (node is String) JSONObject.quote(node) else node.toString()
+            val value = Value.fromJson(text).value ?: continue
+            style.setStyleImportConfigProperty("basemap", key, value)
+        }
+    }
+
     fun setGestureOptionsJson(json: String)
     {
         if (destroyed)

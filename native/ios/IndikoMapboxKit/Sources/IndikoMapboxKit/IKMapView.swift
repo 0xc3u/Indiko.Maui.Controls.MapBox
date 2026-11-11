@@ -273,6 +273,7 @@ public class IKMapView: UIView
                 self.applyTerrain(exaggeration: exaggeration)
             }
             self.applyMapLanguage()
+            self.applyStyleImportConfig()
             self.listener?.onStyleLoaded()
         }.store(in: &cancelables)
 
@@ -1493,6 +1494,40 @@ public class IKMapView: UIView
     /// Full gesture configuration in one call, so the order properties arrive in does not
     /// matter. JSON: {"scroll","zoom","rotate","pitch","doubleTapToZoom","quickZoom",
     /// "pinchToZoom","rotateAndZoom"} — all booleans, missing keys default to true.
+    /// Configures the style's "basemap" import — the Mapbox Standard style's own options
+    /// such as lightPreset, theme and show3dObjects. JSON: {"<key>": <value>, …}.
+    /// Classic styles have no basemap import and ignore this. Re-applied after every
+    /// style load, because a style reload resets the configuration.
+    @objc(setStyleImportConfigJson:)
+    public func setStyleImportConfig(json: String)
+    {
+        if destroyed { return }
+
+        if json.isEmpty || json == "{}"
+        {
+            styleImportConfig = nil
+        }
+        else if let data = json.data(using: .utf8),
+                let config = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        {
+            styleImportConfig = config
+        }
+        applyStyleImportConfig()
+    }
+
+    private var styleImportConfig: [String: Any]?
+
+    private func applyStyleImportConfig()
+    {
+        guard let config = styleImportConfig else { return }
+
+        for (key, value) in config
+        {
+            try? mapView.mapboxMap.setStyleImportConfigProperty(
+                for: "basemap", config: key, value: value)
+        }
+    }
+
     @objc(setGestureOptionsJson:)
     public func setGestureOptions(json: String)
     {

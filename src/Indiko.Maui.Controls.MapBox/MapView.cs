@@ -205,6 +205,42 @@ public class MapView : View
         set => SetValue(MapLanguageProperty, value);
     }
 
+    public static readonly BindableProperty LightPresetProperty = BindableProperty.Create(
+        nameof(LightPreset), typeof(MapLightPreset), typeof(MapView), MapLightPreset.Default);
+
+    /// <summary>
+    /// Time-of-day lighting — only the Mapbox Standard styles support it; classic styles
+    /// ignore it. See <see cref="MapStyles.Standard"/>.
+    /// </summary>
+    public MapLightPreset LightPreset
+    {
+        get => (MapLightPreset)GetValue(LightPresetProperty);
+        set => SetValue(LightPresetProperty, value);
+    }
+
+    public static readonly BindableProperty StyleThemeProperty = BindableProperty.Create(
+        nameof(StyleTheme), typeof(MapStyleTheme), typeof(MapView), MapStyleTheme.Default);
+
+    /// <summary>Colour treatment of the Mapbox Standard styles.</summary>
+    public MapStyleTheme StyleTheme
+    {
+        get => (MapStyleTheme)GetValue(StyleThemeProperty);
+        set => SetValue(StyleThemeProperty, value);
+    }
+
+    public static readonly BindableProperty Show3dObjectsProperty = BindableProperty.Create(
+        nameof(Show3dObjects), typeof(bool?), typeof(MapView));
+
+    /// <summary>
+    /// Whether the Mapbox Standard styles draw their 3D buildings and landmarks;
+    /// null keeps the style's own setting.
+    /// </summary>
+    public bool? Show3dObjects
+    {
+        get => (bool?)GetValue(Show3dObjectsProperty);
+        set => SetValue(Show3dObjectsProperty, value);
+    }
+
     public static readonly BindableProperty CameraPaddingProperty = BindableProperty.Create(
         nameof(CameraPadding), typeof(Thickness), typeof(MapView), new Thickness(0));
 

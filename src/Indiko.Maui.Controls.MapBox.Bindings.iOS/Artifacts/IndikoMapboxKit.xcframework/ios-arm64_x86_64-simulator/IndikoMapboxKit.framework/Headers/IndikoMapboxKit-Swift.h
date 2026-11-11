@@ -454,6 +454,11 @@ SWIFT_CLASS_NAMED("IKMapView")
 /// Full gesture configuration in one call, so the order properties arrive in does not
 /// matter. JSON: {“scroll”,“zoom”,“rotate”,“pitch”,“doubleTapToZoom”,“quickZoom”,
 /// “pinchToZoom”,“rotateAndZoom”} — all booleans, missing keys default to true.
+/// Configures the style’s “basemap” import — the Mapbox Standard style’s own options
+/// such as lightPreset, theme and show3dObjects. JSON: {”<key>”: <value>, …}.
+/// Classic styles have no basemap import and ignore this. Re-applied after every
+/// style load, because a style reload resets the configuration.
+- (void)setStyleImportConfigJson:(NSString * _Nonnull)json;
 - (void)setGestureOptionsJson:(NSString * _Nonnull)json;
 - (void)setGesturesScroll:(BOOL)scroll zoom:(BOOL)zoom rotate:(BOOL)rotate pitch:(BOOL)pitch;
 - (void)didMoveToWindow;
@@ -954,6 +959,11 @@ SWIFT_CLASS_NAMED("IKMapView")
 /// Full gesture configuration in one call, so the order properties arrive in does not
 /// matter. JSON: {“scroll”,“zoom”,“rotate”,“pitch”,“doubleTapToZoom”,“quickZoom”,
 /// “pinchToZoom”,“rotateAndZoom”} — all booleans, missing keys default to true.
+/// Configures the style’s “basemap” import — the Mapbox Standard style’s own options
+/// such as lightPreset, theme and show3dObjects. JSON: {”<key>”: <value>, …}.
+/// Classic styles have no basemap import and ignore this. Re-applied after every
+/// style load, because a style reload resets the configuration.
+- (void)setStyleImportConfigJson:(NSString * _Nonnull)json;
 - (void)setGestureOptionsJson:(NSString * _Nonnull)json;
 - (void)setGesturesScroll:(BOOL)scroll zoom:(BOOL)zoom rotate:(BOOL)rotate pitch:(BOOL)pitch;
 - (void)didMoveToWindow;

@@ -141,6 +141,15 @@ public partial class MainPage : ContentPage
 			OnToggleExpressions(this, EventArgs.Empty);
 			CollapseSheet();
 		}
+		if (Environment.GetEnvironmentVariable("DEMO_LIGHT") == "1")
+		{
+			Map.StyleUri = MapStyles.Standard;
+			Map.LightPreset = MapLightPreset.Night;
+			ChipLight.Text = "Licht: Night";
+			PaintChip(ChipLight, true);
+			StatusLabel.Text = "Standard-Style, lightPreset = Night";
+			CollapseSheet();
+		}
 		if (Environment.GetEnvironmentVariable("DEMO_GESTURES") == "1")
 		{
 			OnToggleDoubleTapZoom(this, EventArgs.Empty);
@@ -701,6 +710,33 @@ public partial class MainPage : ContentPage
 		StatusLabel.Text = Map.DoubleTapToZoomEnabled
 			? $"Doppeltipp-Zoom an — Zoom {zoom:F1}"
 			: $"Doppeltipp-Zoom aus — Zoom {zoom:F1}, Pinch bleibt aktiv";
+	}
+
+	/// <summary>
+	/// Cycles the Standard style's lightPreset. The style is switched to Standard first —
+	/// the classic styles have no basemap import and ignore the configuration.
+	/// </summary>
+	private static readonly MapLightPreset[] LightPresets =
+	[
+		MapLightPreset.Dawn, MapLightPreset.Day, MapLightPreset.Dusk, MapLightPreset.Night,
+	];
+
+	private int lightIndex = -1;
+
+	private void OnCycleLightPreset(object? sender, EventArgs e)
+	{
+		if (Map.StyleUri != MapStyles.Standard)
+		{
+			Map.StyleUri = MapStyles.Standard;
+			foreach (var candidate in new[] { ChipOutdoor, ChipStreets, ChipSatellite, ChipDark })
+				PaintChip(candidate, false);
+		}
+
+		lightIndex = (lightIndex + 1) % LightPresets.Length;
+		Map.LightPreset = LightPresets[lightIndex];
+		PaintChip(ChipLight, true);
+		ChipLight.Text = $"Licht: {Map.LightPreset}";
+		StatusLabel.Text = $"Standard-Style, lightPreset = {Map.LightPreset}";
 	}
 
 	private void OnPolylineClicked(object? sender, PolylineClickedEventArgs e)

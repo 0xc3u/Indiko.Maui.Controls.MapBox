@@ -35,6 +35,7 @@ on the UI thread; command parameters carry the same `EventArgs` object the event
 - 🌍 `MapLanguage` — translate the style's place labels into any supported language
 - 🔍 `QueryFeaturesAsync()` reports which feature sits under a tap, with its properties
 - ✨ Feature state — selection and hover styling without touching the source data
+- 🌑 Standard-style configuration — `LightPreset` day/dusk/night, theme and 3D objects
 - 🤚 Individual zoom gestures switchable — double-tap, quick-zoom and pinch separately
 - 🔥 Heatmaps and 3D fill extrusions, driven by your feature data
 - 🗺️ Raster, vector and image sources — bring your own tile server alongside the Mapbox basemap
@@ -85,7 +86,7 @@ code, and the reason .NET Android no longer reports `XA0141` for this package.
 | **Map display & styles** | | |
 | Style URIs (Standard, Classic, custom `mapbox://styles/…`) | ✅ | `StyleUri`, `MapStyles` constants |
 | Runtime style switching | ✅ | runtime sources/layers/clusters are re-applied automatically |
-| Standard style configuration (light preset, theme, 3D objects) | ❌ | style renders with its defaults |
+| Standard style configuration (light preset, theme, 3D objects) | ✅ | `LightPreset`, `StyleTheme`, `Show3dObjects` |
 | Style JSON strings | ❌ | URIs only |
 | Label localization (`localizeLabels`) | ✅ | `MapLanguage` (BCP-47), re-applied after style switches |
 | **Camera** | | |
@@ -837,6 +838,41 @@ Results are ordered top-most first, so `hits[0]` is what the user visually hit.
 
 The `radius` parameter (default 8) widens the hit area in device-independent units — thin
 lines and small circles are otherwise hard to hit with a finger. `0` queries the exact point.
+
+---
+
+## Standard style configuration
+
+The Mapbox **Standard** styles expose their own options — time-of-day lighting, a colour
+theme, whether 3D buildings are drawn. They are configuration of the style, not layers,
+so they survive style reloads and cost nothing to change.
+
+```xml
+<map:MapView StyleUri="{x:Static mapModels:MapStyles.Standard}"
+             LightPreset="Night"
+             Show3dObjects="True" />
+```
+
+```csharp
+map.StyleUri = MapStyles.Standard;
+map.LightPreset = MapLightPreset.Dusk;     // Dawn, Day, Dusk, Night
+map.StyleTheme = MapStyleTheme.Monochrome; // Default, Faded, Monochrome
+map.Show3dObjects = false;
+```
+
+| Property | Values | Default |
+|---|---|---|
+| `LightPreset` | `Dawn`, `Day`, `Dusk`, `Night` | `Default` — keep the style's own |
+| `StyleTheme` | `Faded`, `Monochrome` | `Default` — keep the style's own |
+| `Show3dObjects` | `true` / `false` | null — keep the style's own |
+
+> **Standard styles only.** `MapStyles.Standard` and `MapStyles.StandardSatellite` carry the
+> `basemap` import these settings configure. The classic styles (`Streets`, `Outdoors`,
+> `Dark`, …) have no such import and ignore them — switching to a classic style silently
+> drops the configuration until you switch back.
+
+Leaving a property at its default omits it from the payload entirely, so the style keeps
+whatever it ships with rather than being reset to a library-chosen value.
 
 ---
 

@@ -40,6 +40,9 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
             [nameof(MapView.RotateEnabled)] = MapGestures,
             [nameof(MapView.PitchEnabled)] = MapGestures,
             [nameof(MapView.MapLanguage)] = MapLanguage,
+            [nameof(MapView.LightPreset)] = MapStyleImportConfig,
+            [nameof(MapView.StyleTheme)] = MapStyleImportConfig,
+            [nameof(MapView.Show3dObjects)] = MapStyleImportConfig,
             [nameof(MapView.CameraPadding)] = MapCameraPadding,
             [nameof(MapView.CompassPlacement)] = MapOrnamentPlacement,
             [nameof(MapView.ScaleBarPlacement)] = MapOrnamentPlacement,
@@ -208,6 +211,12 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
     private static void MapLanguage(MapViewHandler handler, MapView view)
     {
         handler.PlatformView.SetMapLanguage(view.MapLanguage ?? string.Empty);
+    }
+
+    private static void MapStyleImportConfig(MapViewHandler handler, MapView view)
+    {
+        handler.PlatformView.SetStyleImportConfigJson(AnnotationSerializer.ToStyleImportConfigJson(
+            view.LightPreset, view.StyleTheme, view.Show3dObjects));
     }
 
     private static void MapCameraPadding(MapViewHandler handler, MapView view)

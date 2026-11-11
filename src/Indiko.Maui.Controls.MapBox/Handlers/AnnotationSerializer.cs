@@ -294,6 +294,34 @@ internal static class AnnotationSerializer
         writer.WriteEndObject();
     }
 
+    /// <summary>
+    /// Serializes the Standard-style import configuration. Values left at their default
+    /// are omitted, so the style keeps its own setting.
+    /// </summary>
+    public static string ToStyleImportConfigJson(MapLightPreset lightPreset, MapStyleTheme theme,
+        bool? show3dObjects)
+    {
+        var builder = new StringBuilder("{");
+        var first = true;
+
+        void Write(string key, string value)
+        {
+            if (!first)
+                builder.Append(',');
+            builder.Append(Quote(key)).Append(':').Append(value);
+            first = false;
+        }
+
+        if (lightPreset != MapLightPreset.Default)
+            Write("lightPreset", Quote(lightPreset.ToString().ToLowerInvariant()));
+        if (theme != MapStyleTheme.Default)
+            Write("theme", Quote(theme.ToString().ToLowerInvariant()));
+        if (show3dObjects is { } objects)
+            Write("show3dObjects", objects ? "true" : "false");
+
+        return builder.Append('}').ToString();
+    }
+
     /// <summary>Serializes every gesture flag into the payload the facades expect.</summary>
     public static string ToGestureOptionsJson(bool scroll, bool zoom, bool rotate, bool pitch,
         bool doubleTapToZoom, bool quickZoom, bool pinchToZoom, bool rotateAndZoom)
