@@ -112,6 +112,10 @@ public partial class MainPage : ContentPage
 			OnToggleBubble(this, EventArgs.Empty);
 		if (Environment.GetEnvironmentVariable("DEMO_OFFLINE") == "1")
 			OnDownloadOffline(this, EventArgs.Empty);
+		if (Environment.GetEnvironmentVariable("DEMO_ELEVATION") == "1")
+			OnShowElevationDemo(this, EventArgs.Empty);
+		if (Environment.GetEnvironmentVariable("DEMO_REGIONS") == "1")
+			OnShowOfflineRegions(this, EventArgs.Empty);
 		if (Environment.GetEnvironmentVariable("DEMO_AUTOFIT") == "1")
 			OnToggleAutoFit(this, EventArgs.Empty);
 		if (Environment.GetEnvironmentVariable("DEMO_FOLLOW") == "1")
