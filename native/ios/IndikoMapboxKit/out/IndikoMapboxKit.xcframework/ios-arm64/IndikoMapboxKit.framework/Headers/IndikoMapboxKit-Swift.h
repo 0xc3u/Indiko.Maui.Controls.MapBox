@@ -334,6 +334,11 @@ SWIFT_PROTOCOL_NAMED("IKMapEventListener")
 - (void)onOfflineRegionCompleted:(NSString * _Nonnull)id success:(BOOL)success error:(NSString * _Nullable)error;
 - (void)onFollowPuckChanged:(BOOL)active;
 - (void)onMarkerDragEnd:(NSString * _Nonnull)id latitude:(double)latitude longitude:(double)longitude;
+/// A resource the map needed could not be loaded. <code>type</code> is one of “style”, “sprite”,
+/// “source”, “tile”, “glyphs” or “unknown”; <code>sourceId</code> is set for source and tile errors.
+/// Tile errors fire once per failed tile, so they can arrive in bursts — offline, every
+/// tile outside a downloaded region produces one.
+- (void)onMapLoadError:(NSString * _Nonnull)type message:(NSString * _Nonnull)message sourceId:(NSString * _Nullable)sourceId;
 @end
 
 @class NSCoder;

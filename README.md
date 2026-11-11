@@ -29,6 +29,7 @@ on the UI thread; command parameters carry the same `EventArgs` object the event
 - 💬 View annotations — any MAUI view anchored to a coordinate, gestures included
 - 📴 Offline regions (style pack + tiles, optionally terrain) with download progress events; list and delete regions without a map (`MapboxOffline`)
 - ⛰️ `QueryTerrainElevation()` returns the ground elevation at any coordinate, corrected for the terrain exaggeration
+- ⚠️ `MapLoadError` reports style/source/tile/sprite/glyph load failures instead of failing silently
 - 🧭 Compass on rotation, scale bar, user-location puck, per-gesture configuration
 - 🎛️ Ornament visibility: compass, scale bar, Mapbox logo and attribution individually switchable
 - 🏔️ 3D terrain (Mapbox DEM + sky atmosphere) with configurable exaggeration — switchable, style-switch-safe
@@ -118,6 +119,7 @@ code, and the reason .NET Android no longer reports `XA0141` for this package.
 | Ornament position / margins | ❌ | SDK default positions |
 | **Other** | | |
 | Lifecycle events (`MapReady`, `StyleLoaded`, `CameraChanged`) | ✅ | events + bindable commands (full MVVM parity) |
+| Map load errors (`MapLoadingError`) | ✅ | `MapLoadError` event + command, typed by resource kind |
 | Snapshotter (static map images) | ❌ | |
 | 3D terrain (raster-DEM + sky atmosphere) | ✅ | `TerrainEnabled` + `TerrainExaggeration` |
 | Terrain elevation query (`getElevation`) | ✅ | `QueryTerrainElevation(lat, lon)` |
@@ -788,6 +790,37 @@ meters. The result is independent of `TerrainExaggeration`.
 
 ---
 
+## Load errors
+
+Without this the map just stays blank: the SDK logs failures natively, but nothing reaches
+your app. `MapLoadError` surfaces them, typed by the kind of resource that failed.
+
+```csharp
+map.MapLoadError += (_, e) =>
+{
+    if (e.Type == MapLoadErrorType.Tile)
+        return;                       // see the note below
+
+    Status.Text = $"{e.Type}: {e.Message}";
+};
+```
+
+| `MapLoadErrorType` | What is missing | Typical cause |
+|---|---|---|
+| `Style` | the style document — the map stays blank | offline without a style pack, bad `StyleUri`, invalid token |
+| `Source` | a source's metadata — everything from it | offline and the source's TileJSON is not cached |
+| `Tile` | one tile | offline outside a downloaded region |
+| `Sprite` | the sprite sheet — icons | offline without a style pack |
+| `Glyphs` | a glyph range — labels | offline without a style pack |
+
+`SourceId` is set for `Source` and `Tile` errors.
+
+> **Tile errors arrive in bursts.** One fires per failed tile, so panning a single screen
+> offline can raise dozens. Filter on `Type`, or count them, rather than showing each one —
+> the sample's status line counts them and shows other kinds immediately.
+
+---
+
 ## Ornaments
 
 All four map ornaments are individually switchable (default: all visible).
@@ -890,6 +923,7 @@ Every event has a bindable command counterpart; command parameters are the event
 | `OfflineRegionCompleted` | `OfflineRegionCompletedCommand` | `OfflineRegionCompletedEventArgs` |
 | `AnnotationDragged` | `AnnotationDraggedCommand` | `AnnotationDraggedEventArgs` |
 | `FollowPuckChanged` | `FollowPuckChangedCommand` | `FollowPuckChangedEventArgs` |
+| `MapLoadError` | `MapLoadErrorCommand` | `MapLoadErrorEventArgs` |
 
 ## Sample app
 

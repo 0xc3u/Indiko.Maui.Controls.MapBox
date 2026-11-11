@@ -455,5 +455,8 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
 
         public override void OnMarkerDragEnd(string id, double latitude, double longitude) =>
             Dispatch(v => v.SendAnnotationDragged(id, latitude, longitude));
+
+        public override void OnMapLoadError(string type, string message, string? sourceId) =>
+            Dispatch(v => v.SendMapLoadError(type, message, sourceId));
     }
 }

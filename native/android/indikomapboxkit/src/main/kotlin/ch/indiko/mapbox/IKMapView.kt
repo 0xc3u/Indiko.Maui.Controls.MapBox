@@ -213,6 +213,14 @@ interface IKMapEventListener
     fun onOfflineRegionCompleted(id: String, success: Boolean, error: String?)
     fun onFollowPuckChanged(active: Boolean)
     fun onMarkerDragEnd(id: String, latitude: Double, longitude: Double)
+
+    /**
+     * A resource the map needed could not be loaded. [type] is one of
+     * "style", "sprite", "source", "tile", "glyphs" or "unknown"; [sourceId] is set for
+     * source and tile errors. Tile errors fire once per failed tile, so they can arrive in
+     * bursts — offline, every tile outside a downloaded region produces one.
+     */
+    fun onMapLoadError(type: String, message: String, sourceId: String?)
 }
 
 /**
@@ -309,6 +317,13 @@ class IKMapView(
         addView(mapView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
 
         cancelables += mapView.mapboxMap.subscribeMapLoaded { listener?.onMapReady() }
+        cancelables += mapView.mapboxMap.subscribeMapLoadingError { error ->
+            listener?.onMapLoadError(
+                error.type.name.lowercase(),
+                error.message,
+                error.sourceId,
+            )
+        }
         cancelables += mapView.mapboxMap.subscribeStyleLoaded {
             if (destroyed)
                 return@subscribeStyleLoaded

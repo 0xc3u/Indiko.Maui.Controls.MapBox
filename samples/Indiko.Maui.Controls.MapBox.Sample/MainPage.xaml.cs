@@ -116,6 +116,10 @@ public partial class MainPage : ContentPage
 			OnShowElevationDemo(this, EventArgs.Empty);
 		if (Environment.GetEnvironmentVariable("DEMO_REGIONS") == "1")
 			OnShowOfflineRegions(this, EventArgs.Empty);
+		// Forces a Style load error so MapLoadError can be verified without taking the
+		// device offline (the iOS simulator has no airplane mode).
+		if (Environment.GetEnvironmentVariable("DEMO_LOADERROR") == "1")
+			Map.StyleUri = "mapbox://styles/mapbox/this-style-does-not-exist";
 		if (Environment.GetEnvironmentVariable("DEMO_AUTOFIT") == "1")
 			OnToggleAutoFit(this, EventArgs.Empty);
 		if (Environment.GetEnvironmentVariable("DEMO_FOLLOW") == "1")
@@ -180,6 +184,27 @@ public partial class MainPage : ContentPage
 		Map.TerrainEnabled = false;
 		PaintChip(Fab3D, false);
 		StatusLabel.Text = "2D · Bern — Indiko.Maui.Controls.MapBox";
+	}
+
+	/// <summary>
+	/// Surfaces load failures that would otherwise be invisible — offline, every tile
+	/// outside a downloaded region raises one, so tile errors are counted rather than
+	/// shown one by one.
+	/// </summary>
+	private int tileErrorCount;
+
+	private void OnMapLoadError(object? sender, MapLoadErrorEventArgs e)
+	{
+		if (e.Type == MapLoadErrorType.Tile)
+		{
+			tileErrorCount++;
+			StatusLabel.Text = $"\u26A0 {tileErrorCount} Kachel(n) nicht geladen — {e.Message}";
+			return;
+		}
+
+		StatusLabel.Text = e.SourceId is { } source
+			? $"\u26A0 {e.Type} '{source}': {e.Message}"
+			: $"\u26A0 {e.Type}: {e.Message}";
 	}
 
 	private void OnPolylineClicked(object? sender, PolylineClickedEventArgs e)

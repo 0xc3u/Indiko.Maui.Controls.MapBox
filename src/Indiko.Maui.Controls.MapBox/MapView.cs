@@ -347,6 +347,15 @@ public class MapView : View
         set => SetValue(FollowPuckChangedCommandProperty, value);
     }
 
+    public static readonly BindableProperty MapLoadErrorCommandProperty = BindableProperty.Create(
+        nameof(MapLoadErrorCommand), typeof(ICommand), typeof(MapView));
+
+    public ICommand? MapLoadErrorCommand
+    {
+        get => (ICommand?)GetValue(MapLoadErrorCommandProperty);
+        set => SetValue(MapLoadErrorCommandProperty, value);
+    }
+
     public static readonly BindableProperty OfflineRegionProgressCommandProperty = BindableProperty.Create(
         nameof(OfflineRegionProgressCommand), typeof(ICommand), typeof(MapView));
 
@@ -379,6 +388,14 @@ public class MapView : View
     public event EventHandler<OfflineRegionProgressEventArgs>? OfflineRegionProgress;
     public event EventHandler<OfflineRegionCompletedEventArgs>? OfflineRegionCompleted;
     public event EventHandler<FollowPuckChangedEventArgs>? FollowPuckChanged;
+
+    /// <summary>
+    /// A resource the map needed could not be loaded — most often "offline and outside any
+    /// downloaded region". Without this the only symptom is a map that silently stays blank.
+    /// <see cref="MapLoadErrorType.Tile"/> fires once per failed tile and arrives in bursts;
+    /// filter on <see cref="MapLoadErrorEventArgs.Type"/> before showing anything to a user.
+    /// </summary>
+    public event EventHandler<MapLoadErrorEventArgs>? MapLoadError;
 
     /// <summary>Live camera position, updated on every camera change.</summary>
     public MapCameraPosition? CurrentCamera { get; private set; }
@@ -662,6 +679,24 @@ public class MapView : View
         FollowPuckChanged?.Invoke(this, args);
         if (FollowPuckChangedCommand?.CanExecute(args) == true)
             FollowPuckChangedCommand.Execute(args);
+    }
+
+    internal void SendMapLoadError(string type, string message, string? sourceId)
+    {
+        var parsed = type switch
+        {
+            "style" => MapLoadErrorType.Style,
+            "sprite" => MapLoadErrorType.Sprite,
+            "source" => MapLoadErrorType.Source,
+            "tile" => MapLoadErrorType.Tile,
+            "glyphs" => MapLoadErrorType.Glyphs,
+            _ => MapLoadErrorType.Unknown,
+        };
+
+        var args = new MapLoadErrorEventArgs(parsed, message, sourceId);
+        MapLoadError?.Invoke(this, args);
+        if (MapLoadErrorCommand?.CanExecute(args) == true)
+            MapLoadErrorCommand.Execute(args);
     }
 
     internal void SendCameraChanged(MapCameraPosition camera)

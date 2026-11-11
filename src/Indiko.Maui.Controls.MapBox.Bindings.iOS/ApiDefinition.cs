@@ -104,6 +104,10 @@ interface IKMapEventListener
     [Abstract]
     [Export("onMarkerDragEnd:latitude:longitude:")]
     void OnMarkerDragEnd(string id, double latitude, double longitude);
+
+    [Abstract]
+    [Export("onMapLoadError:message:sourceId:")]
+    void OnMapLoadError(string type, string message, [NullAllowed] string sourceId);
 }
 
 [BaseType(typeof(UIView), Name = "IKMapView")]

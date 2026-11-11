@@ -152,6 +152,12 @@ public protocol IKMapEventListener
     @objc(onOfflineRegionCompleted:success:error:) func onOfflineRegionCompleted(id: String, success: Bool, error: String?)
     @objc(onFollowPuckChanged:) func onFollowPuckChanged(active: Bool)
     @objc(onMarkerDragEnd:latitude:longitude:) func onMarkerDragEnd(id: String, latitude: Double, longitude: Double)
+
+    /// A resource the map needed could not be loaded. `type` is one of "style", "sprite",
+    /// "source", "tile", "glyphs" or "unknown"; `sourceId` is set for source and tile errors.
+    /// Tile errors fire once per failed tile, so they can arrive in bursts — offline, every
+    /// tile outside a downloaded region produces one.
+    @objc(onMapLoadError:message:sourceId:) func onMapLoadError(type: String, message: String, sourceId: String?)
 }
 
 /// Thin facade over MapboxMaps.MapView exposing exactly the surface the
@@ -189,6 +195,20 @@ public class IKMapView: UIView
 
     @objc public weak var listener: IKMapEventListener?
 
+    /// Mirrors the Kotlin side, which lowercases MapLoadingErrorType.name.
+    private static func loadErrorName(_ type: MapLoadingErrorType) -> String
+    {
+        switch type
+        {
+        case .style: return "style"
+        case .sprite: return "sprite"
+        case .source: return "source"
+        case .tile: return "tile"
+        case .glyphs: return "glyphs"
+        @unknown default: return "unknown"
+        }
+    }
+
     @objc(initWithFrame:styleUri:latitude:longitude:zoom:bearing:pitch:)
     public init(frame: CGRect, styleUri: String, latitude: Double, longitude: Double,
                 zoom: Double, bearing: Double, pitch: Double)
@@ -218,6 +238,14 @@ public class IKMapView: UIView
 
     private func subscribeEvents()
     {
+        mapView.mapboxMap.onMapLoadingError.observe { [weak self] event in
+            guard let self else { return }
+            self.listener?.onMapLoadError(
+                type: IKMapView.loadErrorName(event.type),
+                message: event.message,
+                sourceId: event.sourceId)
+        }.store(in: &cancelables)
+
         mapView.mapboxMap.onMapLoaded.observeNext { [weak self] _ in
             self?.listener?.onMapReady()
         }.store(in: &cancelables)

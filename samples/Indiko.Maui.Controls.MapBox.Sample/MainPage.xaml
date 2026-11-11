@@ -64,6 +64,7 @@
                      AnnotationClicked="OnAnnotationClicked"
                      PolylineClicked="OnPolylineClicked"
                      PolygonClicked="OnPolygonClicked"
+                     MapLoadError="OnMapLoadError"
                      OfflineRegionProgress="OnOfflineProgress"
                      OfflineRegionCompleted="OnOfflineCompleted"
                      FollowPuckChanged="OnFollowPuckChanged"
