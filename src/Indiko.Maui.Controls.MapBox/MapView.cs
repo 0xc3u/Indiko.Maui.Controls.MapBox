@@ -150,6 +150,21 @@ public class MapView : View
         set => SetValue(ShowUserLocationProperty, value);
     }
 
+    public static readonly BindableProperty CameraPaddingProperty = BindableProperty.Create(
+        nameof(CameraPadding), typeof(Thickness), typeof(MapView), new Thickness(0));
+
+    /// <summary>
+    /// Shifts the camera's anchor inside the viewport (device-independent units). Set the
+    /// bottom inset to the height of a bottom sheet and the camera centre — and everything
+    /// positioned by it, like <see cref="FlyTo"/> and the follow-puck — lands in the
+    /// visible part of the map instead of behind the sheet.
+    /// </summary>
+    public Thickness CameraPadding
+    {
+        get => (Thickness)GetValue(CameraPaddingProperty);
+        set => SetValue(CameraPaddingProperty, value);
+    }
+
     public static readonly BindableProperty CompassPlacementProperty = BindableProperty.Create(
         nameof(CompassPlacement), typeof(MapOrnamentPlacement), typeof(MapView));
 

@@ -158,7 +158,10 @@
                         <!-- Push/pop regression check for issue #1 (black map on reopen). -->
                         <Button Text="Navigation" Style="{StaticResource Chip}" Clicked="OnOpenNavigationTest" />
                         <Button x:Name="ChipCameraLimit" Text="Kamera-Limit" Style="{StaticResource Chip}" Clicked="OnToggleCameraLimit" />
+                    </HorizontalStackLayout>
+                    <HorizontalStackLayout Spacing="8">
                         <Button x:Name="ChipOrnamentPos" Text="Ornament-Pos" Style="{StaticResource Chip}" Clicked="OnToggleOrnamentPlacement" />
+                        <Button x:Name="ChipCameraPadding" Text="Sheet-Padding" Style="{StaticResource Chip}" Clicked="OnToggleCameraPadding" />
                     </HorizontalStackLayout>
 
                     <Label Text="TERRAIN &amp; OFFLINE" Style="{StaticResource SectionHeader}" />

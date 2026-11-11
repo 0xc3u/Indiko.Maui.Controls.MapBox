@@ -1092,6 +1092,18 @@ public class IKMapView: UIView
     ///  "attribution":{...}}
     /// position is topLeft|topRight|bottomLeft|bottomRight; x/y are the offset in points
     /// from that corner.
+    /// Shifts the camera's anchor inside the viewport, in points. Use it when part of the
+    /// map is covered by other UI: the centre of the camera then lands in the visible part
+    /// instead of the middle of the view.
+    @objc(setCameraPaddingLeft:top:right:bottom:)
+    public func setCameraPadding(left: Double, top: Double, right: Double, bottom: Double)
+    {
+        if destroyed { return }
+
+        mapView.mapboxMap.setCamera(to: CameraOptions(
+            padding: UIEdgeInsets(top: top, left: left, bottom: bottom, right: right)))
+    }
+
     @objc(setOrnamentPlacementJson:)
     public func setOrnamentPlacement(json: String)
     {

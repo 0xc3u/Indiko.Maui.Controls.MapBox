@@ -410,6 +410,10 @@ SWIFT_CLASS_NAMED("IKMapView")
 /// “attribution”:{…}}
 /// position is topLeft|topRight|bottomLeft|bottomRight; x/y are the offset in points
 /// from that corner.
+/// Shifts the camera’s anchor inside the viewport, in points. Use it when part of the
+/// map is covered by other UI: the centre of the camera then lands in the visible part
+/// instead of the middle of the view.
+- (void)setCameraPaddingLeft:(double)left top:(double)top right:(double)right bottom:(double)bottom;
 - (void)setOrnamentPlacementJson:(NSString * _Nonnull)json;
 - (void)setOrnamentsCompass:(BOOL)compass scaleBar:(BOOL)scaleBar logo:(BOOL)logo attribution:(BOOL)attribution;
 /// Current viewport as a bounding box. JSON: {“minLat”,“minLng”,“maxLat”,“maxLng”}

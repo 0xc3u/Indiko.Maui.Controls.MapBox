@@ -31,6 +31,7 @@ on the UI thread; command parameters carry the same `EventArgs` object the event
 - ⛰️ `QueryTerrainElevation()` returns the ground elevation at any coordinate, corrected for the terrain exaggeration
 - 🚧 Camera constraints — restrict panning to a bounding box and clamp zoom/pitch
 - 📐 Ornament placement — anchor compass, scale bar, logo and attribution to any corner
+- 🪟 `CameraPadding` — keep the camera anchor out from behind a bottom sheet or tab bar
 - ⚠️ `MapLoadError` reports style/source/tile/sprite/glyph load failures instead of failing silently
 - 🧭 Compass on rotation, scale bar, user-location puck, per-gesture configuration
 - 🎛️ Ornament visibility: compass, scale bar, Mapbox logo and attribution individually switchable
@@ -84,7 +85,7 @@ code, and the reason .NET Android no longer reports `XA0141` for this package.
 | Animated camera (`flyTo`) | ✅ | `FlyTo(camera, durationMs)` |
 | Fit to bounding box (`cameraForCoordinateBounds`) | ✅ | `FitBounds`, `FitBoundsToContent`, switchable `AutoFitBounds` |
 | Camera constraints (bounds, min/max zoom & pitch) | ✅ | `CameraBounds`, `MinZoom`, `MaxZoom`, `MinPitch`, `MaxPitch` |
-| Camera padding / anchor offsets | 🔶 | uniform `FitBoundsPadding` only |
+| Camera padding / anchor offsets | ✅ | `CameraPadding` (per-edge), plus uniform `FitBoundsPadding` for fits |
 | Visible viewport bounds (`coordinateBoundsForCamera`) | ✅ | `GetVisibleBounds()` |
 | **Annotations** | | |
 | Point annotations (markers) | ✅ | `Annotations` collection: color, title, `Tag` payload, click events |
@@ -790,6 +791,27 @@ meters. The result is independent of `TerrainExaggeration`.
 > if that cache entry is lost while the region survives (clearing the app's ambient cache):
 > the DEM source then reports `Online connectivity is disabled` and `QueryTerrainElevation`
 > returns `null` until the device has been online once.
+
+---
+
+## Camera padding
+
+When other UI covers part of the map, the centre of the viewport is not the centre the
+user sees. `CameraPadding` moves the camera's anchor into the visible area, and everything
+positioned by the camera follows: `Camera`, `FlyTo`, the follow-puck and `CurrentCamera`.
+
+```xml
+<map:MapView CameraPadding="0,0,0,420" />
+```
+
+```csharp
+map.CameraPadding = new Thickness(left: 0, top: 0, right: 0, bottom: sheetHeight);
+map.CameraPadding = new Thickness(0);      // back to the viewport centre
+```
+
+Units are device-independent, matching the rest of the MAUI layout. This is separate from
+`FitBoundsPadding`, which is the uniform edge padding used by `FitBounds` /
+`FitBoundsToContent`.
 
 ---
 

@@ -273,6 +273,34 @@ public partial class MainPage : ContentPage
 		}
 	}
 
+	/// <summary>
+	/// The bottom sheet hides the lower ~420 units of the map, so a centred camera is not
+	/// centred for the user. Padding the camera moves its anchor into the visible strip —
+	/// the marker dropped at the camera coordinate shows where that anchor actually is.
+	/// </summary>
+	private void OnToggleCameraPadding(object? sender, EventArgs e)
+	{
+		var padded = Map.CameraPadding.Bottom == 0;
+		PaintChip(ChipCameraPadding, padded);
+
+		Map.CameraPadding = padded ? new Thickness(0, 0, 0, 420) : new Thickness(0);
+
+		const double latitude = 47.3769;
+		const double longitude = 8.5417;
+		Map.Annotations.Add(new MapAnnotation
+		{
+			Latitude = latitude,
+			Longitude = longitude,
+			Title = "Kamera-Anker",
+			Color = padded ? "#16A34A" : "#DC2626",
+		});
+		Map.FlyTo(new MapCameraPosition(latitude, longitude, 13), 800);
+
+		StatusLabel.Text = padded
+			? "Camera-Padding unten 420 — Anker über dem Sheet"
+			: "Camera-Padding aus — Anker in der Viewport-Mitte";
+	}
+
 	private void OnPolylineClicked(object? sender, PolylineClickedEventArgs e)
 	{
 		StatusLabel.Text = $"Polyline: {e.Polyline.Title ?? e.Polyline.Id}";

@@ -1256,6 +1256,24 @@ class IKMapView(
      * position is topLeft|topRight|bottomLeft|bottomRight; x/y are the offset in dp
      * from that corner.
      */
+    /**
+     * Shifts the camera's anchor inside the viewport, in dp. Use it when part of the map
+     * is covered by other UI: the centre of the camera then lands in the visible part
+     * instead of the middle of the view.
+     */
+    fun setCameraPadding(left: Double, top: Double, right: Double, bottom: Double)
+    {
+        if (destroyed)
+            return
+
+        val d = resources.displayMetrics.density
+        mapView.mapboxMap.setCamera(
+            CameraOptions.Builder()
+                .padding(EdgeInsets(top * d, left * d, bottom * d, right * d))
+                .build()
+        )
+    }
+
     fun setOrnamentPlacementJson(json: String)
     {
         if (destroyed)
