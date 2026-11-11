@@ -16,6 +16,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.ViewTreeLifecycleOwner
+import com.mapbox.bindgen.Value
 import com.mapbox.common.Cancelable
 import com.mapbox.common.MapboxOptions
 import com.mapbox.common.NetworkRestriction
@@ -118,6 +119,70 @@ object IKMapbox
     @JvmStatic
     @SuppressLint("RestrictedApi")
     fun isTelemetryEnabled(): Boolean = TelemetryUtils.getEventsCollectionState()
+
+    /**
+     * Lists every offline tile region on the device, independent of any map view.
+     * The callback receives a JSON array (on an arbitrary thread):
+     * [{"id","requiredResourceCount","completedResourceCount","completedResourceSize",
+     *   "expires" (epoch ms or null),"metadata" (the region JSON or null)}]
+     * On failure the array is empty.
+     */
+    @JvmStatic
+    fun listOfflineRegions(callback: IKStringCallback)
+    {
+        val tileStore = TileStore.create()
+        tileStore.getAllTileRegions { expected ->
+            val regions = expected.value
+            if (regions == null || regions.isEmpty())
+            {
+                callback.onResult("[]")
+                return@getAllTileRegions
+            }
+
+            // Metadata is fetched per region; the callback fires once all are in.
+            val results = arrayOfNulls<JSONObject>(regions.size)
+            val remaining = java.util.concurrent.atomic.AtomicInteger(regions.size)
+            regions.forEachIndexed { index, region ->
+                tileStore.getTileRegionMetadata(region.id) { metadata ->
+                    val entry = JSONObject()
+                        .put("id", region.id)
+                        .put("requiredResourceCount", region.requiredResourceCount)
+                        .put("completedResourceCount", region.completedResourceCount)
+                        .put("completedResourceSize", region.completedResourceSize)
+                        .put("expires", region.expires?.time ?: JSONObject.NULL)
+                    val json = metadata.value?.toJson()
+                    entry.put("metadata", json?.let { runCatching { JSONObject(it) }.getOrNull() } ?: JSONObject.NULL)
+                    results[index] = entry
+
+                    if (remaining.decrementAndGet() == 0)
+                    {
+                        val array = JSONArray()
+                        results.forEach { if (it != null) array.put(it) }
+                        callback.onResult(array.toString())
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Removes an offline tile region by id, independent of any map view. Does not
+     * cancel a download still running in a map view — use IKMapView.removeOfflineRegion
+     * for that. Tiles shared with other regions stay on disk.
+     */
+    @JvmStatic
+    fun removeOfflineRegion(id: String)
+    {
+        TileStore.create().removeTileRegion(id)
+    }
+}
+
+/**
+ * Single-string result callback for asynchronous static calls (JSON payloads).
+ */
+interface IKStringCallback
+{
+    fun onResult(json: String)
 }
 
 /**
@@ -220,6 +285,8 @@ class IKMapView(
     private companion object
     {
         const val ANNOTATION_TAP_WINDOW_MS = 300L
+        const val DEM_TILESET_URL = "mapbox://mapbox.mapbox-terrain-dem-v1"
+        const val DEM_MAX_ZOOM = 14
     }
 
     var listener: IKMapEventListener? = null
@@ -788,7 +855,10 @@ class IKMapView(
 
     /**
      * Downloads a style pack plus the tile region for a bounding box. JSON:
-     * {"id","styleUri","minZoom","maxZoom","minLat","minLng","maxLat","maxLng"}
+     * {"id","name","styleUri","minZoom","maxZoom","minLat","minLng","maxLat","maxLng","includeTerrain"}
+     * With includeTerrain the Mapbox terrain DEM is downloaded too (capped at its
+     * native max zoom 14), so 3D terrain and elevation queries work offline.
+     * The JSON itself is stored as the region's metadata (see IKMapbox.listOfflineRegions).
      * Progress and completion are reported through the listener.
      */
     fun downloadOfflineRegionJson(json: String)
@@ -820,13 +890,31 @@ class IKMapView(
         )
 
         // 2. Tile region for the bounding box.
-        val descriptor = offlineManager.createTilesetDescriptor(
-            TilesetDescriptorOptions.Builder()
-                .styleURI(styleUri)
-                .minZoom(minZoom)
-                .maxZoom(maxZoom)
-                .build()
+        val descriptors = mutableListOf(
+            offlineManager.createTilesetDescriptor(
+                TilesetDescriptorOptions.Builder()
+                    .styleURI(styleUri)
+                    .minZoom(minZoom)
+                    .maxZoom(maxZoom)
+                    .build()
+            )
         )
+
+        // 2b. Terrain DEM (the runtime "ik-dem" source is not part of the style, so
+        // the style descriptor alone never covers it). The DEM ends at zoom 14.
+        if (config.optBoolean("includeTerrain", false))
+        {
+            val demMax = minOf(maxZoom.toInt(), DEM_MAX_ZOOM).toByte()
+            val demMin = minOf(minZoom.toInt(), demMax.toInt()).toByte()
+            descriptors += offlineManager.createTilesetDescriptor(
+                TilesetDescriptorOptions.Builder()
+                    .styleURI(styleUri)
+                    .minZoom(demMin)
+                    .maxZoom(demMax)
+                    .tilesets(listOf(DEM_TILESET_URL))
+                    .build()
+            )
+        }
 
         val ring = listOf(
             com.mapbox.geojson.Point.fromLngLat(minLng, minLat),
@@ -840,7 +928,8 @@ class IKMapView(
             id,
             TileRegionLoadOptions.Builder()
                 .geometry(Polygon.fromLngLats(listOf(ring)))
-                .descriptors(listOf(descriptor))
+                .descriptors(descriptors)
+                .metadata(Value.fromJson(json).value ?: Value.nullValue())
                 .acceptExpired(true)
                 .networkRestriction(NetworkRestriction.NONE)
                 .build(),
@@ -1120,9 +1209,9 @@ class IKMapView(
         if (!style.styleSourceExists("ik-dem"))
         {
             style.addSource(rasterDemSource("ik-dem") {
-                url("mapbox://mapbox.mapbox-terrain-dem-v1")
+                url(DEM_TILESET_URL)
                 tileSize(514)
-                maxzoom(14)
+                maxzoom(DEM_MAX_ZOOM.toLong())
             })
         }
 
@@ -1170,6 +1259,27 @@ class IKMapView(
             .put("maxLat", bounds.northeast.latitude())
             .put("maxLng", bounds.northeast.longitude())
             .toString()
+    }
+
+    /**
+     * Terrain elevation in meters above sea level at a coordinate, or NaN when it
+     * is not available: terrain disabled, exaggeration 0, or the DEM tile for the
+     * coordinate not loaded (typically: not on screen, or offline without a region
+     * that includes terrain). Mapbox reports the elevation multiplied by the
+     * terrain exaggeration; this returns the real value.
+     */
+    fun queryTerrainElevation(latitude: Double, longitude: Double): Double
+    {
+        if (destroyed)
+            return Double.NaN
+
+        val exaggeration = terrainExaggeration ?: return Double.NaN
+        if (exaggeration <= 0.0)
+            return Double.NaN
+
+        val elevation = mapView.mapboxMap.getElevation(Point.fromLngLat(longitude, latitude))
+            ?: return Double.NaN
+        return elevation / exaggeration
     }
 
     fun setGestures(scroll: Boolean, zoom: Boolean, rotate: Boolean, pitch: Boolean)

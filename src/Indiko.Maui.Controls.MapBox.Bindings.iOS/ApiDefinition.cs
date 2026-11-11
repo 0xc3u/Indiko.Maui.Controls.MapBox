@@ -19,7 +19,18 @@ interface IKMapbox
         [Export("isTelemetryEnabled")] get;
         [Export("setTelemetryEnabled:")] set;
     }
+
+    [Static]
+    [Export("listOfflineRegions:")]
+    void ListOfflineRegions(IKStringCallback completion);
+
+    [Static]
+    [Export("removeOfflineRegion:")]
+    void RemoveOfflineRegion(string id);
 }
+
+/// <summary>Swift <c>(String) -&gt; Void</c> completion block (JSON payloads).</summary>
+delegate void IKStringCallback(string json);
 
 [BaseType(typeof(NSObject), Name = "IKCameraState")]
 [DisableDefaultCtor]
@@ -187,6 +198,9 @@ interface IKMapView
 
     [Export("visibleBoundsJson")]
     string VisibleBoundsJson();
+
+    [Export("queryTerrainElevation:longitude:")]
+    double QueryTerrainElevation(double latitude, double longitude);
 
     [Export("setGesturesScroll:zoom:rotate:pitch:")]
     void SetGestures(bool scroll, bool zoom, bool rotate, bool pitch);

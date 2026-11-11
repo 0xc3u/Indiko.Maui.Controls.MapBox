@@ -33,7 +33,88 @@ public class IKMapbox: NSObject
     }
 
     private static let metricsDefaultsKey = "MGLMapboxMetricsEnabled"
+
+    /// Lists every offline tile region on the device, independent of any map view.
+    /// The completion receives a JSON array (on an arbitrary thread):
+    /// [{"id","requiredResourceCount","completedResourceCount","completedResourceSize",
+    ///   "expires" (epoch ms or null),"metadata" (the region JSON or null)}]
+    /// On failure the array is empty.
+    @objc(listOfflineRegions:)
+    public static func listOfflineRegions(_ completion: @escaping (String) -> Void)
+    {
+        let tileStore = TileStore.default
+        tileStore.allTileRegions
+        { result in
+            guard case .success(let regions) = result, !regions.isEmpty
+            else
+            {
+                completion("[]")
+                return
+            }
+
+            // Metadata is fetched per region; the completion fires once all are in.
+            let lock = NSLock()
+            var entries = [[String: Any]?](repeating: nil, count: regions.count)
+            var remaining = regions.count
+
+            for (index, region) in regions.enumerated()
+            {
+                tileStore.tileRegionMetadata(forId: region.id)
+                { metadataResult in
+                    var entry: [String: Any] = [
+                        "id": region.id,
+                        "requiredResourceCount": NSNumber(value: region.requiredResourceCount),
+                        "completedResourceCount": NSNumber(value: region.completedResourceCount),
+                        "completedResourceSize": NSNumber(value: region.completedResourceSize),
+                    ]
+                    if let expires = region.expires
+                    {
+                        entry["expires"] = NSNumber(value: Int64(expires.timeIntervalSince1970 * 1000))
+                    }
+                    else
+                    {
+                        entry["expires"] = NSNull()
+                    }
+                    if case .success(let metadata) = metadataResult,
+                       JSONSerialization.isValidJSONObject(metadata)
+                    {
+                        entry["metadata"] = metadata
+                    }
+                    else
+                    {
+                        entry["metadata"] = NSNull()
+                    }
+
+                    lock.lock()
+                    entries[index] = entry
+                    remaining -= 1
+                    let done = remaining == 0
+                    lock.unlock()
+
+                    if done
+                    {
+                        let array = entries.compactMap { $0 }
+                        let data = (try? JSONSerialization.data(withJSONObject: array)) ?? Data("[]".utf8)
+                        completion(String(data: data, encoding: .utf8) ?? "[]")
+                    }
+                }
+            }
+        }
+    }
+
+    /// Removes an offline tile region by id, independent of any map view. Does not
+    /// cancel a download still running in a map view — use IKMapView.removeOfflineRegion
+    /// for that. Tiles shared with other regions stay on disk.
+    @objc(removeOfflineRegion:)
+    public static func removeOfflineRegion(_ id: String)
+    {
+        TileStore.default.removeTileRegion(forId: id)
+    }
 }
+
+/// Mapbox terrain DEM tileset, shared by the runtime terrain source and offline regions.
+private let demTilesetUrl = "mapbox://mapbox.mapbox-terrain-dem-v1"
+private let demMaxZoom: UInt8 = 14
 
 /// Immutable snapshot of the current camera, handed to the event listener.
 @objc(IKCameraState)
@@ -592,7 +673,10 @@ public class IKMapView: UIView
     private var tileRegionCancelables: [String: Cancelable] = [:]
 
     /// Downloads a style pack plus the tile region for a bounding box. JSON:
-    /// {"id","styleUri","minZoom","maxZoom","minLat","minLng","maxLat","maxLng"}
+    /// {"id","name","styleUri","minZoom","maxZoom","minLat","minLng","maxLat","maxLng","includeTerrain"}
+    /// With includeTerrain the Mapbox terrain DEM is downloaded too (capped at its
+    /// native max zoom 14), so 3D terrain and elevation queries work offline.
+    /// The JSON itself is stored as the region's metadata (see IKMapbox.listOfflineRegions).
     /// Progress and completion are reported through the listener.
     @objc(downloadOfflineRegionJson:)
     public func downloadOfflineRegion(json: String)
@@ -623,7 +707,18 @@ public class IKMapView: UIView
         // 2. Tile region for the bounding box.
         let descriptorOptions = TilesetDescriptorOptions(
             styleURI: styleUri, zoomRange: minZoom...maxZoom, tilesets: nil)
-        let descriptor = offlineManager.createTilesetDescriptor(for: descriptorOptions)
+        var descriptors = [offlineManager.createTilesetDescriptor(for: descriptorOptions)]
+
+        // 2b. Terrain DEM (the runtime "ik-dem" source is not part of the style, so
+        // the style descriptor alone never covers it). The DEM ends at zoom 14.
+        if config["includeTerrain"] as? Bool == true
+        {
+            let demMax = min(maxZoom, demMaxZoom)
+            let demMin = min(minZoom, demMax)
+            let demOptions = TilesetDescriptorOptions(
+                styleURI: styleUri, zoomRange: demMin...demMax, tilesets: [demTilesetUrl])
+            descriptors.append(offlineManager.createTilesetDescriptor(for: demOptions))
+        }
 
         let ring = Ring(coordinates: [
             CLLocationCoordinate2D(latitude: minLat, longitude: minLng),
@@ -635,7 +730,8 @@ public class IKMapView: UIView
 
         guard let loadOptions = TileRegionLoadOptions(
             geometry: .polygon(Polygon(outerRing: ring)),
-            descriptors: [descriptor],
+            descriptors: descriptors,
+            metadata: config,
             acceptExpired: true)
         else { return }
 
@@ -939,9 +1035,9 @@ public class IKMapView: UIView
         if !mapView.mapboxMap.sourceExists(withId: "ik-dem")
         {
             var dem = RasterDemSource(id: "ik-dem")
-            dem.url = "mapbox://mapbox.mapbox-terrain-dem-v1"
+            dem.url = demTilesetUrl
             dem.tileSize = 514
-            dem.maxzoom = 14
+            dem.maxzoom = 14 // keep in sync with demMaxZoom
             try? mapView.mapboxMap.addSource(dem)
         }
 
@@ -985,6 +1081,24 @@ public class IKMapView: UIView
             locale: Locale(identifier: "en_US_POSIX"),
             bounds.southwest.latitude, bounds.southwest.longitude,
             bounds.northeast.latitude, bounds.northeast.longitude)
+    }
+
+    /// Terrain elevation in meters above sea level at a coordinate, or NaN when it
+    /// is not available: terrain disabled, exaggeration 0, or the DEM tile for the
+    /// coordinate not loaded (typically: not on screen, or offline without a region
+    /// that includes terrain). Mapbox reports the elevation multiplied by the
+    /// terrain exaggeration; this returns the real value.
+    @objc(queryTerrainElevation:longitude:)
+    public func queryTerrainElevation(latitude: Double, longitude: Double) -> Double
+    {
+        if destroyed { return .nan }
+
+        guard let exaggeration = terrainExaggeration, exaggeration > 0,
+              let elevation = mapView.mapboxMap.elevation(
+                at: CLLocationCoordinate2D(latitude: latitude, longitude: longitude))
+        else { return .nan }
+
+        return elevation / exaggeration
     }
 
     @objc(setGesturesScroll:zoom:rotate:pitch:)

@@ -190,7 +190,10 @@ public partial class MainPage : ContentPage
 
 	private void OnMapClicked(object? sender, MapClickedEventArgs e)
 	{
-		StatusLabel.Text = $"Klick: {e.Latitude:F5}, {e.Longitude:F5}";
+		var elevation = Map.QueryTerrainElevation(e.Latitude, e.Longitude);
+		StatusLabel.Text = elevation is { } meters
+			? $"Klick: {e.Latitude:F5}, {e.Longitude:F5} · {meters:F0} m ü. M."
+			: $"Klick: {e.Latitude:F5}, {e.Longitude:F5}";
 		Map.Annotations.Add(new MapAnnotation
 		{
 			Latitude = e.Latitude,
@@ -461,6 +464,8 @@ public partial class MainPage : ContentPage
 			MaxLongitude = 8.62,
 			MinZoom = 6,
 			MaxZoom = 12,
+			Name = "Zürich",
+			IncludeTerrain = true,
 		});
 		StatusLabel.Text = "Offline-Download gestartet…";
 	}
@@ -475,6 +480,19 @@ public partial class MainPage : ContentPage
 		StatusLabel.Text = e.Success
 			? $"Offline-Region '{e.RegionId}' fertig geladen ✓"
 			: $"Offline-Download fehlgeschlagen: {e.ErrorMessage}";
+
+		if (e.Success)
+			_ = ShowOfflineRegionsAsync();
+	}
+
+	private async Task ShowOfflineRegionsAsync()
+	{
+		var regions = await MapboxOffline.GetRegionsAsync();
+		var lines = regions.Select(r =>
+			$"{r.Region?.Name ?? r.Id}: {r.CompletedResourceSize / 1_048_576.0:F1} MB" +
+			(r.Region?.IncludeTerrain == true ? " · Terrain" : string.Empty) +
+			(r.IsComplete ? " ✓" : $" ({r.CompletedResourceCount}/{r.RequiredResourceCount})"));
+		await DisplayAlertAsync("Offline-Regionen", string.Join(Environment.NewLine, lines), "OK");
 	}
 
 	private void OnToggleOrnaments(object? sender, EventArgs e)
