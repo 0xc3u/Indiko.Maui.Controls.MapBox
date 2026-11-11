@@ -1,3 +1,14 @@
+# [1.10.0](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/compare/v1.9.0...v1.10.0) (2026-11-11)
+
+### Features
+
+* translate place labels with MapLanguage ([dc76add](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/commit/dc76addd63fd7108db4724bc852af8e601395aa9))
+* offset the camera anchor with CameraPadding ([c8817b5](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/commit/c8817b5c117a1d33db39414654011cd3cebd0d11))
+* place ornaments in any corner with an offset ([bb22a66](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/commit/bb22a66ae019707f58a63a5d728e4e9e29d24326))
+* constrain the camera to bounds and a zoom/pitch range ([62a8c94](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/commit/62a8c94414ed799ddf02d75a84a86db485275b00))
+* report map load errors instead of failing silently ([d8b5d3c](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/commit/d8b5d3c292550b5955463173893cb0ddb8e7881b))
+
+
 # [1.9.0](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/compare/v1.8.4...v1.9.0) (2026-11-11)
 
 ### Features
