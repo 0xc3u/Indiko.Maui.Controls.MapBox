@@ -205,6 +205,20 @@ public class MapView : View
         set => SetValue(MapLanguageProperty, value);
     }
 
+    public static readonly BindableProperty AtmosphereProperty = BindableProperty.Create(
+        nameof(Atmosphere), typeof(MapAtmosphere), typeof(MapView));
+
+    /// <summary>
+    /// The atmosphere (fog) around the map; null leaves the style's own. Most visible with
+    /// <see cref="MapProjection.Globe"/>, where it is the glow at the limb and the space
+    /// behind the planet.
+    /// </summary>
+    public MapAtmosphere? Atmosphere
+    {
+        get => (MapAtmosphere?)GetValue(AtmosphereProperty);
+        set => SetValue(AtmosphereProperty, value);
+    }
+
     public static readonly BindableProperty ProjectionProperty = BindableProperty.Create(
         nameof(Projection), typeof(MapProjection), typeof(MapView), MapProjection.Default);
 

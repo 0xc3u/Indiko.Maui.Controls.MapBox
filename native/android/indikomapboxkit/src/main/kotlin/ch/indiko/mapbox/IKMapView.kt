@@ -49,6 +49,7 @@ import com.mapbox.maps.extension.style.layers.addLayer
 import com.mapbox.maps.extension.style.layers.addLayerBelow
 import com.mapbox.maps.extension.style.layers.generated.CircleLayer
 import com.mapbox.maps.extension.style.layers.generated.HeatmapLayer
+import com.mapbox.maps.extension.style.atmosphere.generated.removeAtmosphere
 import com.mapbox.maps.extension.style.layers.generated.FillExtrusionLayer
 import com.mapbox.maps.extension.style.layers.generated.FillLayer
 import com.mapbox.maps.extension.style.layers.generated.HillshadeLayer
@@ -347,6 +348,7 @@ class IKMapView(
             applyMapLanguage()
             applyStyleImportConfig()
             applyProjection()
+            applyAtmosphere()
             listener?.onStyleLoaded()
         }
         cancelables += mapView.mapboxMap.subscribeCameraChanged { event ->
@@ -1721,6 +1723,36 @@ class IKMapView(
      * Switches the map projection: "globe", "mercator", or "" to keep whatever the style
      * ships with. Re-applied after every style load, because a style reload resets it.
      */
+    /**
+     * Sets the atmosphere (fog) as raw style-spec JSON — keys such as "color",
+     * "high-color", "space-color", "horizon-blend", "star-intensity". An empty payload
+     * removes it. Re-applied after every style load.
+     */
+    fun setAtmosphereJson(json: String)
+    {
+        if (destroyed)
+            return
+
+        atmosphereJson = json.takeIf { it.isNotEmpty() && it != "{}" }
+        applyAtmosphere()
+    }
+
+    private var atmosphereJson: String? = null
+
+    private fun applyAtmosphere()
+    {
+        val style = mapView.mapboxMap.style ?: return
+        val json = atmosphereJson
+        if (json == null)
+        {
+            style.removeAtmosphere()
+            return
+        }
+
+        val value = Value.fromJson(json).value ?: return
+        style.setStyleAtmosphere(value)
+    }
+
     fun setProjection(name: String)
     {
         if (destroyed)

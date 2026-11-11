@@ -36,6 +36,7 @@ on the UI thread; command parameters carry the same `EventArgs` object the event
 - 🔍 `QueryFeaturesAsync()` reports which feature sits under a tap, with its properties
 - ✨ Feature state — selection and hover styling without touching the source data
 - 🌍 Globe projection — a real 3D globe when zoomed out
+- 🌅 Atmosphere — fog colours, horizon blend and stars
 - 🌑 Standard-style configuration — `LightPreset` day/dusk/night, theme and 3D objects
 - 🤚 Individual zoom gestures switchable — double-tap, quick-zoom and pinch separately
 - 🔥 Heatmaps and 3D fill extrusions, driven by your feature data
@@ -141,6 +142,7 @@ code, and the reason .NET Android no longer reports `XA0141` for this package.
 | 3D terrain (raster-DEM + sky atmosphere) | ✅ | `TerrainEnabled` + `TerrainExaggeration` |
 | Terrain elevation query (`getElevation`) | ✅ | `QueryTerrainElevation(lat, lon)` |
 | Globe / mercator projection | ✅ | `Projection` |
+| Atmosphere / fog | ✅ | `Atmosphere` — colours, horizon blend, star intensity |
 | Custom (non-Mapbox) projections | ❌ | globe and mercator only |
 | Telemetry opt-out | ✅ | `UseMapbox(token, enableTelemetry: false)` — see [Telemetry](#telemetry) |
 
@@ -840,6 +842,35 @@ Results are ordered top-most first, so `hits[0]` is what the user visually hit.
 
 The `radius` parameter (default 8) widens the hit area in device-independent units — thin
 lines and small circles are otherwise hard to hit with a finger. `0` queries the exact point.
+
+---
+
+## Atmosphere (fog and space)
+
+The atmosphere is the haze around the map — on the globe it is the glow at the limb and
+the space behind the planet; on a flat map it is a band at the horizon.
+
+```csharp
+map.Projection = MapProjection.Globe;
+map.Atmosphere = new MapAtmosphere
+{
+    Color = "#B91C1C",          // lower atmosphere
+    HighColor = "#F59E0B",      // upper atmosphere
+    SpaceColor = "#1E1B4B",     // behind the globe
+    HorizonBlend = 0.4,         // 0–1, lower is a crisper edge
+    StarIntensity = 0.9,        // 0–1
+};
+
+map.Atmosphere = null;          // back to the style's own
+```
+
+Unset properties are omitted, so the style keeps its own value for them — you can change
+just `StarIntensity` without inheriting a library-chosen palette for everything else.
+
+> Pair it with [`Projection`](#projection-globe-or-mercator). On a flat, zoomed-in map an
+> atmosphere is barely visible, which makes the setting look like it did nothing.
+
+Like the projection, it is re-applied after every style switch.
 
 ---
 

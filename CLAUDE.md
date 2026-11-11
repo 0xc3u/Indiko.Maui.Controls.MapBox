@@ -42,7 +42,7 @@ DEVELOPER_DIR=/Applications/Xcode-26.0.0.app/Contents/Developer \
 `sdk-manifests/10.0.100/microsoft.net.sdk.ios/<v>/WorkloadManifest.targets` lists which
 `TargetPlatformVersion` values map to which pack. Install/launch via `xcrun simctl`; the iOS
 simulator cannot inject taps, so the sample has `SIMCTL_CHILD_DEMO_*` launch hooks
-(`DEMO_ELEVATION`, `DEMO_OFFLINE`, `DEMO_REGIONS`, `DEMO_LOADERROR`, `DEMO_EXPRESSIONS`, `DEMO_QUERY`, `DEMO_GESTURES`, `DEMO_LIGHT`, `DEMO_GLOBE`, `DEMO_HEATMAP`,
+(`DEMO_ELEVATION`, `DEMO_OFFLINE`, `DEMO_REGIONS`, `DEMO_LOADERROR`, `DEMO_EXPRESSIONS`, `DEMO_QUERY`, `DEMO_GESTURES`, `DEMO_LIGHT`, `DEMO_GLOBE`, `DEMO_ATMOSPHERE`, `DEMO_HEATMAP`,
 `DEMO_EXTRUSION`, `DEMO_GEOJSON`, `DEMO_CLUSTER`, …). `DEMO_LOADERROR` points the map at a non-existent style so `MapLoadError`
 can be checked without taking the device offline.
 

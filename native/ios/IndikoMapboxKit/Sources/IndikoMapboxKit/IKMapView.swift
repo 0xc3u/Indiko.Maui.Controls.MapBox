@@ -275,6 +275,7 @@ public class IKMapView: UIView
             self.applyMapLanguage()
             self.applyStyleImportConfig()
             self.applyProjection()
+            self.applyAtmosphere()
             self.listener?.onStyleLoaded()
         }.store(in: &cancelables)
 
@@ -1501,6 +1502,34 @@ public class IKMapView: UIView
     /// style load, because a style reload resets the configuration.
     /// Switches the map projection: "globe", "mercator", or "" to keep whatever the style
     /// ships with. Re-applied after every style load, because a style reload resets it.
+    /// Sets the atmosphere (fog) as raw style-spec JSON — keys such as "color",
+    /// "high-color", "space-color", "horizon-blend", "star-intensity". An empty payload
+    /// removes it. Re-applied after every style load.
+    @objc(setAtmosphereJson:)
+    public func setAtmosphere(json: String)
+    {
+        if destroyed { return }
+
+        if json.isEmpty || json == "{}"
+        {
+            atmosphereProperties = nil
+        }
+        else if let data = json.data(using: .utf8),
+                let properties = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        {
+            atmosphereProperties = properties
+        }
+        applyAtmosphere()
+    }
+
+    private var atmosphereProperties: [String: Any]?
+
+    private func applyAtmosphere()
+    {
+        // An empty property bag is how Mapbox clears the atmosphere.
+        try? mapView.mapboxMap.setAtmosphere(properties: atmosphereProperties ?? [:])
+    }
+
     @objc(setProjection:)
     public func setProjection(name: String)
     {

@@ -460,6 +460,10 @@ SWIFT_CLASS_NAMED("IKMapView")
 /// style load, because a style reload resets the configuration.
 /// Switches the map projection: “globe”, “mercator”, or “” to keep whatever the style
 /// ships with. Re-applied after every style load, because a style reload resets it.
+/// Sets the atmosphere (fog) as raw style-spec JSON — keys such as “color”,
+/// “high-color”, “space-color”, “horizon-blend”, “star-intensity”. An empty payload
+/// removes it. Re-applied after every style load.
+- (void)setAtmosphereJson:(NSString * _Nonnull)json;
 - (void)setProjection:(NSString * _Nonnull)name;
 - (void)setStyleImportConfigJson:(NSString * _Nonnull)json;
 - (void)setGestureOptionsJson:(NSString * _Nonnull)json;

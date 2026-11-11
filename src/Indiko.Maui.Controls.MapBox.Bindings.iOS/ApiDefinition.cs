@@ -235,6 +235,9 @@ interface IKMapView
     [Export("removeFeatureState:sourceLayer:featureId:stateKey:")]
     void RemoveFeatureState(string sourceId, string sourceLayer, string featureId, string stateKey);
 
+    [Export("setAtmosphereJson:")]
+    void SetAtmosphereJson(string json);
+
     [Export("setProjection:")]
     void SetProjection(string name);
 

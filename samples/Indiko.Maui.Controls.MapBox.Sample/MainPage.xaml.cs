@@ -141,6 +141,11 @@ public partial class MainPage : ContentPage
 			OnToggleExpressions(this, EventArgs.Empty);
 			CollapseSheet();
 		}
+		if (Environment.GetEnvironmentVariable("DEMO_ATMOSPHERE") == "1")
+		{
+			OnToggleAtmosphere(this, EventArgs.Empty);
+			CollapseSheet();
+		}
 		if (Environment.GetEnvironmentVariable("DEMO_GLOBE") == "1")
 		{
 			OnToggleGlobe(this, EventArgs.Empty);
@@ -756,6 +761,38 @@ public partial class MainPage : ContentPage
 
 		Map.FlyTo(new MapCameraPosition(30, 10, globe ? 1.4 : 11, bearing: 0, pitch: 0), 1500);
 		StatusLabel.Text = globe ? "Projektion: Globus" : "Projektion: Mercator";
+	}
+
+	/// <summary>
+	/// A deliberately strong atmosphere so the change is unmistakable. Needs the globe to
+	/// be visible — on a flat map the atmosphere is only a thin band at the horizon.
+	/// </summary>
+	private void OnToggleAtmosphere(object? sender, EventArgs e)
+	{
+		var custom = Map.Atmosphere is null;
+		PaintChip(ChipAtmosphere, custom);
+
+		if (Map.Projection != MapProjection.Globe)
+		{
+			Map.Projection = MapProjection.Globe;
+			PaintChip(ChipGlobe, true);
+			Map.FlyTo(new MapCameraPosition(30, 10, 1.4, bearing: 0, pitch: 0), 1500);
+		}
+
+		Map.Atmosphere = custom
+			? new MapAtmosphere
+			{
+				Color = "#B91C1C",
+				HighColor = "#F59E0B",
+				SpaceColor = "#1E1B4B",
+				HorizonBlend = 0.4,
+				StarIntensity = 0.9,
+			}
+			: null;
+
+		StatusLabel.Text = custom
+			? "Atmosphäre: eigene Farben, Sterne an"
+			: "Atmosphäre: Style-Standard";
 	}
 
 	private void OnPolylineClicked(object? sender, PolylineClickedEventArgs e)
