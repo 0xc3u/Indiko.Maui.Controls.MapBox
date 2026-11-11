@@ -72,6 +72,8 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
             [nameof(MapView.GetVisibleBounds)] = MapGetVisibleBounds,
             [nameof(MapView.QueryTerrainElevation)] = MapQueryTerrainElevation,
             [nameof(MapView.QueryFeaturesAsync)] = MapQueryFeatures,
+            [nameof(MapView.SetFeatureState)] = MapSetFeatureState,
+            [nameof(MapView.RemoveFeatureState)] = MapRemoveFeatureState,
         };
 
     public MapViewHandler() : base(Mapper, Commands)
@@ -310,6 +312,24 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
     {
         if (args is VisibleBoundsRequest request)
             request.Bounds = AnnotationSerializer.ParseBounds(handler.PlatformView.VisibleBoundsJson());
+    }
+
+    private static void MapSetFeatureState(MapViewHandler handler, MapView view, object? args)
+    {
+        if (args is FeatureStateRequest request)
+        {
+            handler.PlatformView.SetFeatureState(
+                request.SourceId, request.SourceLayer, request.FeatureId, request.Payload);
+        }
+    }
+
+    private static void MapRemoveFeatureState(MapViewHandler handler, MapView view, object? args)
+    {
+        if (args is FeatureStateRequest request)
+        {
+            handler.PlatformView.RemoveFeatureState(
+                request.SourceId, request.SourceLayer, request.FeatureId, request.Payload);
+        }
     }
 
     private static void MapQueryFeatures(MapViewHandler handler, MapView view, object? args)

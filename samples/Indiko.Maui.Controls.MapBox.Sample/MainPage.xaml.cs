@@ -390,8 +390,11 @@ public partial class MainPage : ContentPage
 			[("see", "#2563EB"), ("berg", "#16A34A"), ("stadt", "#F59E0B")],
 			"#9CA3AF");
 		circles.Properties["circle-opacity"] = 0.85;
-		circles.Properties["circle-stroke-width"] = 2.0;
-		circles.Properties["circle-stroke-color"] = "#FFFFFF";
+		// Selection lives in feature state, so picking a circle never touches the source data.
+		circles.Properties["circle-stroke-width"] = MapExpression.Raw(
+			"[\"case\",[\"boolean\",[\"feature-state\",\"selected\"],false],6,2]");
+		circles.Properties["circle-stroke-color"] = MapExpression.Raw(
+			"[\"case\",[\"boolean\",[\"feature-state\",\"selected\"],false],\"#111827\",\"#FFFFFF\"]");
 		Map.AddLayer(circles);
 
 		var labels = new MapLayer
@@ -420,21 +423,21 @@ public partial class MainPage : ContentPage
 	{
 	  "type": "FeatureCollection",
 	  "features": [
-	    {"type":"Feature","properties":{"name":"HB","magnitude":6,"category":"stadt"},
+	    {"type":"Feature","id":1,"properties":{"name":"HB","magnitude":6,"category":"stadt"},
 	     "geometry":{"type":"Point","coordinates":[8.5417,47.3769]}},
-	    {"type":"Feature","properties":{"name":"Enge","magnitude":3,"category":"stadt"},
+	    {"type":"Feature","id":2,"properties":{"name":"Enge","magnitude":3,"category":"stadt"},
 	     "geometry":{"type":"Point","coordinates":[8.5310,47.3640]}},
-	    {"type":"Feature","properties":{"name":"Wollishofen","magnitude":2,"category":"see"},
+	    {"type":"Feature","id":3,"properties":{"name":"Wollishofen","magnitude":2,"category":"see"},
 	     "geometry":{"type":"Point","coordinates":[8.5360,47.3430]}},
-	    {"type":"Feature","properties":{"name":"Oerlikon","magnitude":4,"category":"stadt"},
+	    {"type":"Feature","id":4,"properties":{"name":"Oerlikon","magnitude":4,"category":"stadt"},
 	     "geometry":{"type":"Point","coordinates":[8.5500,47.4100]}},
-	    {"type":"Feature","properties":{"name":"Höngg","magnitude":2,"category":"berg"},
+	    {"type":"Feature","id":5,"properties":{"name":"Höngg","magnitude":2,"category":"berg"},
 	     "geometry":{"type":"Point","coordinates":[8.4970,47.4010]}},
-	    {"type":"Feature","properties":{"name":"Riesbach","magnitude":5,"category":"see"},
+	    {"type":"Feature","id":6,"properties":{"name":"Riesbach","magnitude":5,"category":"see"},
 	     "geometry":{"type":"Point","coordinates":[8.5560,47.3560]}},
-	    {"type":"Feature","properties":{"name":"Affoltern","magnitude":1,"category":"berg"},
+	    {"type":"Feature","id":7,"properties":{"name":"Affoltern","magnitude":1,"category":"berg"},
 	     "geometry":{"type":"Point","coordinates":[8.5020,47.4210]}},
-	    {"type":"Feature","properties":{"name":"Zürichberg","magnitude":3,"category":"berg"},
+	    {"type":"Feature","id":8,"properties":{"name":"Zürichberg","magnitude":3,"category":"berg"},
 	     "geometry":{"type":"Point","coordinates":[8.5760,47.3830]}}
 	  ]
 	}
@@ -660,7 +663,23 @@ public partial class MainPage : ContentPage
 
 		var hit = hits[0];
 		var name = hit.Properties.TryGetValue("name", out var value) ? value : null;
-		StatusLabel.Text = $"Query: '{name}' in '{hit.LayerId}' ({hit.GeometryType}, {hit.Properties.Count} Props)";
+		SelectExpressionFeature(hit);
+		StatusLabel.Text = $"Query: '{name}' in '{hit.LayerId}' (id {hit.Id}) — selektiert";
+	}
+
+	/// <summary>Moves the "selected" feature state to the tapped circle.</summary>
+	private string? selectedFeatureId;
+
+	private void SelectExpressionFeature(MapQueriedFeature hit)
+	{
+		if (hit.LayerId != "expr-circles" || hit.Id is not { Length: > 0 } id)
+			return;
+
+		if (selectedFeatureId is { } previous)
+			Map.RemoveFeatureState("expr-source", previous, "selected");
+
+		Map.SetFeatureState("expr-source", id, new Dictionary<string, object?> { ["selected"] = true });
+		selectedFeatureId = id;
 	}
 
 	private void OnPolylineClicked(object? sender, PolylineClickedEventArgs e)
@@ -682,6 +701,7 @@ public partial class MainPage : ContentPage
 		if (hits.Count > 0)
 		{
 			var hit = hits[0];
+			SelectExpressionFeature(hit);
 			var detail = hit.Properties.TryGetValue("name", out var name) ? $" '{name}'"
 				: hit.Properties.TryGetValue("height", out var height) ? $" {height} m hoch"
 				: string.Empty;

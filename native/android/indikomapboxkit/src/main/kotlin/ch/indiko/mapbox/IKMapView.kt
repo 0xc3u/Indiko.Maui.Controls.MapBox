@@ -1662,6 +1662,48 @@ class IKMapView(
         }
     }
 
+    /**
+     * Attaches state to a feature, readable from expressions as
+     * ["feature-state", "<key>"]. The feature must carry an id — GeoJSON without one is
+     * invisible to this. [sourceLayer] is only used by vector sources; pass "" otherwise.
+     */
+    fun setFeatureState(sourceId: String, sourceLayer: String, featureId: String, stateJson: String)
+    {
+        if (destroyed)
+            return
+
+        val state = Value.fromJson(stateJson).value ?: return
+        // Mapbox has separate overloads with and without a source layer.
+        if (sourceLayer.isEmpty())
+        {
+            mapView.mapboxMap.setFeatureState(sourceId, featureId, state) { }
+        }
+        else
+        {
+            mapView.mapboxMap.setFeatureState(sourceId, sourceLayer, featureId, state) { }
+        }
+    }
+
+    /** Removes one state key, or the feature's whole state when [stateKey] is empty. */
+    fun removeFeatureState(sourceId: String, sourceLayer: String, featureId: String, stateKey: String)
+    {
+        if (destroyed)
+            return
+
+        // Four overloads: with/without a source layer, with/without a single key.
+        when
+        {
+            sourceLayer.isEmpty() && stateKey.isEmpty() ->
+                mapView.mapboxMap.removeFeatureState(sourceId, featureId) { }
+            sourceLayer.isEmpty() ->
+                mapView.mapboxMap.removeFeatureState(sourceId, featureId, stateKey) { }
+            stateKey.isEmpty() ->
+                mapView.mapboxMap.removeFeatureState(sourceId, sourceLayer, featureId) { }
+            else ->
+                mapView.mapboxMap.removeFeatureState(sourceId, sourceLayer, featureId, stateKey) { }
+        }
+    }
+
     fun setGestures(scroll: Boolean, zoom: Boolean, rotate: Boolean, pitch: Boolean)
     {
         if (destroyed)

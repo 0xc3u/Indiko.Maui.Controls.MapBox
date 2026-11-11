@@ -1458,6 +1458,38 @@ public class IKMapView: UIView
         }
     }
 
+    /// Attaches state to a feature, readable from expressions as
+    /// ["feature-state", "<key>"]. The feature must carry an id — GeoJSON without one is
+    /// invisible to this. `sourceLayer` is only used by vector sources; pass "" otherwise.
+    @objc(setFeatureState:sourceLayer:featureId:stateJson:)
+    public func setFeatureState(sourceId: String, sourceLayer: String, featureId: String, stateJson: String)
+    {
+        if destroyed { return }
+
+        guard let data = stateJson.data(using: .utf8),
+              let state = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { return }
+
+        mapView.mapboxMap.setFeatureState(
+            sourceId: sourceId,
+            sourceLayerId: sourceLayer.isEmpty ? nil : sourceLayer,
+            featureId: featureId,
+            state: state) { _ in }
+    }
+
+    /// Removes one state key, or the feature's whole state when `stateKey` is empty.
+    @objc(removeFeatureState:sourceLayer:featureId:stateKey:)
+    public func removeFeatureState(sourceId: String, sourceLayer: String, featureId: String, stateKey: String)
+    {
+        if destroyed { return }
+
+        mapView.mapboxMap.removeFeatureState(
+            sourceId: sourceId,
+            sourceLayerId: sourceLayer.isEmpty ? nil : sourceLayer,
+            featureId: featureId,
+            stateKey: stateKey.isEmpty ? nil : stateKey) { _ in }
+    }
+
     @objc(setGesturesScroll:zoom:rotate:pitch:)
     public func setGestures(scroll: Bool, zoom: Bool, rotate: Bool, pitch: Bool)
     {

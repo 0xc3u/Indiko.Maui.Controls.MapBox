@@ -229,6 +229,12 @@ interface IKMapView
     void QueryRenderedFeatures(double latitude, double longitude, string layerIdsJson, double radius,
         IKStringCallback completion);
 
+    [Export("setFeatureState:sourceLayer:featureId:stateJson:")]
+    void SetFeatureState(string sourceId, string sourceLayer, string featureId, string stateJson);
+
+    [Export("removeFeatureState:sourceLayer:featureId:stateKey:")]
+    void RemoveFeatureState(string sourceId, string sourceLayer, string featureId, string stateKey);
+
     [Export("setGesturesScroll:zoom:rotate:pitch:")]
     void SetGestures(bool scroll, bool zoom, bool rotate, bool pitch);
 

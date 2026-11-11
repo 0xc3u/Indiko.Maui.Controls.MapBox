@@ -445,6 +445,12 @@ SWIFT_CLASS_NAMED("IKMapView")
 /// receives a JSON array (on an arbitrary thread):
 /// [{“id”,“layerId”,“source”,“sourceLayer”,“geometryType”,“properties”}]
 - (void)queryRenderedFeatures:(double)latitude longitude:(double)longitude layerIds:(NSString * _Nonnull)layerIdsJson radius:(double)radius completion:(void (^ _Nonnull)(NSString * _Nonnull))completion;
+/// Attaches state to a feature, readable from expressions as
+/// [“feature-state”, “<key>”]. The feature must carry an id — GeoJSON without one is
+/// invisible to this. <code>sourceLayer</code> is only used by vector sources; pass “” otherwise.
+- (void)setFeatureState:(NSString * _Nonnull)sourceId sourceLayer:(NSString * _Nonnull)sourceLayer featureId:(NSString * _Nonnull)featureId stateJson:(NSString * _Nonnull)stateJson;
+/// Removes one state key, or the feature’s whole state when <code>stateKey</code> is empty.
+- (void)removeFeatureState:(NSString * _Nonnull)sourceId sourceLayer:(NSString * _Nonnull)sourceLayer featureId:(NSString * _Nonnull)featureId stateKey:(NSString * _Nonnull)stateKey;
 - (void)setGesturesScroll:(BOOL)scroll zoom:(BOOL)zoom rotate:(BOOL)rotate pitch:(BOOL)pitch;
 - (void)didMoveToWindow;
 /// Teardown request from the MAUI handler’s DisconnectHandler. Deferred until the

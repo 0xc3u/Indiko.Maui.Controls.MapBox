@@ -733,6 +733,40 @@ public class MapView : View
         return completion.Task;
     }
 
+    /// <summary>
+    /// Attaches state to a feature — selection, hover, anything your layers should react
+    /// to. Layers read it with the <c>["feature-state", "key"]</c> expression, so the look
+    /// changes without touching the source data.
+    /// </summary>
+    /// <remarks>
+    /// The feature must carry an <c>id</c>: GeoJSON features without one are invisible to
+    /// this. <paramref name="sourceLayer"/> is only needed for vector sources.
+    /// </remarks>
+    public void SetFeatureState(string sourceId, string featureId, IDictionary<string, object?> state,
+        string? sourceLayer = null)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(sourceId);
+        ArgumentException.ThrowIfNullOrEmpty(featureId);
+        ArgumentNullException.ThrowIfNull(state);
+
+        InvokeOrQueue(nameof(SetFeatureState), new FeatureStateRequest(
+            sourceId, sourceLayer ?? string.Empty, featureId, AnnotationSerializer.ToStateJson(state)));
+    }
+
+    /// <summary>
+    /// Removes one state key from a feature, or its whole state when
+    /// <paramref name="stateKey"/> is null.
+    /// </summary>
+    public void RemoveFeatureState(string sourceId, string featureId, string? stateKey = null,
+        string? sourceLayer = null)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(sourceId);
+        ArgumentException.ThrowIfNullOrEmpty(featureId);
+
+        InvokeOrQueue(nameof(RemoveFeatureState), new FeatureStateRequest(
+            sourceId, sourceLayer ?? string.Empty, featureId, stateKey ?? string.Empty));
+    }
+
     /* ------------------------- Internal event dispatchers ------------------------- */
 
     internal void SendMapReady()
@@ -909,6 +943,24 @@ public sealed class FitBoundsRequest
 public sealed class VisibleBoundsRequest
 {
     public MapBounds? Bounds { get; set; }
+}
+
+/// <summary>Payload for the feature-state command mappers. Payload is the state JSON for
+/// SetFeatureState and the state key (possibly empty) for RemoveFeatureState.</summary>
+public sealed class FeatureStateRequest
+{
+    public string SourceId { get; }
+    public string SourceLayer { get; }
+    public string FeatureId { get; }
+    public string Payload { get; }
+
+    public FeatureStateRequest(string sourceId, string sourceLayer, string featureId, string payload)
+    {
+        SourceId = sourceId;
+        SourceLayer = sourceLayer;
+        FeatureId = featureId;
+        Payload = payload;
+    }
 }
 
 /// <summary>Payload for the QueryFeaturesAsync command mapper.</summary>

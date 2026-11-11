@@ -34,6 +34,7 @@ on the UI thread; command parameters carry the same `EventArgs` object the event
 - 🪟 `CameraPadding` — keep the camera anchor out from behind a bottom sheet or tab bar
 - 🌍 `MapLanguage` — translate the style's place labels into any supported language
 - 🔍 `QueryFeaturesAsync()` reports which feature sits under a tap, with its properties
+- ✨ Feature state — selection and hover styling without touching the source data
 - 🔥 Heatmaps and 3D fill extrusions, driven by your feature data
 - 🗺️ Raster, vector and image sources — bring your own tile server alongside the Mapbox basemap
 - 🎨 Data-driven styling — `MapExpression` drives any style-spec layer property from feature data or zoom
@@ -113,6 +114,7 @@ code, and the reason .NET Android no longer reports `XA0141` for this package.
 | Map tap / long-press with coordinates | ✅ | events + commands; taps on markers/shapes/clusters are consumed |
 | Per-gesture enable/disable | ✅ | `ScrollEnabled`, `ZoomEnabled`, `RotateEnabled`, `PitchEnabled` |
 | `queryRenderedFeatures` | ✅ | `QueryFeaturesAsync(lat, lon, layerIds, radius)` |
+| Feature state (selection, hover) | ✅ | `SetFeatureState` / `RemoveFeatureState` + the `feature-state` expression |
 | **Location** | | |
 | Location puck | ✅ | `ShowUserLocation` (2D puck with bearing) |
 | Follow-puck viewport | ✅ | `FollowPuck` (+ zoom/bearing options), state synced back on user pan |
@@ -833,6 +835,50 @@ Results are ordered top-most first, so `hits[0]` is what the user visually hit.
 
 The `radius` parameter (default 8) widens the hit area in device-independent units — thin
 lines and small circles are otherwise hard to hit with a finger. `0` queries the exact point.
+
+---
+
+## Feature state (selection, hover)
+
+Feature state attaches transient flags to a feature — selected, hovered, visited — that
+layers read through the `["feature-state", …]` expression. The source data is never
+touched, so selection costs no re-upload and no second layer.
+
+```csharp
+// a layer that reacts to the state
+circles.Properties["circle-stroke-width"] = MapExpression.Raw(
+    "[\"case\",[\"boolean\",[\"feature-state\",\"selected\"],false],6,2]");
+
+// set it from a tap
+map.SetFeatureState("my-source", featureId, new Dictionary<string, object?> { ["selected"] = true });
+
+map.RemoveFeatureState("my-source", featureId, "selected");   // one key
+map.RemoveFeatureState("my-source", featureId);               // the whole state
+```
+
+> **The feature needs an `id`.** A GeoJSON feature without a top-level `"id"` cannot carry
+> state — the call is silently ignored. Add ids to your GeoJSON, or use a source that
+> generates them.
+
+Wrap the lookup in `["boolean", …, false]` as above: the state is undefined until you set
+it the first time, and `case` needs a defined boolean.
+
+For vector sources, pass the `sourceLayer` argument as well — the same layer name the
+layer itself uses.
+
+Together with [`QueryFeaturesAsync`](#finding-the-feature-under-a-tap) this is the
+tap → identify → highlight loop:
+
+```csharp
+var hits = await map.QueryFeaturesAsync(e.Latitude, e.Longitude, ["my-circles"]);
+if (hits is [{ Id: { } id }, ..])
+{
+    if (previous is { } old)
+        map.RemoveFeatureState("my-source", old, "selected");
+    map.SetFeatureState("my-source", id, new Dictionary<string, object?> { ["selected"] = true });
+    previous = id;
+}
+```
 
 ---
 

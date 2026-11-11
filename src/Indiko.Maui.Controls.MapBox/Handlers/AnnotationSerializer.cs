@@ -294,6 +294,21 @@ internal static class AnnotationSerializer
         writer.WriteEndObject();
     }
 
+    /// <summary>Serializes a feature-state bag; values reuse the style-spec encoder.</summary>
+    public static string ToStateJson(IDictionary<string, object?> state)
+    {
+        var builder = new StringBuilder("{");
+        var first = true;
+        foreach (var entry in state)
+        {
+            if (!first)
+                builder.Append(',');
+            builder.Append(Quote(entry.Key)).Append(':').Append(MapExpression.Encode(entry.Value));
+            first = false;
+        }
+        return builder.Append('}').ToString();
+    }
+
     /// <summary>Serializes layer ids for the query facade; an empty list means "all layers".</summary>
     public static string ToStringArrayJson(IEnumerable<string>? values)
     {
