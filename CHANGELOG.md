@@ -1,3 +1,14 @@
+# [1.9.0](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/compare/v1.8.4...v1.9.0) (2026-11-11)
+
+### Features
+
+* terrain elevation query and offline region management ([b72468c](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/commit/b72468cd9d6b1fd109b05bb9c0e7b32e769854b1))
+
+### Bug Fixes
+
+* **ios:** compile the Swift facade and verify terrain/offline on device ([76ea3e7](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/commit/76ea3e70d94ee18a1e2d764d6cf323dd88fa8c2c))
+
+
 ## [1.8.4](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/compare/v1.8.3...v1.8.4) (2026-11-02)
 
 ### Bug Fixes
