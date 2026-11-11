@@ -1,3 +1,10 @@
+# [1.12.0](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/compare/v1.11.0...v1.12.0) (2026-11-11)
+
+### Features
+
+* raster, vector and image sources ([484430f](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/commit/484430fbdce71d700c29a865a2132ef2325c6fdd))
+
+
 # [1.11.0](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/compare/v1.10.0...v1.11.0) (2026-11-11)
 
 ### Features
