@@ -72,6 +72,7 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
             [nameof(MapView.RemoveOfflineRegion)] = MapRemoveOfflineRegion,
             [nameof(MapView.GetVisibleBounds)] = MapGetVisibleBounds,
             [nameof(MapView.QueryTerrainElevation)] = MapQueryTerrainElevation,
+            [nameof(MapView.QueryFeaturesAsync)] = MapQueryFeatures,
         };
 
     public MapViewHandler() : base(Mapper, Commands)
@@ -310,6 +311,16 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
     {
         if (args is VisibleBoundsRequest request)
             request.Bounds = AnnotationSerializer.ParseBounds(handler.PlatformView.VisibleBoundsJson());
+    }
+
+    private static void MapQueryFeatures(MapViewHandler handler, MapView view, object? args)
+    {
+        if (args is QueryFeaturesRequest request)
+        {
+            handler.PlatformView.QueryRenderedFeatures(
+                request.Latitude, request.Longitude, request.LayerIdsJson, request.Radius,
+                json => request.OnResult(json));
+        }
     }
 
     private static void MapQueryTerrainElevation(MapViewHandler handler, MapView view, object? args)

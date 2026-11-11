@@ -136,6 +136,17 @@ public partial class MainPage : ContentPage
 		// device offline (the iOS simulator has no airplane mode).
 		if (Environment.GetEnvironmentVariable("DEMO_LOADERROR") == "1")
 			Map.StyleUri = "mapbox://styles/mapbox/this-style-does-not-exist";
+		if (Environment.GetEnvironmentVariable("DEMO_EXPRESSIONS") == "1")
+		{
+			OnToggleExpressions(this, EventArgs.Empty);
+			CollapseSheet();
+		}
+		if (Environment.GetEnvironmentVariable("DEMO_QUERY") == "1")
+		{
+			OnToggleExpressions(this, EventArgs.Empty);
+			CollapseSheet();
+			_ = RunFeatureQueryDemoAsync();
+		}
 		if (Environment.GetEnvironmentVariable("DEMO_HEATMAP") == "1")
 		{
 			OnToggleHeatmap(this, EventArgs.Empty);
@@ -632,6 +643,26 @@ public partial class MainPage : ContentPage
 		StatusLabel.Text = "Fill-Extrusion: Höhe aus den Gebäudedaten";
 	}
 
+	/// <summary>
+	/// Queries the Oerlikon circle by coordinate instead of by tap — the same call
+	/// OnMapClicked makes, but reproducible from a launch hook.
+	/// </summary>
+	private async Task RunFeatureQueryDemoAsync()
+	{
+		await Task.Delay(4000);
+
+		var hits = await Map.QueryFeaturesAsync(47.4100, 8.5500, ["expr-circles"]);
+		if (hits.Count == 0)
+		{
+			StatusLabel.Text = "Query: kein Feature gefunden";
+			return;
+		}
+
+		var hit = hits[0];
+		var name = hit.Properties.TryGetValue("name", out var value) ? value : null;
+		StatusLabel.Text = $"Query: '{name}' in '{hit.LayerId}' ({hit.GeometryType}, {hit.Properties.Count} Props)";
+	}
+
 	private void OnPolylineClicked(object? sender, PolylineClickedEventArgs e)
 	{
 		StatusLabel.Text = $"Polyline: {e.Polyline.Title ?? e.Polyline.Id}";
@@ -642,8 +673,22 @@ public partial class MainPage : ContentPage
 		StatusLabel.Text = $"Polygon: {e.Polygon.Title ?? e.Polygon.Id}";
 	}
 
-	private void OnMapClicked(object? sender, MapClickedEventArgs e)
+	private async void OnMapClicked(object? sender, MapClickedEventArgs e)
 	{
+		// Which feature was hit? Only our own demo layers are queried — without the filter
+		// the basemap's own roads and labels would answer first.
+		var hits = await Map.QueryFeaturesAsync(e.Latitude, e.Longitude,
+			["expr-circles", "buildings-layer", "demo-circles", "demo-route"]);
+		if (hits.Count > 0)
+		{
+			var hit = hits[0];
+			var detail = hit.Properties.TryGetValue("name", out var name) ? $" '{name}'"
+				: hit.Properties.TryGetValue("height", out var height) ? $" {height} m hoch"
+				: string.Empty;
+			StatusLabel.Text = $"Feature in '{hit.LayerId}'{detail} ({hit.Properties.Count} Properties)";
+			return;
+		}
+
 		var elevation = Map.QueryTerrainElevation(e.Latitude, e.Longitude);
 		StatusLabel.Text = elevation is { } meters
 			? $"Klick: {e.Latitude:F5}, {e.Longitude:F5} · {meters:F0} m ü. M."

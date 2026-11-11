@@ -33,6 +33,7 @@ on the UI thread; command parameters carry the same `EventArgs` object the event
 - 📐 Ornament placement — anchor compass, scale bar, logo and attribution to any corner
 - 🪟 `CameraPadding` — keep the camera anchor out from behind a bottom sheet or tab bar
 - 🌍 `MapLanguage` — translate the style's place labels into any supported language
+- 🔍 `QueryFeaturesAsync()` reports which feature sits under a tap, with its properties
 - 🔥 Heatmaps and 3D fill extrusions, driven by your feature data
 - 🗺️ Raster, vector and image sources — bring your own tile server alongside the Mapbox basemap
 - 🎨 Data-driven styling — `MapExpression` drives any style-spec layer property from feature data or zoom
@@ -111,7 +112,7 @@ code, and the reason .NET Android no longer reports `XA0141` for this package.
 | **Gestures & interaction** | | |
 | Map tap / long-press with coordinates | ✅ | events + commands; taps on markers/shapes/clusters are consumed |
 | Per-gesture enable/disable | ✅ | `ScrollEnabled`, `ZoomEnabled`, `RotateEnabled`, `PitchEnabled` |
-| `queryRenderedFeatures` | 🔶 | used internally (cluster tap); not exposed as API |
+| `queryRenderedFeatures` | ✅ | `QueryFeaturesAsync(lat, lon, layerIds, radius)` |
 | **Location** | | |
 | Location puck | ✅ | `ShowUserLocation` (2D puck with bearing) |
 | Follow-puck viewport | ✅ | `FollowPuck` (+ zoom/bearing options), state synced back on user pan |
@@ -797,6 +798,41 @@ meters. The result is independent of `TerrainExaggeration`.
 > if that cache entry is lost while the region survives (clearing the app's ambient cache):
 > the DEM source then reports `Online connectivity is disabled` and `QueryTerrainElevation`
 > returns `null` until the device has been online once.
+
+---
+
+## Finding the feature under a tap
+
+`MapClicked` only reports a coordinate. For data you drew yourself — a GeoJSON polygon, a
+building from a vector source — `QueryFeaturesAsync` reports *which* feature is there.
+
+```csharp
+map.MapClicked += async (_, e) =>
+{
+    var hits = await map.QueryFeaturesAsync(e.Latitude, e.Longitude, ["my-circles", "buildings"]);
+    if (hits.Count == 0)
+        return;
+
+    var hit = hits[0];
+    Status.Text = $"{hit.LayerId}: {hit.Properties["name"]}";
+};
+```
+
+| Member | Meaning |
+|---|---|
+| `Id` | the feature's own id, when the data carries one |
+| `LayerId` | the style layer that drew it — how you tell your layers apart |
+| `Source` / `SourceLayer` | where it came from; `SourceLayer` is set for vector sources |
+| `GeometryType` | `"Point"`, `"LineString"`, `"Polygon"`, … |
+| `Properties` | the feature's properties; values are `string`, `double`, `bool` or null |
+
+Results are ordered top-most first, so `hits[0]` is what the user visually hit.
+
+> **Pass the layer ids you care about.** Without them the basemap's own roads, labels and
+> landuse polygons answer too, and they will usually win.
+
+The `radius` parameter (default 8) widens the hit area in device-independent units — thin
+lines and small circles are otherwise hard to hit with a finger. `0` queries the exact point.
 
 ---
 

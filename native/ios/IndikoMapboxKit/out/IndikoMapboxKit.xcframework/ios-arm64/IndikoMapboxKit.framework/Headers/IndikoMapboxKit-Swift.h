@@ -439,6 +439,12 @@ SWIFT_CLASS_NAMED("IKMapView")
 /// default”. The four bounds values are all-or-nothing: pass NaN for all of them to
 /// lift a pan restriction.
 - (void)setCameraBoundsMinLat:(double)minLat minLng:(double)minLng maxLat:(double)maxLat maxLng:(double)maxLng minZoom:(double)minZoom maxZoom:(double)maxZoom minPitch:(double)minPitch maxPitch:(double)maxPitch;
+/// Reports the rendered features under a coordinate. <code>layerIdsJson</code> is a JSON array of
+/// layer ids to restrict the query to, or empty for every layer; <code>radius</code> widens the hit
+/// area in points, which matters for thin lines and small circles. The completion
+/// receives a JSON array (on an arbitrary thread):
+/// [{“id”,“layerId”,“source”,“sourceLayer”,“geometryType”,“properties”}]
+- (void)queryRenderedFeatures:(double)latitude longitude:(double)longitude layerIds:(NSString * _Nonnull)layerIdsJson radius:(double)radius completion:(void (^ _Nonnull)(NSString * _Nonnull))completion;
 - (void)setGesturesScroll:(BOOL)scroll zoom:(BOOL)zoom rotate:(BOOL)rotate pitch:(BOOL)pitch;
 - (void)didMoveToWindow;
 /// Teardown request from the MAUI handler’s DisconnectHandler. Deferred until the

@@ -1375,6 +1375,89 @@ public class IKMapView: UIView
             minPitch: minPitch.isNaN ? nil : minPitch))
     }
 
+    /// Reports the rendered features under a coordinate. `layerIdsJson` is a JSON array of
+    /// layer ids to restrict the query to, or empty for every layer; `radius` widens the hit
+    /// area in points, which matters for thin lines and small circles. The completion
+    /// receives a JSON array (on an arbitrary thread):
+    /// [{"id","layerId","source","sourceLayer","geometryType","properties"}]
+    @objc(queryRenderedFeatures:longitude:layerIds:radius:completion:)
+    public func queryRenderedFeatures(
+        latitude: Double,
+        longitude: Double,
+        layerIdsJson: String,
+        radius: Double,
+        completion: @escaping (String) -> Void)
+    {
+        if destroyed
+        {
+            completion("[]")
+            return
+        }
+
+        let layerIds: [String]?
+        if let data = layerIdsJson.data(using: .utf8),
+           let parsed = try? JSONSerialization.jsonObject(with: data) as? [String],
+           !parsed.isEmpty
+        {
+            layerIds = parsed
+        }
+        else
+        {
+            layerIds = nil
+        }
+
+        let point = mapView.mapboxMap.point(
+            for: CLLocationCoordinate2D(latitude: latitude, longitude: longitude))
+        let options = RenderedQueryOptions(layerIds: layerIds, filter: nil)
+
+        // CGPoint and CGRect are the query geometries Mapbox accepts directly.
+        let handler: (Result<[QueriedRenderedFeature], Error>) -> Void = { result in
+            guard case let .success(items) = result
+            else
+            {
+                completion("[]")
+                return
+            }
+
+            var entries: [[String: Any]] = []
+            for item in items
+            {
+                let queried = item.queriedFeature
+                var entry: [String: Any] = ["source": queried.source]
+                if let sourceLayer = queried.sourceLayer { entry["sourceLayer"] = sourceLayer }
+                if let layerId = item.layers.first { entry["layerId"] = layerId }
+
+                // Round-trip the feature through GeoJSON so properties and geometry type
+                // come out in the same shape the Kotlin side produces.
+                if let data = try? JSONEncoder().encode(queried.feature),
+                   let geo = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+                {
+                    entry["properties"] = geo["properties"] ?? [String: Any]()
+                    if let id = geo["id"] { entry["id"] = id }
+                    if let geometry = geo["geometry"] as? [String: Any], let type = geometry["type"]
+                    {
+                        entry["geometryType"] = type
+                    }
+                }
+                entries.append(entry)
+            }
+
+            let data = (try? JSONSerialization.data(withJSONObject: entries)) ?? Data("[]".utf8)
+            completion(String(data: data, encoding: .utf8) ?? "[]")
+        }
+
+        if radius > 0
+        {
+            let box = CGRect(x: point.x - radius, y: point.y - radius,
+                             width: radius * 2, height: radius * 2)
+            mapView.mapboxMap.queryRenderedFeatures(with: box, options: options, completion: handler)
+        }
+        else
+        {
+            mapView.mapboxMap.queryRenderedFeatures(with: point, options: options, completion: handler)
+        }
+    }
+
     @objc(setGesturesScroll:zoom:rotate:pitch:)
     public func setGestures(scroll: Bool, zoom: Bool, rotate: Bool, pitch: Bool)
     {

@@ -1,4 +1,5 @@
 using System.Windows.Input;
+using Indiko.Maui.Controls.MapBox.Handlers;
 using Indiko.Maui.Controls.MapBox.Models;
 
 namespace Indiko.Maui.Controls.MapBox;
@@ -703,6 +704,35 @@ public class MapView : View
         return request.Elevation;
     }
 
+    /// <summary>
+    /// Reports the rendered features under a coordinate — the way to find out *which*
+    /// feature a <see cref="MapClicked"/> tap hit, for data drawn by your own layers.
+    /// Pass <paramref name="layerIds"/> to restrict the query to your layers, otherwise
+    /// the basemap's own features are included too.
+    /// </summary>
+    /// <param name="radius">
+    /// Hit radius in device-independent units. A few units make thin lines and small
+    /// circles practical to hit; 0 queries the exact point.
+    /// </param>
+    public Task<IReadOnlyList<MapQueriedFeature>> QueryFeaturesAsync(double latitude, double longitude,
+        IEnumerable<string>? layerIds = null, double radius = 8)
+    {
+        var completion = new TaskCompletionSource<IReadOnlyList<MapQueriedFeature>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+
+        if (Handler is null)
+        {
+            completion.TrySetResult([]);
+            return completion.Task;
+        }
+
+        var request = new QueryFeaturesRequest(
+            latitude, longitude, AnnotationSerializer.ToStringArrayJson(layerIds), radius,
+            json => completion.TrySetResult(AnnotationSerializer.ParseQueriedFeatures(json)));
+        Handler.Invoke(nameof(QueryFeaturesAsync), request);
+        return completion.Task;
+    }
+
     /* ------------------------- Internal event dispatchers ------------------------- */
 
     internal void SendMapReady()
@@ -879,6 +909,28 @@ public sealed class FitBoundsRequest
 public sealed class VisibleBoundsRequest
 {
     public MapBounds? Bounds { get; set; }
+}
+
+/// <summary>Payload for the QueryFeaturesAsync command mapper.</summary>
+public sealed class QueryFeaturesRequest
+{
+    public double Latitude { get; }
+    public double Longitude { get; }
+    public string LayerIdsJson { get; }
+    public double Radius { get; }
+
+    /// <summary>Invoked with the facade's JSON array, on an arbitrary thread.</summary>
+    public Action<string> OnResult { get; }
+
+    public QueryFeaturesRequest(double latitude, double longitude, string layerIdsJson, double radius,
+        Action<string> onResult)
+    {
+        Latitude = latitude;
+        Longitude = longitude;
+        LayerIdsJson = layerIdsJson;
+        Radius = radius;
+        OnResult = onResult;
+    }
 }
 
 /// <summary>Payload for the QueryTerrainElevation command mapper — the handler fills Elevation.</summary>

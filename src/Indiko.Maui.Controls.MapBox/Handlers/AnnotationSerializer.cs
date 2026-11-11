@@ -294,6 +294,88 @@ internal static class AnnotationSerializer
         writer.WriteEndObject();
     }
 
+    /// <summary>Serializes layer ids for the query facade; an empty list means "all layers".</summary>
+    public static string ToStringArrayJson(IEnumerable<string>? values)
+    {
+        if (values is null)
+            return "[]";
+
+        var builder = new StringBuilder("[");
+        var first = true;
+        foreach (var value in values)
+        {
+            if (string.IsNullOrEmpty(value))
+                continue;
+            if (!first)
+                builder.Append(',');
+            builder.Append(Quote(value));
+            first = false;
+        }
+        return builder.Append(']').ToString();
+    }
+
+    /// <summary>Parses the feature array both facades produce for a rendered-feature query.</summary>
+    public static IReadOnlyList<MapQueriedFeature> ParseQueriedFeatures(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return [];
+
+        try
+        {
+            using var document = System.Text.Json.JsonDocument.Parse(json);
+            if (document.RootElement.ValueKind != System.Text.Json.JsonValueKind.Array)
+                return [];
+
+            var result = new List<MapQueriedFeature>();
+            foreach (var entry in document.RootElement.EnumerateArray())
+            {
+                if (entry.ValueKind != System.Text.Json.JsonValueKind.Object)
+                    continue;
+
+                var properties = new Dictionary<string, object?>();
+                if (entry.TryGetProperty("properties", out var propertyElement)
+                    && propertyElement.ValueKind == System.Text.Json.JsonValueKind.Object)
+                {
+                    foreach (var property in propertyElement.EnumerateObject())
+                        properties[property.Name] = ReadJsonScalar(property.Value);
+                }
+
+                result.Add(new MapQueriedFeature
+                {
+                    Id = GetString(entry, "id"),
+                    LayerId = GetString(entry, "layerId"),
+                    Source = GetString(entry, "source") ?? string.Empty,
+                    SourceLayer = GetString(entry, "sourceLayer"),
+                    GeometryType = GetString(entry, "geometryType"),
+                    Properties = properties,
+                });
+            }
+            return result;
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return [];
+        }
+    }
+
+    private static string? GetString(System.Text.Json.JsonElement element, string name) =>
+        element.TryGetProperty(name, out var value) && value.ValueKind == System.Text.Json.JsonValueKind.String
+            ? value.GetString()
+            : element.TryGetProperty(name, out var raw) && raw.ValueKind == System.Text.Json.JsonValueKind.Number
+                ? raw.GetRawText()
+                : null;
+
+    /// <summary>Nested objects and arrays keep their JSON text — callers rarely need them typed.</summary>
+    private static object? ReadJsonScalar(System.Text.Json.JsonElement element) => element.ValueKind switch
+    {
+        System.Text.Json.JsonValueKind.String => element.GetString(),
+        System.Text.Json.JsonValueKind.Number => element.GetDouble(),
+        System.Text.Json.JsonValueKind.True => true,
+        System.Text.Json.JsonValueKind.False => false,
+        System.Text.Json.JsonValueKind.Null => null,
+        _ => element.GetRawText(),
+    };
+
     public static IReadOnlyList<MapOfflineRegionInfo> ParseOfflineRegions(string? json)
     {
         if (string.IsNullOrWhiteSpace(json))

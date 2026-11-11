@@ -41,6 +41,8 @@ import com.mapbox.maps.StylePackLoadOptions
 import com.mapbox.maps.TilesetDescriptorOptions
 import com.mapbox.maps.RenderedQueryGeometry
 import com.mapbox.maps.RenderedQueryOptions
+import com.mapbox.maps.ScreenBox
+import com.mapbox.maps.ScreenCoordinate
 import com.mapbox.maps.ViewAnnotationAnchor
 import com.mapbox.maps.extension.style.expressions.generated.Expression
 import com.mapbox.maps.extension.style.layers.addLayer
@@ -1594,6 +1596,70 @@ class IKMapView(
         options.maxPitch(if (maxPitch.isNaN()) null else maxPitch)
 
         mapView.mapboxMap.setBounds(options.build())
+    }
+
+    /**
+     * Reports the rendered features under a coordinate. [layerIdsJson] is a JSON array of
+     * layer ids to restrict the query to, or empty for every layer; [radius] widens the hit
+     * area in dp, which matters for thin lines and small circles. The callback receives a
+     * JSON array (on an arbitrary thread):
+     * [{"id","layerId","source","sourceLayer","geometryType","properties"}]
+     */
+    fun queryRenderedFeatures(
+        latitude: Double,
+        longitude: Double,
+        layerIdsJson: String,
+        radius: Double,
+        callback: IKStringCallback,
+    )
+    {
+        if (destroyed)
+        {
+            callback.onResult("[]")
+            return
+        }
+
+        val layerIds = runCatching {
+            val array = JSONArray(layerIdsJson)
+            (0 until array.length()).map { array.getString(it) }
+        }.getOrNull()?.takeIf { it.isNotEmpty() }
+
+        val screen = mapView.mapboxMap.pixelForCoordinate(Point.fromLngLat(longitude, latitude))
+        val density = resources.displayMetrics.density
+        val padding = radius * density
+        val geometry = if (padding > 0)
+        {
+            RenderedQueryGeometry(
+                ScreenBox(
+                    ScreenCoordinate(screen.x - padding, screen.y - padding),
+                    ScreenCoordinate(screen.x + padding, screen.y + padding),
+                )
+            )
+        }
+        else
+        {
+            RenderedQueryGeometry(screen)
+        }
+
+        mapView.mapboxMap.queryRenderedFeatures(geometry, RenderedQueryOptions(layerIds, null)) { result ->
+            val array = JSONArray()
+            result.value?.forEach { item ->
+                val queried = item.queriedFeature
+                // Round-trip the feature through GeoJSON so properties and geometry type
+                // come out in the same shape the iOS side produces.
+                val geo = runCatching { JSONObject(queried.feature.toJson()) }.getOrNull()
+                array.put(
+                    JSONObject()
+                        .put("id", geo?.opt("id") ?: JSONObject.NULL)
+                        .put("layerId", item.layers?.firstOrNull() ?: JSONObject.NULL)
+                        .put("source", queried.source)
+                        .put("sourceLayer", queried.sourceLayer ?: JSONObject.NULL)
+                        .put("geometryType", geo?.optJSONObject("geometry")?.optString("type") ?: JSONObject.NULL)
+                        .put("properties", geo?.optJSONObject("properties") ?: JSONObject())
+                )
+            }
+            callback.onResult(array.toString())
+        }
     }
 
     fun setGestures(scroll: Boolean, zoom: Boolean, rotate: Boolean, pitch: Boolean)
