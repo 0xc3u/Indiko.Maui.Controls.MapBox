@@ -457,7 +457,9 @@ public partial class MainPage : ContentPage
 		Map.DownloadOfflineRegion(new MapOfflineRegion
 		{
 			Id = "zuerich-region",
-			StyleUri = MapStyles.Streets,
+			// Must be the style the map actually shows — the style pack is downloaded
+			// per style, and offline a missing style pack leaves the map blank.
+			StyleUri = Map.StyleUri,
 			MinLatitude = 47.32,
 			MinLongitude = 8.46,
 			MaxLatitude = 47.43,
@@ -488,11 +490,93 @@ public partial class MainPage : ContentPage
 	private async Task ShowOfflineRegionsAsync()
 	{
 		var regions = await MapboxOffline.GetRegionsAsync();
+		if (regions.Count == 0)
+		{
+			StatusLabel.Text = "Keine Offline-Regionen auf dem Gerät";
+			await DisplayAlertAsync("Offline-Regionen",
+				"Noch keine Region geladen — erst 'Offline laden' antippen.", "OK");
+			return;
+		}
+
 		var lines = regions.Select(r =>
 			$"{r.Region?.Name ?? r.Id}: {r.CompletedResourceSize / 1_048_576.0:F1} MB" +
 			(r.Region?.IncludeTerrain == true ? " · Terrain" : string.Empty) +
 			(r.IsComplete ? " ✓" : $" ({r.CompletedResourceCount}/{r.RequiredResourceCount})"));
+		StatusLabel.Text = $"{regions.Count} Offline-Region(en) auf dem Gerät";
 		await DisplayAlertAsync("Offline-Regionen", string.Join(Environment.NewLine, lines), "OK");
+	}
+
+	private void OnShowOfflineRegions(object? sender, EventArgs e) => _ = ShowOfflineRegionsAsync();
+
+	/// <summary>Deletes every downloaded region — MapboxOffline works without a map on screen.</summary>
+	private async void OnRemoveOfflineRegions(object? sender, EventArgs e)
+	{
+		var regions = await MapboxOffline.GetRegionsAsync();
+		if (regions.Count == 0)
+		{
+			StatusLabel.Text = "Keine Offline-Regionen zum Löschen";
+			return;
+		}
+
+		var confirmed = await DisplayAlertAsync("Offline-Regionen löschen",
+			$"{regions.Count} Region(en) entfernen?", "Löschen", "Abbrechen");
+		if (!confirmed)
+			return;
+
+		foreach (var region in regions)
+			MapboxOffline.RemoveRegion(region.Id);
+
+		StatusLabel.Text = $"{regions.Count} Offline-Region(en) gelöscht";
+	}
+
+	/// <summary>
+	/// Demonstrates MapView.QueryTerrainElevation: enables terrain, then reads the
+	/// ground elevation at a few known Swiss coordinates. The DEM tile has to be
+	/// loaded for the coordinate, so each point is centred before it is queried.
+	/// </summary>
+	private async void OnShowElevationDemo(object? sender, EventArgs e)
+	{
+		(double Lat, double Lon, string Name)[] points =
+		[
+			(46.5934, 7.9088, "Lauterbrunnen, Talboden"),
+			(47.2225, 8.7527, "Zürichsee, Seespiegel"),
+			(46.5475, 7.9822, "Jungfraujoch"),
+		];
+
+		Map.TerrainEnabled = true;
+		PaintChip(Fab3D, true);
+		PaintChip(ChipElevation, true);
+
+		var lines = new List<string>();
+		foreach (var point in points)
+		{
+			StatusLabel.Text = $"Höhe wird gemessen: {point.Name}…";
+			var meters = await ProbeElevationAsync(point.Lat, point.Lon);
+			lines.Add(meters is { } value
+				? $"{point.Name}: {value:F0} m ü. M."
+				: $"{point.Name}: keine DEM-Daten");
+		}
+
+		PaintChip(ChipElevation, false);
+		StatusLabel.Text = "Höhen gemessen — tippe die Karte für weitere Punkte";
+		await DisplayAlertAsync("Terrain-Höhen", string.Join(Environment.NewLine, lines), "OK");
+	}
+
+	/// <summary>
+	/// Centres a coordinate and polls the elevation until the DEM tile has arrived.
+	/// Returns null if no data shows up within roughly five seconds.
+	/// </summary>
+	private async Task<double?> ProbeElevationAsync(double latitude, double longitude)
+	{
+		Map.Camera = new MapCameraPosition(latitude, longitude, 13, bearing: 0, pitch: 0);
+
+		for (var attempt = 0; attempt < 10; attempt++)
+		{
+			await Task.Delay(500);
+			if (Map.QueryTerrainElevation(latitude, longitude) is { } meters)
+				return meters;
+		}
+		return null;
 	}
 
 	private void OnToggleOrnaments(object? sender, EventArgs e)

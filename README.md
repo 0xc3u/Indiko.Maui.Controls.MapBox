@@ -631,6 +631,10 @@ Map.DownloadOfflineRegion(new MapOfflineRegion
 });
 ```
 
+> **`StyleUri` must be the style the map actually shows.** The style pack is downloaded
+> per style; a region downloaded for `MapStyles.Streets` leaves a `MapStyles.Outdoors`
+> map blank once the ambient cache is gone.
+
 **Managing regions without a map**
 
 `MapboxOffline` lists and deletes downloaded regions without a `MapView` on screen — e.g.
@@ -766,6 +770,20 @@ map.MapClicked += (_, e) =>
     Status.Text = meters is { } m ? $"{m:F0} m" : "no elevation data";
 };
 ```
+
+Measured against known Swiss elevations (Android emulator, Mapbox DEM): Lauterbrunnen
+valley floor 787 m (≈795 m), Zürichsee surface 402 m (406 m), Jungfraujoch 3450 m
+(3466 m) — the DEM is a terrain model, so values differ from survey heights by a few
+meters. The result is independent of `TerrainExaggeration`.
+
+> **Offline caveat.** `IncludeTerrain` downloads the DEM *tiles* for the region, and those
+> work without network. The DEM source's tileset metadata (the TileJSON behind
+> `mapbox://mapbox.mapbox-terrain-dem-v1`) is **not** part of the region or the style pack
+> — it is served from Mapbox' evictable ambient cache. So terrain and elevation queries
+> work offline only once terrain has been enabled at least once while online; if that
+> cache entry is gone, the DEM source fails with `Online connectivity is disabled` and
+> `QueryTerrainElevation` returns `null` even inside a downloaded region. Enabling terrain
+> once on first run (while online) is enough.
 
 ---
 
