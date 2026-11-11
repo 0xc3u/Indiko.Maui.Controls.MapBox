@@ -35,6 +35,10 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
             [nameof(MapView.ZoomEnabled)] = MapGestures,
             [nameof(MapView.RotateEnabled)] = MapGestures,
             [nameof(MapView.PitchEnabled)] = MapGestures,
+            [nameof(MapView.CompassPlacement)] = MapOrnamentPlacement,
+            [nameof(MapView.ScaleBarPlacement)] = MapOrnamentPlacement,
+            [nameof(MapView.LogoPlacement)] = MapOrnamentPlacement,
+            [nameof(MapView.AttributionPlacement)] = MapOrnamentPlacement,
             [nameof(MapView.CameraBounds)] = MapCameraBounds,
             [nameof(MapView.MinZoom)] = MapCameraBounds,
             [nameof(MapView.MaxZoom)] = MapCameraBounds,
@@ -184,6 +188,15 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
     {
         handler.PlatformView.SetOrnaments(
             view.ShowCompass, view.ShowScaleBar, view.ShowMapboxLogo, view.ShowAttribution);
+    }
+
+    private static void MapOrnamentPlacement(MapViewHandler handler, MapView view)
+    {
+        // Always sent: an ornament missing from the payload is reset to the SDK default,
+        // so clearing a placement property puts it back where Mapbox had it.
+        var json = AnnotationSerializer.SerializeOrnamentPlacement(
+            view.CompassPlacement, view.ScaleBarPlacement, view.LogoPlacement, view.AttributionPlacement);
+        handler.PlatformView.SetOrnamentPlacementJson(json);
     }
 
     private static void MapCameraBounds(MapViewHandler handler, MapView view)

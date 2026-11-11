@@ -150,6 +150,46 @@ public class MapView : View
         set => SetValue(ShowUserLocationProperty, value);
     }
 
+    public static readonly BindableProperty CompassPlacementProperty = BindableProperty.Create(
+        nameof(CompassPlacement), typeof(MapOrnamentPlacement), typeof(MapView));
+
+    /// <summary>Where the compass sits; null keeps the SDK default.</summary>
+    public MapOrnamentPlacement? CompassPlacement
+    {
+        get => (MapOrnamentPlacement?)GetValue(CompassPlacementProperty);
+        set => SetValue(CompassPlacementProperty, value);
+    }
+
+    public static readonly BindableProperty ScaleBarPlacementProperty = BindableProperty.Create(
+        nameof(ScaleBarPlacement), typeof(MapOrnamentPlacement), typeof(MapView));
+
+    /// <summary>Where the scale bar sits; null keeps the SDK default.</summary>
+    public MapOrnamentPlacement? ScaleBarPlacement
+    {
+        get => (MapOrnamentPlacement?)GetValue(ScaleBarPlacementProperty);
+        set => SetValue(ScaleBarPlacementProperty, value);
+    }
+
+    public static readonly BindableProperty LogoPlacementProperty = BindableProperty.Create(
+        nameof(LogoPlacement), typeof(MapOrnamentPlacement), typeof(MapView));
+
+    /// <summary>Where the Mapbox logo sits; null keeps the SDK default.</summary>
+    public MapOrnamentPlacement? LogoPlacement
+    {
+        get => (MapOrnamentPlacement?)GetValue(LogoPlacementProperty);
+        set => SetValue(LogoPlacementProperty, value);
+    }
+
+    public static readonly BindableProperty AttributionPlacementProperty = BindableProperty.Create(
+        nameof(AttributionPlacement), typeof(MapOrnamentPlacement), typeof(MapView));
+
+    /// <summary>Where the attribution button sits; null keeps the SDK default.</summary>
+    public MapOrnamentPlacement? AttributionPlacement
+    {
+        get => (MapOrnamentPlacement?)GetValue(AttributionPlacementProperty);
+        set => SetValue(AttributionPlacementProperty, value);
+    }
+
     public static readonly BindableProperty CameraBoundsProperty = BindableProperty.Create(
         nameof(CameraBounds), typeof(MapBounds), typeof(MapView));
 

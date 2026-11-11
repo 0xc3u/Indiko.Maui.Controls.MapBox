@@ -247,6 +247,32 @@ public partial class MainPage : ContentPage
 			: $"Limit aktiv — Paris geblockt bei {camera.Latitude:F2}, {camera.Longitude:F2} (Zoom {camera.Zoom:F1})";
 	}
 
+	/// <summary>
+	/// The bottom sheet covers the map's lower edge, where Mapbox puts the logo and the
+	/// attribution button by default — so move them (and the scale bar) to the top. Setting
+	/// the properties back to null restores the SDK defaults.
+	/// </summary>
+	private void OnToggleOrnamentPlacement(object? sender, EventArgs e)
+	{
+		var moved = Map.LogoPlacement is null;
+		PaintChip(ChipOrnamentPos, moved);
+
+		if (moved)
+		{
+			Map.ScaleBarPlacement = new MapOrnamentPlacement(MapOrnamentPosition.TopRight, 8, 110);
+			Map.LogoPlacement = new MapOrnamentPlacement(MapOrnamentPosition.TopLeft, 8, 160);
+			Map.AttributionPlacement = new MapOrnamentPlacement(MapOrnamentPosition.TopLeft, 150, 160);
+			StatusLabel.Text = "Ornamente oben — nicht mehr hinter dem Sheet";
+		}
+		else
+		{
+			Map.ScaleBarPlacement = null;
+			Map.LogoPlacement = null;
+			Map.AttributionPlacement = null;
+			StatusLabel.Text = "Ornamente zurück auf SDK-Standard";
+		}
+	}
+
 	private void OnPolylineClicked(object? sender, PolylineClickedEventArgs e)
 	{
 		StatusLabel.Text = $"Polyline: {e.Polyline.Title ?? e.Polyline.Id}";

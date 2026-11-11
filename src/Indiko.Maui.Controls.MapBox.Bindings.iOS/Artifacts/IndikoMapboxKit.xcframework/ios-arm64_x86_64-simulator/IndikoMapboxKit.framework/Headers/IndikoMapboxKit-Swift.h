@@ -404,6 +404,13 @@ SWIFT_CLASS_NAMED("IKMapView")
 /// Shows/hides the map ornaments. Compass and scale bar keep their adaptive
 /// behavior when visible. Note: hiding logo/attribution may require a Mapbox
 /// license that permits it — the consuming app is responsible for compliance.
+/// Places the ornaments. JSON, every entry optional — omitted ornaments keep the
+/// SDK default:
+/// {“compass”:{“position”:“topRight”,“x”:8,“y”:8}, “scaleBar”:{…}, “logo”:{…},
+/// “attribution”:{…}}
+/// position is topLeft|topRight|bottomLeft|bottomRight; x/y are the offset in points
+/// from that corner.
+- (void)setOrnamentPlacementJson:(NSString * _Nonnull)json;
 - (void)setOrnamentsCompass:(BOOL)compass scaleBar:(BOOL)scaleBar logo:(BOOL)logo attribution:(BOOL)attribution;
 /// Current viewport as a bounding box. JSON: {“minLat”,“minLng”,“maxLat”,“maxLng”}
 - (NSString * _Nonnull)visibleBoundsJson SWIFT_WARN_UNUSED_RESULT;
@@ -866,6 +873,13 @@ SWIFT_CLASS_NAMED("IKMapView")
 /// Shows/hides the map ornaments. Compass and scale bar keep their adaptive
 /// behavior when visible. Note: hiding logo/attribution may require a Mapbox
 /// license that permits it — the consuming app is responsible for compliance.
+/// Places the ornaments. JSON, every entry optional — omitted ornaments keep the
+/// SDK default:
+/// {“compass”:{“position”:“topRight”,“x”:8,“y”:8}, “scaleBar”:{…}, “logo”:{…},
+/// “attribution”:{…}}
+/// position is topLeft|topRight|bottomLeft|bottomRight; x/y are the offset in points
+/// from that corner.
+- (void)setOrnamentPlacementJson:(NSString * _Nonnull)json;
 - (void)setOrnamentsCompass:(BOOL)compass scaleBar:(BOOL)scaleBar logo:(BOOL)logo attribution:(BOOL)attribution;
 /// Current viewport as a bounding box. JSON: {“minLat”,“minLng”,“maxLat”,“maxLng”}
 - (NSString * _Nonnull)visibleBoundsJson SWIFT_WARN_UNUSED_RESULT;

@@ -197,6 +197,9 @@ interface IKMapView
     [Export("setTerrainEnabled:exaggeration:")]
     void SetTerrain(bool enabled, double exaggeration);
 
+    [Export("setOrnamentPlacementJson:")]
+    void SetOrnamentPlacementJson(string json);
+
     [Export("setOrnamentsCompass:scaleBar:logo:attribution:")]
     void SetOrnaments(bool compass, bool scaleBar, bool logo, bool attribution);
 

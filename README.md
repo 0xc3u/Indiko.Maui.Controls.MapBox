@@ -30,6 +30,7 @@ on the UI thread; command parameters carry the same `EventArgs` object the event
 - 📴 Offline regions (style pack + tiles, optionally terrain) with download progress events; list and delete regions without a map (`MapboxOffline`)
 - ⛰️ `QueryTerrainElevation()` returns the ground elevation at any coordinate, corrected for the terrain exaggeration
 - 🚧 Camera constraints — restrict panning to a bounding box and clamp zoom/pitch
+- 📐 Ornament placement — anchor compass, scale bar, logo and attribution to any corner
 - ⚠️ `MapLoadError` reports style/source/tile/sprite/glyph load failures instead of failing silently
 - 🧭 Compass on rotation, scale bar, user-location puck, per-gesture configuration
 - 🎛️ Ornament visibility: compass, scale bar, Mapbox logo and attribution individually switchable
@@ -118,7 +119,7 @@ code, and the reason .NET Android no longer reports `XA0141` for this package.
 | Compass (auto-shows on rotation, tap resets north) | ✅ | SDK default behavior, switchable via `ShowCompass` |
 | Scale bar | ✅ | SDK default behavior, switchable via `ShowScaleBar` |
 | Ornament visibility | ✅ | `ShowCompass`, `ShowScaleBar`, `ShowMapboxLogo`, `ShowAttribution` (logo/attribution: check your Mapbox plan/ToS) |
-| Ornament position / margins | ❌ | SDK default positions |
+| Ornament position / margins | ✅ | `CompassPlacement`, `ScaleBarPlacement`, `LogoPlacement`, `AttributionPlacement` |
 | **Other** | | |
 | Lifecycle events (`MapReady`, `StyleLoaded`, `CameraChanged`) | ✅ | events + bindable commands (full MVVM parity) |
 | Map load errors (`MapLoadingError`) | ✅ | `MapLoadError` event + command, typed by resource kind |
@@ -789,6 +790,28 @@ meters. The result is independent of `TerrainExaggeration`.
 > if that cache entry is lost while the region survives (clearing the app's ambient cache):
 > the DEM source then reports `Online connectivity is disabled` and `QueryTerrainElevation`
 > returns `null` until the device has been online once.
+
+---
+
+## Ornament placement
+
+Each ornament can be anchored to a corner with an offset. The usual reason: a bottom sheet
+or tab bar covers the lower edge, where Mapbox puts the logo and attribution by default.
+
+```csharp
+map.LogoPlacement = new MapOrnamentPlacement(MapOrnamentPosition.TopLeft, offsetX: 8, offsetY: 160);
+map.AttributionPlacement = new MapOrnamentPlacement(MapOrnamentPosition.TopLeft, 150, 160);
+
+map.LogoPlacement = null;        // back to the SDK default
+```
+
+`OffsetX`/`OffsetY` are measured inwards from the chosen corner in device-independent
+units, so the same numbers land in the same place on both platforms. Setting a placement
+to `null` restores the position Mapbox itself used — the facade captures the defaults
+before applying the first override.
+
+> Keep the Mapbox logo and attribution visible unless your plan allows otherwise; moving
+> them is fine, hiding them generally is not. See [Ornaments](#ornaments) for visibility.
 
 ---
 

@@ -1086,6 +1086,93 @@ public class IKMapView: UIView
     /// Shows/hides the map ornaments. Compass and scale bar keep their adaptive
     /// behavior when visible. Note: hiding logo/attribution may require a Mapbox
     /// license that permits it — the consuming app is responsible for compliance.
+    /// Places the ornaments. JSON, every entry optional — omitted ornaments keep the
+    /// SDK default:
+    /// {"compass":{"position":"topRight","x":8,"y":8}, "scaleBar":{...}, "logo":{...},
+    ///  "attribution":{...}}
+    /// position is topLeft|topRight|bottomLeft|bottomRight; x/y are the offset in points
+    /// from that corner.
+    @objc(setOrnamentPlacementJson:)
+    public func setOrnamentPlacement(json: String)
+    {
+        if destroyed { return }
+
+        guard let data = json.data(using: .utf8),
+              let config = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { return }
+
+        captureOrnamentDefaults()
+
+        let compass = config["compass"] as? [String: Any]
+        mapView.ornaments.options.compass.position =
+            compass.map(IKMapView.ornamentPosition) ?? ornamentDefaults["compass"]!.position
+        mapView.ornaments.options.compass.margins =
+            compass.map(IKMapView.ornamentMargins) ?? ornamentDefaults["compass"]!.margins
+
+        let scaleBar = config["scaleBar"] as? [String: Any]
+        mapView.ornaments.options.scaleBar.position =
+            scaleBar.map(IKMapView.ornamentPosition) ?? ornamentDefaults["scaleBar"]!.position
+        mapView.ornaments.options.scaleBar.margins =
+            scaleBar.map(IKMapView.ornamentMargins) ?? ornamentDefaults["scaleBar"]!.margins
+
+        let logo = config["logo"] as? [String: Any]
+        mapView.ornaments.options.logo.position =
+            logo.map(IKMapView.ornamentPosition) ?? ornamentDefaults["logo"]!.position
+        mapView.ornaments.options.logo.margins =
+            logo.map(IKMapView.ornamentMargins) ?? ornamentDefaults["logo"]!.margins
+
+        let attribution = config["attribution"] as? [String: Any]
+        mapView.ornaments.options.attributionButton.position =
+            attribution.map(IKMapView.ornamentPosition) ?? ornamentDefaults["attribution"]!.position
+        mapView.ornaments.options.attributionButton.margins =
+            attribution.map(IKMapView.ornamentMargins) ?? ornamentDefaults["attribution"]!.margins
+    }
+
+    private struct OrnamentDefaults
+    {
+        let position: OrnamentPosition
+        let margins: CGPoint
+    }
+
+    private var ornamentDefaults: [String: OrnamentDefaults] = [:]
+
+    /// Remembers the SDK's own placement the first time a placement is applied, so that
+    /// dropping an ornament from the JSON restores the default instead of leaving the
+    /// previous override in place.
+    private func captureOrnamentDefaults()
+    {
+        guard ornamentDefaults.isEmpty else { return }
+
+        let options = mapView.ornaments.options
+        ornamentDefaults["compass"] =
+            OrnamentDefaults(position: options.compass.position, margins: options.compass.margins)
+        ornamentDefaults["scaleBar"] =
+            OrnamentDefaults(position: options.scaleBar.position, margins: options.scaleBar.margins)
+        ornamentDefaults["logo"] =
+            OrnamentDefaults(position: options.logo.position, margins: options.logo.margins)
+        ornamentDefaults["attribution"] =
+            OrnamentDefaults(position: options.attributionButton.position,
+                             margins: options.attributionButton.margins)
+    }
+
+    private static func ornamentPosition(_ o: [String: Any]) -> OrnamentPosition
+    {
+        switch o["position"] as? String
+        {
+        case "topLeft": return .topLeading
+        case "bottomLeft": return .bottomLeading
+        case "bottomRight": return .bottomTrailing
+        default: return .topTrailing
+        }
+    }
+
+    /// Mapbox interprets margins relative to the chosen corner, so the raw x/y go
+    /// through unchanged — the Kotlin side spreads them over its four margins instead.
+    private static func ornamentMargins(_ o: [String: Any]) -> CGPoint
+    {
+        CGPoint(x: o["x"] as? Double ?? 0, y: o["y"] as? Double ?? 0)
+    }
+
     @objc(setOrnamentsCompass:scaleBar:logo:attribution:)
     public func setOrnaments(compass: Bool, scaleBar: Bool, logo: Bool, attribution: Bool)
     {
