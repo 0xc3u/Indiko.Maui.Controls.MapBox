@@ -46,6 +46,8 @@ import com.mapbox.maps.extension.style.expressions.generated.Expression
 import com.mapbox.maps.extension.style.layers.addLayer
 import com.mapbox.maps.extension.style.layers.addLayerBelow
 import com.mapbox.maps.extension.style.layers.generated.CircleLayer
+import com.mapbox.maps.extension.style.layers.generated.HeatmapLayer
+import com.mapbox.maps.extension.style.layers.generated.FillExtrusionLayer
 import com.mapbox.maps.extension.style.layers.generated.FillLayer
 import com.mapbox.maps.extension.style.layers.generated.HillshadeLayer
 import com.mapbox.maps.extension.style.layers.generated.LineLayer
@@ -872,9 +874,13 @@ class IKMapView(
                 .also { l -> sourceLayer?.let { l.sourceLayer(it) } }
             "symbol" -> buildSymbolLayer(style, id, sourceId, config)
                 .also { l -> sourceLayer?.let { l.sourceLayer(it) } }
-            // Raster and hillshade carry no typed options — style them via "properties".
+            // These carry no typed options — style them via "properties".
             "raster" -> RasterLayer(id, sourceId)
             "hillshade" -> HillshadeLayer(id, sourceId)
+            "heatmap" -> HeatmapLayer(id, sourceId)
+                .also { l -> sourceLayer?.let { l.sourceLayer(it) } }
+            "fill-extrusion" -> FillExtrusionLayer(id, sourceId)
+                .also { l -> sourceLayer?.let { l.sourceLayer(it) } }
             else -> return
         }
 
