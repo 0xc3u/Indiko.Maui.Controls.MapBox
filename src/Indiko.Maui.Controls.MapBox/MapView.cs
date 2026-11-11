@@ -607,6 +607,22 @@ public class MapView : View
         InvokeOrQueue(nameof(AddGeoJsonSource), new GeoJsonSourceRequest(sourceId, geoJson));
     }
 
+    /// <summary>
+    /// Adds or replaces a raster, vector, raster-DEM or image source. A source renders
+    /// nothing on its own — add a <see cref="MapLayer"/> that reads it.
+    /// </summary>
+    public void AddSource(MapSource source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        InvokeOrQueue(nameof(AddSource), source);
+    }
+
+    /// <summary>Removes a source added with <see cref="AddSource"/>.</summary>
+    public void RemoveSource(string sourceId)
+    {
+        InvokeOrQueue(nameof(RemoveSource), sourceId);
+    }
+
     public void RemoveGeoJsonSource(string sourceId)
     {
         InvokeOrQueue(nameof(RemoveGeoJsonSource), sourceId);

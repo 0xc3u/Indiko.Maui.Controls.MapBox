@@ -368,6 +368,13 @@ SWIFT_CLASS_NAMED("IKMapView")
 - (void)setPolygonsJson:(NSString * _Nonnull)json;
 - (void)clearPolygons;
 /// Adds a GeoJSON source or replaces the data of an existing one.
+/// Adds or replaces a raster, vector, raster-dem or image source. JSON:
+/// {“id”,“type”,“url”|“tiles”,[minZoom],[maxZoom],[tileSize],[attribution],
+/// [coordinates] ([[lng,lat] x4], image sources)}
+/// The source is handed to Mapbox as raw style-spec JSON, so nothing has to be
+/// modelled per property. Re-applied after every style load.
+- (void)addSourceJson:(NSString * _Nonnull)json;
+- (void)removeSource:(NSString * _Nonnull)id;
 - (void)addGeoJsonSource:(NSString * _Nonnull)id geoJson:(NSString * _Nonnull)geoJson;
 - (void)removeGeoJsonSource:(NSString * _Nonnull)id;
 /// Adds (or replaces) a style layer. JSON:
@@ -845,6 +852,13 @@ SWIFT_CLASS_NAMED("IKMapView")
 - (void)setPolygonsJson:(NSString * _Nonnull)json;
 - (void)clearPolygons;
 /// Adds a GeoJSON source or replaces the data of an existing one.
+/// Adds or replaces a raster, vector, raster-dem or image source. JSON:
+/// {“id”,“type”,“url”|“tiles”,[minZoom],[maxZoom],[tileSize],[attribution],
+/// [coordinates] ([[lng,lat] x4], image sources)}
+/// The source is handed to Mapbox as raw style-spec JSON, so nothing has to be
+/// modelled per property. Re-applied after every style load.
+- (void)addSourceJson:(NSString * _Nonnull)json;
+- (void)removeSource:(NSString * _Nonnull)id;
 - (void)addGeoJsonSource:(NSString * _Nonnull)id geoJson:(NSString * _Nonnull)geoJson;
 - (void)removeGeoJsonSource:(NSString * _Nonnull)id;
 /// Adds (or replaces) a style layer. JSON:

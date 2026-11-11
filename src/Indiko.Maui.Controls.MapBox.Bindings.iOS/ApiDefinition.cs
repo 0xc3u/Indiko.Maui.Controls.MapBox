@@ -157,6 +157,12 @@ interface IKMapView
     [Export("clearPolygons")]
     void ClearPolygons();
 
+    [Export("addSourceJson:")]
+    void AddSourceJson(string json);
+
+    [Export("removeSource:")]
+    void RemoveSource(string id);
+
     [Export("addGeoJsonSource:geoJson:")]
     void AddGeoJsonSource(string id, string geoJson);
 

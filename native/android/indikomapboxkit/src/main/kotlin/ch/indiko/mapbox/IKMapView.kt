@@ -47,7 +47,9 @@ import com.mapbox.maps.extension.style.layers.addLayer
 import com.mapbox.maps.extension.style.layers.addLayerBelow
 import com.mapbox.maps.extension.style.layers.generated.CircleLayer
 import com.mapbox.maps.extension.style.layers.generated.FillLayer
+import com.mapbox.maps.extension.style.layers.generated.HillshadeLayer
 import com.mapbox.maps.extension.style.layers.generated.LineLayer
+import com.mapbox.maps.extension.style.layers.generated.RasterLayer
 import com.mapbox.maps.extension.style.layers.generated.SymbolLayer
 import com.mapbox.maps.extension.style.layers.generated.skyLayer
 import com.mapbox.maps.extension.style.layers.properties.generated.SkyType
@@ -333,6 +335,7 @@ class IKMapView(
             if (destroyed)
                 return@subscribeStyleLoaded
 
+            tileSources.values.forEach { applyTileSource(it) }
             geoJsonSources.forEach { (id, geoJson) -> applyGeoJsonSource(id, geoJson) }
             layerConfigs.values.forEach { applyLayer(it) }
             clusterConfigs.values.forEach { applyClusteredSource(it) }
@@ -663,6 +666,60 @@ class IKMapView(
     /**
      * Adds a GeoJSON source or replaces the data of an existing one.
      */
+    /**
+     * Adds or replaces a raster, vector, raster-dem or image source. JSON:
+     * {"id","type","url"|"tiles",[minZoom],[maxZoom],[tileSize],[attribution],
+     *  [image] (base64, image sources), [coordinates] ([[lng,lat] x4], image sources)}
+     * The source is handed to Mapbox as raw style-spec JSON, so nothing has to be
+     * modelled per property. Re-applied after every style load.
+     */
+    fun addSourceJson(json: String)
+    {
+        if (destroyed)
+            return
+
+        val config = runCatching { JSONObject(json) }.getOrNull() ?: return
+        val id = config.optString("id")
+        if (id.isEmpty())
+            return
+
+        tileSources[id] = config
+        applyTileSource(config)
+    }
+
+    fun removeSource(id: String)
+    {
+        if (destroyed)
+            return
+
+        tileSources.remove(id)
+        mapView.mapboxMap.style?.removeStyleSource(id)
+    }
+
+    private val tileSources = linkedMapOf<String, JSONObject>()
+
+    private fun applyTileSource(config: JSONObject)
+    {
+        val style = mapView.mapboxMap.style ?: return
+        val id = config.optString("id")
+        if (style.styleSourceExists(id))
+            style.removeStyleSource(id)
+
+        val type = config.optString("type")
+        val spec = JSONObject().put("type", type)
+
+        config.optString("url").takeIf { it.isNotEmpty() }?.let { spec.put("url", it) }
+        config.optJSONArray("tiles")?.let { spec.put("tiles", it) }
+        if (config.has("minZoom")) spec.put("minzoom", config.optInt("minZoom"))
+        if (config.has("maxZoom")) spec.put("maxzoom", config.optInt("maxZoom"))
+        if (config.has("tileSize")) spec.put("tileSize", config.optInt("tileSize"))
+        config.optString("attribution").takeIf { it.isNotEmpty() }?.let { spec.put("attribution", it) }
+        config.optJSONArray("coordinates")?.let { spec.put("coordinates", it) }
+
+        val value = Value.fromJson(spec.toString()).value ?: return
+        style.addStyleSource(id, value)
+    }
+
     fun addGeoJsonSource(id: String, geoJson: String)
     {
         if (destroyed)
@@ -794,20 +851,30 @@ class IKMapView(
         val color = config.optString("color", "#3B82F6")
         val opacity = config.optDouble("opacity", 1.0)
 
+        // Vector sources need the tileset's internal layer name; every other kind ignores it.
+        val sourceLayer = config.optString("sourceLayer").takeIf { it.isNotEmpty() }
+
         val layer = when (config.optString("type"))
         {
             "fill" -> FillLayer(id, sourceId)
                 .fillColor(color)
                 .fillOpacity(opacity)
+                .also { l -> sourceLayer?.let { l.sourceLayer(it) } }
             "line" -> LineLayer(id, sourceId)
                 .lineColor(color)
                 .lineOpacity(opacity)
                 .lineWidth(config.optDouble("lineWidth", 3.0))
+                .also { l -> sourceLayer?.let { l.sourceLayer(it) } }
             "circle" -> CircleLayer(id, sourceId)
                 .circleColor(color)
                 .circleOpacity(opacity)
                 .circleRadius(config.optDouble("circleRadius", 6.0))
+                .also { l -> sourceLayer?.let { l.sourceLayer(it) } }
             "symbol" -> buildSymbolLayer(style, id, sourceId, config)
+                .also { l -> sourceLayer?.let { l.sourceLayer(it) } }
+            // Raster and hillshade carry no typed options — style them via "properties".
+            "raster" -> RasterLayer(id, sourceId)
+            "hillshade" -> HillshadeLayer(id, sourceId)
             else -> return
         }
 

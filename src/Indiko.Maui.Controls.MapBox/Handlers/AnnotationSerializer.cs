@@ -97,6 +97,63 @@ internal static class AnnotationSerializer
         return builder.Append(']').ToString();
     }
 
+    /// <summary>
+    /// Serializes a tile or image source. Optional values are omitted rather than defaulted,
+    /// so the native SDK keeps its own defaults for anything the caller did not set.
+    /// </summary>
+    public static string ToSourceJson(MapSource source)
+    {
+        var builder = new StringBuilder("{");
+        builder.Append("\"id\":").Append(Quote(source.Id));
+        builder.Append(",\"type\":").Append(Quote(source.Type switch
+        {
+            MapSourceType.Vector => "vector",
+            MapSourceType.RasterDem => "raster-dem",
+            MapSourceType.Image => "image",
+            _ => "raster",
+        }));
+
+        if (!string.IsNullOrEmpty(source.Url))
+            builder.Append(",\"url\":").Append(Quote(source.Url));
+
+        if (source.Tiles.Count > 0)
+        {
+            builder.Append(",\"tiles\":[");
+            for (var index = 0; index < source.Tiles.Count; index++)
+            {
+                if (index > 0)
+                    builder.Append(',');
+                builder.Append(Quote(source.Tiles[index]));
+            }
+            builder.Append(']');
+        }
+
+        if (source.MinZoom is { } minZoom)
+            builder.Append(",\"minZoom\":").Append(Invariant(minZoom));
+        if (source.MaxZoom is { } maxZoom)
+            builder.Append(",\"maxZoom\":").Append(Invariant(maxZoom));
+        if (source.TileSize is { } tileSize)
+            builder.Append(",\"tileSize\":").Append(Invariant(tileSize));
+        if (!string.IsNullOrEmpty(source.Attribution))
+            builder.Append(",\"attribution\":").Append(Quote(source.Attribution));
+
+        if (source.Coordinates.Count > 0)
+        {
+            // [[lng,lat], …] clockwise from the top-left, the order Mapbox expects.
+            builder.Append(",\"coordinates\":[");
+            for (var index = 0; index < source.Coordinates.Count; index++)
+            {
+                if (index > 0)
+                    builder.Append(',');
+                var (latitude, longitude) = source.Coordinates[index];
+                builder.Append('[').Append(Invariant(longitude)).Append(',').Append(Invariant(latitude)).Append(']');
+            }
+            builder.Append(']');
+        }
+
+        return builder.Append('}').ToString();
+    }
+
     public static string ToLayerJson(MapLayer layer)
     {
         var builder = new StringBuilder("{");
@@ -107,6 +164,8 @@ internal static class AnnotationSerializer
             MapLayerType.Line => "line",
             MapLayerType.Circle => "circle",
             MapLayerType.Symbol => "symbol",
+            MapLayerType.Raster => "raster",
+            MapLayerType.Hillshade => "hillshade",
             _ => "fill",
         }));
         builder.Append(",\"color\":").Append(Quote(layer.Color));
@@ -115,6 +174,8 @@ internal static class AnnotationSerializer
         builder.Append(",\"circleRadius\":").Append(Invariant(layer.CircleRadius));
         if (!string.IsNullOrEmpty(layer.BelowLayerId))
             builder.Append(",\"belowLayerId\":").Append(Quote(layer.BelowLayerId));
+        if (!string.IsNullOrEmpty(layer.SourceLayer))
+            builder.Append(",\"sourceLayer\":").Append(Quote(layer.SourceLayer));
         if (layer.Properties.Count > 0)
         {
             // Raw style-spec values pass through verbatim; the facade hands each one to

@@ -6,6 +6,12 @@ public enum MapLayerType
     Line,
     Circle,
     Symbol,
+
+    /// <summary>Draws a <see cref="MapSourceType.Raster"/> source.</summary>
+    Raster,
+
+    /// <summary>Shades a <see cref="MapSourceType.RasterDem"/> source as relief.</summary>
+    Hillshade,
 }
 
 /// <summary>
@@ -36,6 +42,13 @@ public class MapLayer
 
     /// <summary>Optional id of an existing layer to insert this layer below.</summary>
     public string? BelowLayerId { get; set; }
+
+    /// <summary>
+    /// Which layer inside a <see cref="MapSourceType.Vector"/> source to render — required
+    /// for vector sources, ignored for every other kind. Vector tilesets document their
+    /// layer names (Mapbox Streets has <c>"building"</c>, <c>"road"</c>, <c>"water"</c>, …).
+    /// </summary>
+    public string? SourceLayer { get; set; }
 
     /* ------------------------- Symbol layer options ------------------------- */
 
