@@ -46,6 +46,20 @@ simulator cannot inject taps, so the sample has `SIMCTL_CHILD_DEMO_*` launch hoo
 `DEMO_EXTRUSION`, `DEMO_GEOJSON`, `DEMO_CLUSTER`, …). `DEMO_LOADERROR` points the map at a non-existent style so `MapLoadError`
 can be checked without taking the device offline.
 
+## Open work
+
+`docs/ROADMAP.md` tracks what is still missing against the Mapbox SDK — effort, value and
+the pitfalls already known for each item. Read it before picking up new feature work; the
+Feature-Matrix in README.md stays the source of truth for *what* is supported, the roadmap
+explains *why* the rest is still open.
+
+Three conventions make new features cheap and are easy to miss:
+`MapLayer.Properties` passes raw style-spec properties straight to Mapbox (a new layer type
+is one constructor per facade), sources cross as style-spec JSON rather than per-property
+models, and **everything style-related must be re-applied in the StyleLoaded handler** —
+Mapbox drops projection, atmosphere, sky, language, sources, layers and import config on
+every style reload.
+
 ## Releasing
 
 Semantic Release CI (like Indiko.Maui.Controls.Chat): pushes to main run
