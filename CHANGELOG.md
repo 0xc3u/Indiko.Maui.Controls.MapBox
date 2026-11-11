@@ -1,3 +1,13 @@
+# [1.14.0](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/compare/v1.13.0...v1.14.0) (2026-11-11)
+
+### Features
+
+* configure the Mapbox Standard style ([2bab6e4](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/commit/2bab6e47755f75e0ebf6bb32714727004a2e86a6))
+* switch the individual zoom gestures separately ([66856d1](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/commit/66856d15789b4324f767fc5765c3745223682e78))
+* feature state for selection and hover styling ([aa67bc1](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/commit/aa67bc16f7d444d75a077a98a0c5a6e009b0a728))
+* report which feature sits under a coordinate ([b368526](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/commit/b36852647e0b7184a522bb9e9d26e1dbae0bf9b1))
+
+
 # [1.13.0](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/compare/v1.12.0...v1.13.0) (2026-11-11)
 
 ### Features
