@@ -152,6 +152,12 @@ public protocol IKMapEventListener
     @objc(onOfflineRegionCompleted:success:error:) func onOfflineRegionCompleted(id: String, success: Bool, error: String?)
     @objc(onFollowPuckChanged:) func onFollowPuckChanged(active: Bool)
     @objc(onMarkerDragEnd:latitude:longitude:) func onMarkerDragEnd(id: String, latitude: Double, longitude: Double)
+
+    /// A resource the map needed could not be loaded. `type` is one of "style", "sprite",
+    /// "source", "tile", "glyphs" or "unknown"; `sourceId` is set for source and tile errors.
+    /// Tile errors fire once per failed tile, so they can arrive in bursts — offline, every
+    /// tile outside a downloaded region produces one.
+    @objc(onMapLoadError:message:sourceId:) func onMapLoadError(type: String, message: String, sourceId: String?)
 }
 
 /// Thin facade over MapboxMaps.MapView exposing exactly the surface the
@@ -189,6 +195,20 @@ public class IKMapView: UIView
 
     @objc public weak var listener: IKMapEventListener?
 
+    /// Mirrors the Kotlin side, which lowercases MapLoadingErrorType.name.
+    private static func loadErrorName(_ type: MapLoadingErrorType) -> String
+    {
+        switch type
+        {
+        case .style: return "style"
+        case .sprite: return "sprite"
+        case .source: return "source"
+        case .tile: return "tile"
+        case .glyphs: return "glyphs"
+        @unknown default: return "unknown"
+        }
+    }
+
     @objc(initWithFrame:styleUri:latitude:longitude:zoom:bearing:pitch:)
     public init(frame: CGRect, styleUri: String, latitude: Double, longitude: Double,
                 zoom: Double, bearing: Double, pitch: Double)
@@ -218,6 +238,14 @@ public class IKMapView: UIView
 
     private func subscribeEvents()
     {
+        mapView.mapboxMap.onMapLoadingError.observe { [weak self] event in
+            guard let self else { return }
+            self.listener?.onMapLoadError(
+                type: IKMapView.loadErrorName(event.type),
+                message: event.message,
+                sourceId: event.sourceId)
+        }.store(in: &cancelables)
+
         mapView.mapboxMap.onMapLoaded.observeNext { [weak self] _ in
             self?.listener?.onMapReady()
         }.store(in: &cancelables)
@@ -240,6 +268,7 @@ public class IKMapView: UIView
             {
                 self.applyTerrain(exaggeration: exaggeration)
             }
+            self.applyMapLanguage()
             self.listener?.onStyleLoaded()
         }.store(in: &cancelables)
 
@@ -1058,6 +1087,125 @@ public class IKMapView: UIView
     /// Shows/hides the map ornaments. Compass and scale bar keep their adaptive
     /// behavior when visible. Note: hiding logo/attribution may require a Mapbox
     /// license that permits it — the consuming app is responsible for compliance.
+    /// Places the ornaments. JSON, every entry optional — omitted ornaments keep the
+    /// SDK default:
+    /// {"compass":{"position":"topRight","x":8,"y":8}, "scaleBar":{...}, "logo":{...},
+    ///  "attribution":{...}}
+    /// position is topLeft|topRight|bottomLeft|bottomRight; x/y are the offset in points
+    /// from that corner.
+    /// Shifts the camera's anchor inside the viewport, in points. Use it when part of the
+    /// map is covered by other UI: the centre of the camera then lands in the visible part
+    /// instead of the middle of the view.
+    /// Translates the style's name labels into `language` (a BCP-47 tag such as "de" or
+    /// "fr-CH"). An empty string leaves the style's own labels alone. Re-applied after
+    /// every style load, because a style reload resets the labels.
+    @objc(setMapLanguage:)
+    public func setMapLanguage(language: String)
+    {
+        if destroyed { return }
+
+        mapLanguage = language.isEmpty ? nil : language
+        applyMapLanguage()
+    }
+
+    private var mapLanguage: String?
+
+    private func applyMapLanguage()
+    {
+        guard let tag = mapLanguage else { return }
+        try? mapView.mapboxMap.localizeLabels(into: Locale(identifier: tag))
+    }
+
+    @objc(setCameraPaddingLeft:top:right:bottom:)
+    public func setCameraPadding(left: Double, top: Double, right: Double, bottom: Double)
+    {
+        if destroyed { return }
+
+        mapView.mapboxMap.setCamera(to: CameraOptions(
+            padding: UIEdgeInsets(top: top, left: left, bottom: bottom, right: right)))
+    }
+
+    @objc(setOrnamentPlacementJson:)
+    public func setOrnamentPlacement(json: String)
+    {
+        if destroyed { return }
+
+        guard let data = json.data(using: .utf8),
+              let config = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { return }
+
+        captureOrnamentDefaults()
+
+        let compass = config["compass"] as? [String: Any]
+        mapView.ornaments.options.compass.position =
+            compass.map(IKMapView.ornamentPosition) ?? ornamentDefaults["compass"]!.position
+        mapView.ornaments.options.compass.margins =
+            compass.map(IKMapView.ornamentMargins) ?? ornamentDefaults["compass"]!.margins
+
+        let scaleBar = config["scaleBar"] as? [String: Any]
+        mapView.ornaments.options.scaleBar.position =
+            scaleBar.map(IKMapView.ornamentPosition) ?? ornamentDefaults["scaleBar"]!.position
+        mapView.ornaments.options.scaleBar.margins =
+            scaleBar.map(IKMapView.ornamentMargins) ?? ornamentDefaults["scaleBar"]!.margins
+
+        let logo = config["logo"] as? [String: Any]
+        mapView.ornaments.options.logo.position =
+            logo.map(IKMapView.ornamentPosition) ?? ornamentDefaults["logo"]!.position
+        mapView.ornaments.options.logo.margins =
+            logo.map(IKMapView.ornamentMargins) ?? ornamentDefaults["logo"]!.margins
+
+        let attribution = config["attribution"] as? [String: Any]
+        mapView.ornaments.options.attributionButton.position =
+            attribution.map(IKMapView.ornamentPosition) ?? ornamentDefaults["attribution"]!.position
+        mapView.ornaments.options.attributionButton.margins =
+            attribution.map(IKMapView.ornamentMargins) ?? ornamentDefaults["attribution"]!.margins
+    }
+
+    private struct OrnamentDefaults
+    {
+        let position: OrnamentPosition
+        let margins: CGPoint
+    }
+
+    private var ornamentDefaults: [String: OrnamentDefaults] = [:]
+
+    /// Remembers the SDK's own placement the first time a placement is applied, so that
+    /// dropping an ornament from the JSON restores the default instead of leaving the
+    /// previous override in place.
+    private func captureOrnamentDefaults()
+    {
+        guard ornamentDefaults.isEmpty else { return }
+
+        let options = mapView.ornaments.options
+        ornamentDefaults["compass"] =
+            OrnamentDefaults(position: options.compass.position, margins: options.compass.margins)
+        ornamentDefaults["scaleBar"] =
+            OrnamentDefaults(position: options.scaleBar.position, margins: options.scaleBar.margins)
+        ornamentDefaults["logo"] =
+            OrnamentDefaults(position: options.logo.position, margins: options.logo.margins)
+        ornamentDefaults["attribution"] =
+            OrnamentDefaults(position: options.attributionButton.position,
+                             margins: options.attributionButton.margins)
+    }
+
+    private static func ornamentPosition(_ o: [String: Any]) -> OrnamentPosition
+    {
+        switch o["position"] as? String
+        {
+        case "topLeft": return .topLeading
+        case "bottomLeft": return .bottomLeading
+        case "bottomRight": return .bottomTrailing
+        default: return .topTrailing
+        }
+    }
+
+    /// Mapbox interprets margins relative to the chosen corner, so the raw x/y go
+    /// through unchanged — the Kotlin side spreads them over its four margins instead.
+    private static func ornamentMargins(_ o: [String: Any]) -> CGPoint
+    {
+        CGPoint(x: o["x"] as? Double ?? 0, y: o["y"] as? Double ?? 0)
+    }
+
     @objc(setOrnamentsCompass:scaleBar:logo:attribution:)
     public func setOrnaments(compass: Bool, scaleBar: Bool, logo: Bool, attribution: Bool)
     {
@@ -1099,6 +1247,37 @@ public class IKMapView: UIView
         else { return .nan }
 
         return elevation / exaggeration
+    }
+
+    /// Constrains the camera. Any argument may be NaN, which means "leave at the SDK
+    /// default". The four bounds values are all-or-nothing: pass NaN for all of them to
+    /// lift a pan restriction.
+    @objc(setCameraBoundsMinLat:minLng:maxLat:maxLng:minZoom:maxZoom:minPitch:maxPitch:)
+    public func setCameraBounds(
+        minLat: Double, minLng: Double, maxLat: Double, maxLng: Double,
+        minZoom: Double, maxZoom: Double, minPitch: Double, maxPitch: Double)
+    {
+        if destroyed { return }
+
+        let bounds: CoordinateBounds
+        if !minLat.isNaN && !minLng.isNaN && !maxLat.isNaN && !maxLng.isNaN
+        {
+            bounds = CoordinateBounds(
+                southwest: CLLocationCoordinate2D(latitude: minLat, longitude: minLng),
+                northeast: CLLocationCoordinate2D(latitude: maxLat, longitude: maxLng))
+        }
+        else
+        {
+            // Mapbox keeps the previous restriction unless it is explicitly reset.
+            bounds = CoordinateBounds.world
+        }
+
+        try? mapView.mapboxMap.setCameraBounds(with: CameraBoundsOptions(
+            bounds: bounds,
+            maxZoom: maxZoom.isNaN ? nil : maxZoom,
+            minZoom: minZoom.isNaN ? nil : minZoom,
+            maxPitch: maxPitch.isNaN ? nil : maxPitch,
+            minPitch: minPitch.isNaN ? nil : minPitch))
     }
 
     @objc(setGesturesScroll:zoom:rotate:pitch:)

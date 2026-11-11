@@ -105,3 +105,48 @@ public class CameraChangedEventArgs : EventArgs
         Camera = camera;
     }
 }
+
+/// <summary>Which kind of resource the map failed to load.</summary>
+public enum MapLoadErrorType
+{
+    /// <summary>The style document itself — the map stays blank.</summary>
+    Style,
+
+    /// <summary>The sprite sheet; icons are missing.</summary>
+    Sprite,
+
+    /// <summary>A source's metadata; everything from that source is missing.</summary>
+    Source,
+
+    /// <summary>A single tile. Fires once per failed tile, so these arrive in bursts.</summary>
+    Tile,
+
+    /// <summary>A glyph range; labels in that range are missing.</summary>
+    Glyphs,
+
+    /// <summary>A kind this library does not know yet.</summary>
+    Unknown,
+}
+
+/// <summary>
+/// A resource the map needed could not be loaded — most often "offline and outside any
+/// downloaded region". See <c>MapView.MapLoadError</c>.
+/// </summary>
+public class MapLoadErrorEventArgs : EventArgs
+{
+    public MapLoadErrorType Type { get; }
+
+    /// <summary>The SDK's message, e.g. "Online connectivity is disabled."</summary>
+    public string Message { get; }
+
+    /// <summary>The source that failed, for <see cref="MapLoadErrorType.Source"/> and
+    /// <see cref="MapLoadErrorType.Tile"/>; null otherwise.</summary>
+    public string? SourceId { get; }
+
+    public MapLoadErrorEventArgs(MapLoadErrorType type, string message, string? sourceId)
+    {
+        Type = type;
+        Message = message;
+        SourceId = sourceId;
+    }
+}

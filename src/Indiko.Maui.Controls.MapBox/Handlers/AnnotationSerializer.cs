@@ -176,6 +176,46 @@ internal static class AnnotationSerializer
     /// [{"id","requiredResourceCount","completedResourceCount","completedResourceSize","expires","metadata"}].
     /// Malformed entries are skipped; malformed input yields an empty list.
     /// </summary>
+    /// <summary>
+    /// Serializes the four ornament placements. Ornaments left null are omitted from the
+    /// payload, which the facade reads as "restore the SDK default".
+    /// </summary>
+    public static string SerializeOrnamentPlacement(
+        MapOrnamentPlacement? compass, MapOrnamentPlacement? scaleBar,
+        MapOrnamentPlacement? logo, MapOrnamentPlacement? attribution)
+    {
+        using var stream = new MemoryStream();
+        using (var writer = new System.Text.Json.Utf8JsonWriter(stream))
+        {
+            writer.WriteStartObject();
+            WriteOrnament(writer, "compass", compass);
+            WriteOrnament(writer, "scaleBar", scaleBar);
+            WriteOrnament(writer, "logo", logo);
+            WriteOrnament(writer, "attribution", attribution);
+            writer.WriteEndObject();
+        }
+        return System.Text.Encoding.UTF8.GetString(stream.ToArray());
+    }
+
+    private static void WriteOrnament(System.Text.Json.Utf8JsonWriter writer, string name,
+        MapOrnamentPlacement? placement)
+    {
+        if (placement is null)
+            return;
+
+        writer.WriteStartObject(name);
+        writer.WriteString("position", placement.Position switch
+        {
+            MapOrnamentPosition.TopLeft => "topLeft",
+            MapOrnamentPosition.BottomLeft => "bottomLeft",
+            MapOrnamentPosition.BottomRight => "bottomRight",
+            _ => "topRight",
+        });
+        writer.WriteNumber("x", placement.OffsetX);
+        writer.WriteNumber("y", placement.OffsetY);
+        writer.WriteEndObject();
+    }
+
     public static IReadOnlyList<MapOfflineRegionInfo> ParseOfflineRegions(string? json)
     {
         if (string.IsNullOrWhiteSpace(json))

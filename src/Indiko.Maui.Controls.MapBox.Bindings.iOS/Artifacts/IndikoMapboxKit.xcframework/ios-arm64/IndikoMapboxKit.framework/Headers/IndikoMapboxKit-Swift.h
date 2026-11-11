@@ -334,6 +334,11 @@ SWIFT_PROTOCOL_NAMED("IKMapEventListener")
 - (void)onOfflineRegionCompleted:(NSString * _Nonnull)id success:(BOOL)success error:(NSString * _Nullable)error;
 - (void)onFollowPuckChanged:(BOOL)active;
 - (void)onMarkerDragEnd:(NSString * _Nonnull)id latitude:(double)latitude longitude:(double)longitude;
+/// A resource the map needed could not be loaded. <code>type</code> is one of “style”, “sprite”,
+/// “source”, “tile”, “glyphs” or “unknown”; <code>sourceId</code> is set for source and tile errors.
+/// Tile errors fire once per failed tile, so they can arrive in bursts — offline, every
+/// tile outside a downloaded region produces one.
+- (void)onMapLoadError:(NSString * _Nonnull)type message:(NSString * _Nonnull)message sourceId:(NSString * _Nullable)sourceId;
 @end
 
 @class NSCoder;
@@ -399,6 +404,21 @@ SWIFT_CLASS_NAMED("IKMapView")
 /// Shows/hides the map ornaments. Compass and scale bar keep their adaptive
 /// behavior when visible. Note: hiding logo/attribution may require a Mapbox
 /// license that permits it — the consuming app is responsible for compliance.
+/// Places the ornaments. JSON, every entry optional — omitted ornaments keep the
+/// SDK default:
+/// {“compass”:{“position”:“topRight”,“x”:8,“y”:8}, “scaleBar”:{…}, “logo”:{…},
+/// “attribution”:{…}}
+/// position is topLeft|topRight|bottomLeft|bottomRight; x/y are the offset in points
+/// from that corner.
+/// Shifts the camera’s anchor inside the viewport, in points. Use it when part of the
+/// map is covered by other UI: the centre of the camera then lands in the visible part
+/// instead of the middle of the view.
+/// Translates the style’s name labels into <code>language</code> (a BCP-47 tag such as “de” or
+/// “fr-CH”). An empty string leaves the style’s own labels alone. Re-applied after
+/// every style load, because a style reload resets the labels.
+- (void)setMapLanguage:(NSString * _Nonnull)language;
+- (void)setCameraPaddingLeft:(double)left top:(double)top right:(double)right bottom:(double)bottom;
+- (void)setOrnamentPlacementJson:(NSString * _Nonnull)json;
 - (void)setOrnamentsCompass:(BOOL)compass scaleBar:(BOOL)scaleBar logo:(BOOL)logo attribution:(BOOL)attribution;
 /// Current viewport as a bounding box. JSON: {“minLat”,“minLng”,“maxLat”,“maxLng”}
 - (NSString * _Nonnull)visibleBoundsJson SWIFT_WARN_UNUSED_RESULT;
@@ -408,6 +428,10 @@ SWIFT_CLASS_NAMED("IKMapView")
 /// that includes terrain). Mapbox reports the elevation multiplied by the
 /// terrain exaggeration; this returns the real value.
 - (double)queryTerrainElevation:(double)latitude longitude:(double)longitude SWIFT_WARN_UNUSED_RESULT;
+/// Constrains the camera. Any argument may be NaN, which means “leave at the SDK
+/// default”. The four bounds values are all-or-nothing: pass NaN for all of them to
+/// lift a pan restriction.
+- (void)setCameraBoundsMinLat:(double)minLat minLng:(double)minLng maxLat:(double)maxLat maxLng:(double)maxLng minZoom:(double)minZoom maxZoom:(double)maxZoom minPitch:(double)minPitch maxPitch:(double)maxPitch;
 - (void)setGesturesScroll:(BOOL)scroll zoom:(BOOL)zoom rotate:(BOOL)rotate pitch:(BOOL)pitch;
 - (void)didMoveToWindow;
 /// Teardown request from the MAUI handler’s DisconnectHandler. Deferred until the

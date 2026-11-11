@@ -35,6 +35,17 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
             [nameof(MapView.ZoomEnabled)] = MapGestures,
             [nameof(MapView.RotateEnabled)] = MapGestures,
             [nameof(MapView.PitchEnabled)] = MapGestures,
+            [nameof(MapView.MapLanguage)] = MapLanguage,
+            [nameof(MapView.CameraPadding)] = MapCameraPadding,
+            [nameof(MapView.CompassPlacement)] = MapOrnamentPlacement,
+            [nameof(MapView.ScaleBarPlacement)] = MapOrnamentPlacement,
+            [nameof(MapView.LogoPlacement)] = MapOrnamentPlacement,
+            [nameof(MapView.AttributionPlacement)] = MapOrnamentPlacement,
+            [nameof(MapView.CameraBounds)] = MapCameraBounds,
+            [nameof(MapView.MinZoom)] = MapCameraBounds,
+            [nameof(MapView.MaxZoom)] = MapCameraBounds,
+            [nameof(MapView.MinPitch)] = MapCameraBounds,
+            [nameof(MapView.MaxPitch)] = MapCameraBounds,
             [nameof(MapView.TerrainEnabled)] = MapTerrain,
             [nameof(MapView.TerrainExaggeration)] = MapTerrain,
             [nameof(MapView.ShowCompass)] = MapOrnaments,
@@ -179,6 +190,40 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
     {
         handler.PlatformView.SetOrnaments(
             view.ShowCompass, view.ShowScaleBar, view.ShowMapboxLogo, view.ShowAttribution);
+    }
+
+    private static void MapLanguage(MapViewHandler handler, MapView view)
+    {
+        handler.PlatformView.SetMapLanguage(view.MapLanguage ?? string.Empty);
+    }
+
+    private static void MapCameraPadding(MapViewHandler handler, MapView view)
+    {
+        var padding = view.CameraPadding;
+        handler.PlatformView.SetCameraPadding(padding.Left, padding.Top, padding.Right, padding.Bottom);
+    }
+
+    private static void MapOrnamentPlacement(MapViewHandler handler, MapView view)
+    {
+        // Always sent: an ornament missing from the payload is reset to the SDK default,
+        // so clearing a placement property puts it back where Mapbox had it.
+        var json = AnnotationSerializer.SerializeOrnamentPlacement(
+            view.CompassPlacement, view.ScaleBarPlacement, view.LogoPlacement, view.AttributionPlacement);
+        handler.PlatformView.SetOrnamentPlacementJson(json);
+    }
+
+    private static void MapCameraBounds(MapViewHandler handler, MapView view)
+    {
+        var bounds = view.CameraBounds;
+        handler.PlatformView.SetCameraBounds(
+            bounds?.MinLatitude ?? double.NaN,
+            bounds?.MinLongitude ?? double.NaN,
+            bounds?.MaxLatitude ?? double.NaN,
+            bounds?.MaxLongitude ?? double.NaN,
+            view.MinZoom ?? double.NaN,
+            view.MaxZoom ?? double.NaN,
+            view.MinPitch ?? double.NaN,
+            view.MaxPitch ?? double.NaN);
     }
 
     private static void MapTerrain(MapViewHandler handler, MapView view)
@@ -450,5 +495,8 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
 
         public void OnMarkerDragEnd(string id, double latitude, double longitude) =>
             Dispatch(v => v.SendAnnotationDragged(id, latitude, longitude));
+
+        public void OnMapLoadError(string type, string message, string? sourceId) =>
+            Dispatch(v => v.SendMapLoadError(type, message, sourceId));
     }
 }

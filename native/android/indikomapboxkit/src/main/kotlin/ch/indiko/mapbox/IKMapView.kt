@@ -1,6 +1,7 @@
 package ch.indiko.mapbox
 
 import android.annotation.SuppressLint
+import android.view.Gravity
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -26,6 +27,8 @@ import com.mapbox.common.TileStore
 import com.mapbox.geojson.Point
 import com.mapbox.geojson.Feature
 import com.mapbox.geojson.Polygon
+import com.mapbox.maps.CameraBoundsOptions
+import com.mapbox.maps.extension.localization.localizeLabels
 import com.mapbox.maps.CameraOptions
 import com.mapbox.maps.CoordinateBounds
 import com.mapbox.maps.EdgeInsets
@@ -89,6 +92,7 @@ import com.mapbox.maps.plugin.viewport.viewport
 import com.mapbox.maps.viewannotation.annotationAnchor
 import com.mapbox.maps.viewannotation.geometry
 import com.mapbox.maps.viewannotation.viewAnnotationOptions
+import java.util.Locale
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -213,6 +217,14 @@ interface IKMapEventListener
     fun onOfflineRegionCompleted(id: String, success: Boolean, error: String?)
     fun onFollowPuckChanged(active: Boolean)
     fun onMarkerDragEnd(id: String, latitude: Double, longitude: Double)
+
+    /**
+     * A resource the map needed could not be loaded. [type] is one of
+     * "style", "sprite", "source", "tile", "glyphs" or "unknown"; [sourceId] is set for
+     * source and tile errors. Tile errors fire once per failed tile, so they can arrive in
+     * bursts — offline, every tile outside a downloaded region produces one.
+     */
+    fun onMapLoadError(type: String, message: String, sourceId: String?)
 }
 
 /**
@@ -309,6 +321,13 @@ class IKMapView(
         addView(mapView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
 
         cancelables += mapView.mapboxMap.subscribeMapLoaded { listener?.onMapReady() }
+        cancelables += mapView.mapboxMap.subscribeMapLoadingError { error ->
+            listener?.onMapLoadError(
+                error.type.name.lowercase(),
+                error.message,
+                error.sourceId,
+            )
+        }
         cancelables += mapView.mapboxMap.subscribeStyleLoaded {
             if (destroyed)
                 return@subscribeStyleLoaded
@@ -317,6 +336,7 @@ class IKMapView(
             layerConfigs.values.forEach { applyLayer(it) }
             clusterConfigs.values.forEach { applyClusteredSource(it) }
             terrainExaggeration?.let { applyTerrain(it) }
+            applyMapLanguage()
             listener?.onStyleLoaded()
         }
         cancelables += mapView.mapboxMap.subscribeCameraChanged { event ->
@@ -1231,6 +1251,168 @@ class IKMapView(
      * Shows/hides the map ornaments. Note: hiding logo/attribution may require a
      * Mapbox license that permits it — the consuming app is responsible for compliance.
      */
+    /**
+     * Places the ornaments. JSON, every entry optional — omitted ornaments keep the
+     * SDK default:
+     * {"compass":{"position":"topRight","x":8,"y":8}, "scaleBar":{...}, "logo":{...},
+     *  "attribution":{...}}
+     * position is topLeft|topRight|bottomLeft|bottomRight; x/y are the offset in dp
+     * from that corner.
+     */
+    /**
+     * Shifts the camera's anchor inside the viewport, in dp. Use it when part of the map
+     * is covered by other UI: the centre of the camera then lands in the visible part
+     * instead of the middle of the view.
+     */
+    /**
+     * Translates the style's name labels into [language] (a BCP-47 tag such as "de" or
+     * "fr-CH"). An empty string leaves the style's own labels alone. Re-applied after
+     * every style load, because a style reload resets the labels.
+     */
+    fun setMapLanguage(language: String)
+    {
+        if (destroyed)
+            return
+
+        mapLanguage = language.ifEmpty { null }
+        applyMapLanguage()
+    }
+
+    private var mapLanguage: String? = null
+
+    private fun applyMapLanguage()
+    {
+        val tag = mapLanguage ?: return
+        mapView.mapboxMap.style?.localizeLabels(Locale.forLanguageTag(tag))
+    }
+
+    fun setCameraPadding(left: Double, top: Double, right: Double, bottom: Double)
+    {
+        if (destroyed)
+            return
+
+        val d = resources.displayMetrics.density
+        mapView.mapboxMap.setCamera(
+            CameraOptions.Builder()
+                .padding(EdgeInsets(top * d, left * d, bottom * d, right * d))
+                .build()
+        )
+    }
+
+    fun setOrnamentPlacementJson(json: String)
+    {
+        if (destroyed)
+            return
+
+        val config = runCatching { JSONObject(json) }.getOrNull() ?: return
+        val density = resources.displayMetrics.density
+        captureOrnamentDefaults()
+
+        val compass = config.optJSONObject("compass")
+        mapView.compass.updateSettings {
+            val d = ornamentDefaults.getValue("compass")
+            position = if (compass != null) gravityOf(compass.optString("position")) else d.position
+            applyMargins(compass, d, density) { l, t, r, b ->
+                marginLeft = l; marginTop = t; marginRight = r; marginBottom = b
+            }
+        }
+        val scaleBar = config.optJSONObject("scaleBar")
+        mapView.scalebar.updateSettings {
+            val d = ornamentDefaults.getValue("scaleBar")
+            position = if (scaleBar != null) gravityOf(scaleBar.optString("position")) else d.position
+            applyMargins(scaleBar, d, density) { l, t, r, b ->
+                marginLeft = l; marginTop = t; marginRight = r; marginBottom = b
+            }
+        }
+        val logo = config.optJSONObject("logo")
+        mapView.logo.updateSettings {
+            val d = ornamentDefaults.getValue("logo")
+            position = if (logo != null) gravityOf(logo.optString("position")) else d.position
+            applyMargins(logo, d, density) { l, t, r, b ->
+                marginLeft = l; marginTop = t; marginRight = r; marginBottom = b
+            }
+        }
+        val attribution = config.optJSONObject("attribution")
+        mapView.attribution.updateSettings {
+            val d = ornamentDefaults.getValue("attribution")
+            position = if (attribution != null) gravityOf(attribution.optString("position")) else d.position
+            applyMargins(attribution, d, density) { l, t, r, b ->
+                marginLeft = l; marginTop = t; marginRight = r; marginBottom = b
+            }
+        }
+    }
+
+    private class OrnamentDefaults(
+        val position: Int,
+        val left: Float, val top: Float, val right: Float, val bottom: Float,
+    )
+
+    private val ornamentDefaults = mutableMapOf<String, OrnamentDefaults>()
+
+    /**
+     * Remembers the SDK's own placement the first time a placement is applied, so that
+     * dropping an ornament from the JSON restores the default instead of leaving the
+     * previous override in place.
+     */
+    private fun captureOrnamentDefaults()
+    {
+        if (ornamentDefaults.isNotEmpty())
+            return
+
+        mapView.compass.also {
+            ornamentDefaults["compass"] =
+                OrnamentDefaults(it.position, it.marginLeft, it.marginTop, it.marginRight, it.marginBottom)
+        }
+        mapView.scalebar.also {
+            ornamentDefaults["scaleBar"] =
+                OrnamentDefaults(it.position, it.marginLeft, it.marginTop, it.marginRight, it.marginBottom)
+        }
+        mapView.logo.also {
+            ornamentDefaults["logo"] =
+                OrnamentDefaults(it.position, it.marginLeft, it.marginTop, it.marginRight, it.marginBottom)
+        }
+        mapView.attribution.also {
+            ornamentDefaults["attribution"] =
+                OrnamentDefaults(it.position, it.marginLeft, it.marginTop, it.marginRight, it.marginBottom)
+        }
+    }
+
+    private fun gravityOf(position: String): Int = when (position)
+    {
+        "topLeft" -> Gravity.TOP or Gravity.START
+        "bottomLeft" -> Gravity.BOTTOM or Gravity.START
+        "bottomRight" -> Gravity.BOTTOM or Gravity.END
+        else -> Gravity.TOP or Gravity.END
+    }
+
+    /**
+     * Turns the corner-relative x/y offset into the four Android margins: only the two
+     * that belong to the chosen corner are set, the opposite ones stay at 0.
+     */
+    private inline fun applyMargins(
+        o: JSONObject?,
+        defaults: OrnamentDefaults,
+        density: Float,
+        set: (left: Float, top: Float, right: Float, bottom: Float) -> Unit,
+    )
+    {
+        if (o == null)
+        {
+            set(defaults.left, defaults.top, defaults.right, defaults.bottom)
+            return
+        }
+
+        val x = (o.optDouble("x", 0.0) * density).toFloat()
+        val y = (o.optDouble("y", 0.0) * density).toFloat()
+        when (o.optString("position"))
+        {
+            "topLeft" -> set(x, y, 0f, 0f)
+            "bottomLeft" -> set(x, 0f, 0f, y)
+            "bottomRight" -> set(0f, 0f, x, y)
+            else -> set(0f, y, x, 0f)
+        }
+    }
+
     fun setOrnaments(compass: Boolean, scaleBar: Boolean, logo: Boolean, attribution: Boolean)
     {
         if (destroyed)
@@ -1280,6 +1462,43 @@ class IKMapView(
         val elevation = mapView.mapboxMap.getElevation(Point.fromLngLat(longitude, latitude))
             ?: return Double.NaN
         return elevation / exaggeration
+    }
+
+    /**
+     * Constrains the camera. Any argument may be NaN, which means "leave at the SDK
+     * default". The four bounds values are all-or-nothing: pass NaN for all of them to
+     * lift a pan restriction.
+     */
+    fun setCameraBounds(
+        minLat: Double, minLng: Double, maxLat: Double, maxLng: Double,
+        minZoom: Double, maxZoom: Double, minPitch: Double, maxPitch: Double,
+    )
+    {
+        if (destroyed)
+            return
+
+        val options = CameraBoundsOptions.Builder()
+        if (!minLat.isNaN() && !minLng.isNaN() && !maxLat.isNaN() && !maxLng.isNaN())
+        {
+            options.bounds(
+                CoordinateBounds(
+                    Point.fromLngLat(minLng, minLat),
+                    Point.fromLngLat(maxLng, maxLat),
+                )
+            )
+        }
+        else
+        {
+            // Mapbox keeps the previous restriction unless it is explicitly reset.
+            options.bounds(CoordinateBounds.world())
+        }
+
+        options.minZoom(if (minZoom.isNaN()) null else minZoom)
+        options.maxZoom(if (maxZoom.isNaN()) null else maxZoom)
+        options.minPitch(if (minPitch.isNaN()) null else minPitch)
+        options.maxPitch(if (maxPitch.isNaN()) null else maxPitch)
+
+        mapView.mapboxMap.setBounds(options.build())
     }
 
     fun setGestures(scroll: Boolean, zoom: Boolean, rotate: Boolean, pitch: Boolean)

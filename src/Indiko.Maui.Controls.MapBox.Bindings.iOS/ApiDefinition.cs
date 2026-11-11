@@ -104,6 +104,10 @@ interface IKMapEventListener
     [Abstract]
     [Export("onMarkerDragEnd:latitude:longitude:")]
     void OnMarkerDragEnd(string id, double latitude, double longitude);
+
+    [Abstract]
+    [Export("onMapLoadError:message:sourceId:")]
+    void OnMapLoadError(string type, string message, [NullAllowed] string sourceId);
 }
 
 [BaseType(typeof(UIView), Name = "IKMapView")]
@@ -193,6 +197,15 @@ interface IKMapView
     [Export("setTerrainEnabled:exaggeration:")]
     void SetTerrain(bool enabled, double exaggeration);
 
+    [Export("setMapLanguage:")]
+    void SetMapLanguage(string language);
+
+    [Export("setCameraPaddingLeft:top:right:bottom:")]
+    void SetCameraPadding(double left, double top, double right, double bottom);
+
+    [Export("setOrnamentPlacementJson:")]
+    void SetOrnamentPlacementJson(string json);
+
     [Export("setOrnamentsCompass:scaleBar:logo:attribution:")]
     void SetOrnaments(bool compass, bool scaleBar, bool logo, bool attribution);
 
@@ -201,6 +214,10 @@ interface IKMapView
 
     [Export("queryTerrainElevation:longitude:")]
     double QueryTerrainElevation(double latitude, double longitude);
+
+    [Export("setCameraBoundsMinLat:minLng:maxLat:maxLng:minZoom:maxZoom:minPitch:maxPitch:")]
+    void SetCameraBounds(double minLat, double minLng, double maxLat, double maxLng,
+        double minZoom, double maxZoom, double minPitch, double maxPitch);
 
     [Export("setGesturesScroll:zoom:rotate:pitch:")]
     void SetGestures(bool scroll, bool zoom, bool rotate, bool pitch);

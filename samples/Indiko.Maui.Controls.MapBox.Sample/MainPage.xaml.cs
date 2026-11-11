@@ -56,12 +56,20 @@ public partial class MainPage : ContentPage
 
 	private void OnZoomOut(object? sender, EventArgs e) => NudgeZoom(-1);
 
-	private void NudgeZoom(double delta)
+	private async void NudgeZoom(double delta)
 	{
 		var camera = Map.CurrentCamera;
-		if (camera is not null)
-			Map.FlyTo(new MapCameraPosition(camera.Latitude, camera.Longitude, camera.Zoom + delta,
-				camera.Bearing, camera.Pitch), 200);
+		if (camera is null)
+			return;
+
+		Map.FlyTo(new MapCameraPosition(camera.Latitude, camera.Longitude, camera.Zoom + delta,
+			camera.Bearing, camera.Pitch), 200);
+
+		// Report the zoom the map actually settled on — with MinZoom/MaxZoom set it can
+		// differ from what was requested.
+		await Task.Delay(350);
+		if (Map.CurrentCamera is { } settled)
+			StatusLabel.Text = $"Zoom {settled.Zoom:F1}";
 	}
 
 	private void OnFlyToLauterbrunnen(object? sender, EventArgs e)
@@ -116,6 +124,10 @@ public partial class MainPage : ContentPage
 			OnShowElevationDemo(this, EventArgs.Empty);
 		if (Environment.GetEnvironmentVariable("DEMO_REGIONS") == "1")
 			OnShowOfflineRegions(this, EventArgs.Empty);
+		// Forces a Style load error so MapLoadError can be verified without taking the
+		// device offline (the iOS simulator has no airplane mode).
+		if (Environment.GetEnvironmentVariable("DEMO_LOADERROR") == "1")
+			Map.StyleUri = "mapbox://styles/mapbox/this-style-does-not-exist";
 		if (Environment.GetEnvironmentVariable("DEMO_AUTOFIT") == "1")
 			OnToggleAutoFit(this, EventArgs.Empty);
 		if (Environment.GetEnvironmentVariable("DEMO_FOLLOW") == "1")
@@ -180,6 +192,136 @@ public partial class MainPage : ContentPage
 		Map.TerrainEnabled = false;
 		PaintChip(Fab3D, false);
 		StatusLabel.Text = "2D · Bern — Indiko.Maui.Controls.MapBox";
+	}
+
+	/// <summary>
+	/// Surfaces load failures that would otherwise be invisible — offline, every tile
+	/// outside a downloaded region raises one, so tile errors are counted rather than
+	/// shown one by one.
+	/// </summary>
+	private int tileErrorCount;
+
+	private void OnMapLoadError(object? sender, MapLoadErrorEventArgs e)
+	{
+		if (e.Type == MapLoadErrorType.Tile)
+		{
+			tileErrorCount++;
+			StatusLabel.Text = $"\u26A0 {tileErrorCount} Kachel(n) nicht geladen — {e.Message}";
+			return;
+		}
+
+		StatusLabel.Text = e.SourceId is { } source
+			? $"\u26A0 {e.Type} '{source}': {e.Message}"
+			: $"\u26A0 {e.Type}: {e.Message}";
+	}
+
+	/// <summary>
+	/// Restricts the camera to Switzerland and zoom 7–14, then flies towards Paris to show
+	/// the clamping: the camera stops at the western edge of the box instead.
+	/// </summary>
+	private async void OnToggleCameraLimit(object? sender, EventArgs e)
+	{
+		var enable = Map.CameraBounds is null;
+		PaintChip(ChipCameraLimit, enable);
+
+		if (!enable)
+		{
+			Map.CameraBounds = null;
+			Map.MinZoom = null;
+			Map.MaxZoom = null;
+			StatusLabel.Text = "Kamera-Limit aufgehoben";
+			return;
+		}
+
+		Map.CameraBounds = new MapBounds(45.80, 5.95, 47.81, 10.50);
+		Map.MinZoom = 7;
+		Map.MaxZoom = 14;
+		StatusLabel.Text = "Limit: Schweiz, Zoom 7–14 — FlyTo Paris…";
+
+		Map.FlyTo(new MapCameraPosition(48.8566, 2.3522, 10), 2000);
+		await Task.Delay(2600);
+
+		var camera = Map.CurrentCamera;
+		StatusLabel.Text = camera is null
+			? "Limit aktiv"
+			: $"Limit aktiv — Paris geblockt bei {camera.Latitude:F2}, {camera.Longitude:F2} (Zoom {camera.Zoom:F1})";
+	}
+
+	/// <summary>
+	/// The bottom sheet covers the map's lower edge, where Mapbox puts the logo and the
+	/// attribution button by default — so move them (and the scale bar) to the top. Setting
+	/// the properties back to null restores the SDK defaults.
+	/// </summary>
+	private void OnToggleOrnamentPlacement(object? sender, EventArgs e)
+	{
+		var moved = Map.LogoPlacement is null;
+		PaintChip(ChipOrnamentPos, moved);
+
+		if (moved)
+		{
+			Map.ScaleBarPlacement = new MapOrnamentPlacement(MapOrnamentPosition.TopRight, 8, 110);
+			Map.LogoPlacement = new MapOrnamentPlacement(MapOrnamentPosition.TopLeft, 8, 160);
+			Map.AttributionPlacement = new MapOrnamentPlacement(MapOrnamentPosition.TopLeft, 150, 160);
+			StatusLabel.Text = "Ornamente oben — nicht mehr hinter dem Sheet";
+		}
+		else
+		{
+			Map.ScaleBarPlacement = null;
+			Map.LogoPlacement = null;
+			Map.AttributionPlacement = null;
+			StatusLabel.Text = "Ornamente zurück auf SDK-Standard";
+		}
+	}
+
+	/// <summary>
+	/// The bottom sheet hides the lower ~420 units of the map, so a centred camera is not
+	/// centred for the user. Padding the camera moves its anchor into the visible strip —
+	/// the marker dropped at the camera coordinate shows where that anchor actually is.
+	/// </summary>
+	private void OnToggleCameraPadding(object? sender, EventArgs e)
+	{
+		var padded = Map.CameraPadding.Bottom == 0;
+		PaintChip(ChipCameraPadding, padded);
+
+		Map.CameraPadding = padded ? new Thickness(0, 0, 0, 420) : new Thickness(0);
+
+		const double latitude = 47.3769;
+		const double longitude = 8.5417;
+		Map.Annotations.Add(new MapAnnotation
+		{
+			Latitude = latitude,
+			Longitude = longitude,
+			Title = "Kamera-Anker",
+			Color = padded ? "#16A34A" : "#DC2626",
+		});
+		Map.FlyTo(new MapCameraPosition(latitude, longitude, 13), 800);
+
+		StatusLabel.Text = padded
+			? "Camera-Padding unten 420 — Anker über dem Sheet"
+			: "Camera-Padding aus — Anker in der Viewport-Mitte";
+	}
+
+	/// <summary>
+	/// Cycles the label language and flies to the Geneva area, where the difference is
+	/// obvious: Genève / Genf / Geneva. Only names Mapbox has a translation for change.
+	/// </summary>
+	private static readonly string?[] Languages = [null, "de", "fr", "en"];
+
+	private int languageIndex;
+
+	private void OnCycleLanguage(object? sender, EventArgs e)
+	{
+		languageIndex = (languageIndex + 1) % Languages.Length;
+		var language = Languages[languageIndex];
+
+		Map.MapLanguage = language;
+		PaintChip(ChipLanguage, language is not null);
+		ChipLanguage.Text = $"Sprache: {language ?? "Standard"}";
+
+		Map.FlyTo(new MapCameraPosition(46.35, 6.80, 8), 900);
+		StatusLabel.Text = language is null
+			? "Labels in der Landessprache (Style-Standard)"
+			: $"Labels auf '{language}' übersetzt";
 	}
 
 	private void OnPolylineClicked(object? sender, PolylineClickedEventArgs e)

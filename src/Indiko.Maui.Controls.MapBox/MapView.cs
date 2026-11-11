@@ -150,6 +150,128 @@ public class MapView : View
         set => SetValue(ShowUserLocationProperty, value);
     }
 
+    public static readonly BindableProperty MapLanguageProperty = BindableProperty.Create(
+        nameof(MapLanguage), typeof(string), typeof(MapView));
+
+    /// <summary>
+    /// Translates the style's name labels into this language — a BCP-47 tag such as
+    /// "de", "fr" or "fr-CH". Null or empty keeps the style's own labels, which are
+    /// local names. Only names Mapbox has a translation for change; the rest stay local.
+    /// </summary>
+    public string? MapLanguage
+    {
+        get => (string?)GetValue(MapLanguageProperty);
+        set => SetValue(MapLanguageProperty, value);
+    }
+
+    public static readonly BindableProperty CameraPaddingProperty = BindableProperty.Create(
+        nameof(CameraPadding), typeof(Thickness), typeof(MapView), new Thickness(0));
+
+    /// <summary>
+    /// Shifts the camera's anchor inside the viewport (device-independent units). Set the
+    /// bottom inset to the height of a bottom sheet and the camera centre — and everything
+    /// positioned by it, like <see cref="FlyTo"/> and the follow-puck — lands in the
+    /// visible part of the map instead of behind the sheet.
+    /// </summary>
+    public Thickness CameraPadding
+    {
+        get => (Thickness)GetValue(CameraPaddingProperty);
+        set => SetValue(CameraPaddingProperty, value);
+    }
+
+    public static readonly BindableProperty CompassPlacementProperty = BindableProperty.Create(
+        nameof(CompassPlacement), typeof(MapOrnamentPlacement), typeof(MapView));
+
+    /// <summary>Where the compass sits; null keeps the SDK default.</summary>
+    public MapOrnamentPlacement? CompassPlacement
+    {
+        get => (MapOrnamentPlacement?)GetValue(CompassPlacementProperty);
+        set => SetValue(CompassPlacementProperty, value);
+    }
+
+    public static readonly BindableProperty ScaleBarPlacementProperty = BindableProperty.Create(
+        nameof(ScaleBarPlacement), typeof(MapOrnamentPlacement), typeof(MapView));
+
+    /// <summary>Where the scale bar sits; null keeps the SDK default.</summary>
+    public MapOrnamentPlacement? ScaleBarPlacement
+    {
+        get => (MapOrnamentPlacement?)GetValue(ScaleBarPlacementProperty);
+        set => SetValue(ScaleBarPlacementProperty, value);
+    }
+
+    public static readonly BindableProperty LogoPlacementProperty = BindableProperty.Create(
+        nameof(LogoPlacement), typeof(MapOrnamentPlacement), typeof(MapView));
+
+    /// <summary>Where the Mapbox logo sits; null keeps the SDK default.</summary>
+    public MapOrnamentPlacement? LogoPlacement
+    {
+        get => (MapOrnamentPlacement?)GetValue(LogoPlacementProperty);
+        set => SetValue(LogoPlacementProperty, value);
+    }
+
+    public static readonly BindableProperty AttributionPlacementProperty = BindableProperty.Create(
+        nameof(AttributionPlacement), typeof(MapOrnamentPlacement), typeof(MapView));
+
+    /// <summary>Where the attribution button sits; null keeps the SDK default.</summary>
+    public MapOrnamentPlacement? AttributionPlacement
+    {
+        get => (MapOrnamentPlacement?)GetValue(AttributionPlacementProperty);
+        set => SetValue(AttributionPlacementProperty, value);
+    }
+
+    public static readonly BindableProperty CameraBoundsProperty = BindableProperty.Create(
+        nameof(CameraBounds), typeof(MapBounds), typeof(MapView));
+
+    /// <summary>
+    /// Restricts panning to a bounding box. Null lifts the restriction. The camera is
+    /// kept inside the box, so the visible area can still extend past it when zoomed out.
+    /// </summary>
+    public MapBounds? CameraBounds
+    {
+        get => (MapBounds?)GetValue(CameraBoundsProperty);
+        set => SetValue(CameraBoundsProperty, value);
+    }
+
+    public static readonly BindableProperty MinZoomProperty = BindableProperty.Create(
+        nameof(MinZoom), typeof(double?), typeof(MapView));
+
+    /// <summary>Lowest zoom the user can reach; null = SDK default (0).</summary>
+    public double? MinZoom
+    {
+        get => (double?)GetValue(MinZoomProperty);
+        set => SetValue(MinZoomProperty, value);
+    }
+
+    public static readonly BindableProperty MaxZoomProperty = BindableProperty.Create(
+        nameof(MaxZoom), typeof(double?), typeof(MapView));
+
+    /// <summary>Highest zoom the user can reach; null = SDK default (22).</summary>
+    public double? MaxZoom
+    {
+        get => (double?)GetValue(MaxZoomProperty);
+        set => SetValue(MaxZoomProperty, value);
+    }
+
+    public static readonly BindableProperty MinPitchProperty = BindableProperty.Create(
+        nameof(MinPitch), typeof(double?), typeof(MapView));
+
+    /// <summary>Lowest camera pitch in degrees; null = SDK default (0).</summary>
+    public double? MinPitch
+    {
+        get => (double?)GetValue(MinPitchProperty);
+        set => SetValue(MinPitchProperty, value);
+    }
+
+    public static readonly BindableProperty MaxPitchProperty = BindableProperty.Create(
+        nameof(MaxPitch), typeof(double?), typeof(MapView));
+
+    /// <summary>Highest camera pitch in degrees; null = SDK default (85).</summary>
+    public double? MaxPitch
+    {
+        get => (double?)GetValue(MaxPitchProperty);
+        set => SetValue(MaxPitchProperty, value);
+    }
+
     public static readonly BindableProperty ScrollEnabledProperty = BindableProperty.Create(
         nameof(ScrollEnabled), typeof(bool), typeof(MapView), true);
 
@@ -347,6 +469,15 @@ public class MapView : View
         set => SetValue(FollowPuckChangedCommandProperty, value);
     }
 
+    public static readonly BindableProperty MapLoadErrorCommandProperty = BindableProperty.Create(
+        nameof(MapLoadErrorCommand), typeof(ICommand), typeof(MapView));
+
+    public ICommand? MapLoadErrorCommand
+    {
+        get => (ICommand?)GetValue(MapLoadErrorCommandProperty);
+        set => SetValue(MapLoadErrorCommandProperty, value);
+    }
+
     public static readonly BindableProperty OfflineRegionProgressCommandProperty = BindableProperty.Create(
         nameof(OfflineRegionProgressCommand), typeof(ICommand), typeof(MapView));
 
@@ -379,6 +510,14 @@ public class MapView : View
     public event EventHandler<OfflineRegionProgressEventArgs>? OfflineRegionProgress;
     public event EventHandler<OfflineRegionCompletedEventArgs>? OfflineRegionCompleted;
     public event EventHandler<FollowPuckChangedEventArgs>? FollowPuckChanged;
+
+    /// <summary>
+    /// A resource the map needed could not be loaded — most often "offline and outside any
+    /// downloaded region". Without this the only symptom is a map that silently stays blank.
+    /// <see cref="MapLoadErrorType.Tile"/> fires once per failed tile and arrives in bursts;
+    /// filter on <see cref="MapLoadErrorEventArgs.Type"/> before showing anything to a user.
+    /// </summary>
+    public event EventHandler<MapLoadErrorEventArgs>? MapLoadError;
 
     /// <summary>Live camera position, updated on every camera change.</summary>
     public MapCameraPosition? CurrentCamera { get; private set; }
@@ -662,6 +801,24 @@ public class MapView : View
         FollowPuckChanged?.Invoke(this, args);
         if (FollowPuckChangedCommand?.CanExecute(args) == true)
             FollowPuckChangedCommand.Execute(args);
+    }
+
+    internal void SendMapLoadError(string type, string message, string? sourceId)
+    {
+        var parsed = type switch
+        {
+            "style" => MapLoadErrorType.Style,
+            "sprite" => MapLoadErrorType.Sprite,
+            "source" => MapLoadErrorType.Source,
+            "tile" => MapLoadErrorType.Tile,
+            "glyphs" => MapLoadErrorType.Glyphs,
+            _ => MapLoadErrorType.Unknown,
+        };
+
+        var args = new MapLoadErrorEventArgs(parsed, message, sourceId);
+        MapLoadError?.Invoke(this, args);
+        if (MapLoadErrorCommand?.CanExecute(args) == true)
+            MapLoadErrorCommand.Execute(args);
     }
 
     internal void SendCameraChanged(MapCameraPosition camera)

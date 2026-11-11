@@ -29,6 +29,11 @@ on the UI thread; command parameters carry the same `EventArgs` object the event
 - 💬 View annotations — any MAUI view anchored to a coordinate, gestures included
 - 📴 Offline regions (style pack + tiles, optionally terrain) with download progress events; list and delete regions without a map (`MapboxOffline`)
 - ⛰️ `QueryTerrainElevation()` returns the ground elevation at any coordinate, corrected for the terrain exaggeration
+- 🚧 Camera constraints — restrict panning to a bounding box and clamp zoom/pitch
+- 📐 Ornament placement — anchor compass, scale bar, logo and attribution to any corner
+- 🪟 `CameraPadding` — keep the camera anchor out from behind a bottom sheet or tab bar
+- 🌍 `MapLanguage` — translate the style's place labels into any supported language
+- ⚠️ `MapLoadError` reports style/source/tile/sprite/glyph load failures instead of failing silently
 - 🧭 Compass on rotation, scale bar, user-location puck, per-gesture configuration
 - 🎛️ Ornament visibility: compass, scale bar, Mapbox logo and attribution individually switchable
 - 🏔️ 3D terrain (Mapbox DEM + sky atmosphere) with configurable exaggeration — switchable, style-switch-safe
@@ -76,11 +81,13 @@ code, and the reason .NET Android no longer reports `XA0141` for this package.
 | Runtime style switching | ✅ | runtime sources/layers/clusters are re-applied automatically |
 | Standard style configuration (light preset, theme, 3D objects) | ❌ | style renders with its defaults |
 | Style JSON strings | ❌ | URIs only |
+| Label localization (`localizeLabels`) | ✅ | `MapLanguage` (BCP-47), re-applied after style switches |
 | **Camera** | | |
 | Set camera (center, zoom, bearing, pitch) | ✅ | `Camera` property (one-way), `CurrentCamera` (live) |
 | Animated camera (`flyTo`) | ✅ | `FlyTo(camera, durationMs)` |
 | Fit to bounding box (`cameraForCoordinateBounds`) | ✅ | `FitBounds`, `FitBoundsToContent`, switchable `AutoFitBounds` |
-| Camera padding / anchor offsets | 🔶 | uniform `FitBoundsPadding` only |
+| Camera constraints (bounds, min/max zoom & pitch) | ✅ | `CameraBounds`, `MinZoom`, `MaxZoom`, `MinPitch`, `MaxPitch` |
+| Camera padding / anchor offsets | ✅ | `CameraPadding` (per-edge), plus uniform `FitBoundsPadding` for fits |
 | Visible viewport bounds (`coordinateBoundsForCamera`) | ✅ | `GetVisibleBounds()` |
 | **Annotations** | | |
 | Point annotations (markers) | ✅ | `Annotations` collection: color, title, `Tag` payload, click events |
@@ -115,9 +122,10 @@ code, and the reason .NET Android no longer reports `XA0141` for this package.
 | Compass (auto-shows on rotation, tap resets north) | ✅ | SDK default behavior, switchable via `ShowCompass` |
 | Scale bar | ✅ | SDK default behavior, switchable via `ShowScaleBar` |
 | Ornament visibility | ✅ | `ShowCompass`, `ShowScaleBar`, `ShowMapboxLogo`, `ShowAttribution` (logo/attribution: check your Mapbox plan/ToS) |
-| Ornament position / margins | ❌ | SDK default positions |
+| Ornament position / margins | ✅ | `CompassPlacement`, `ScaleBarPlacement`, `LogoPlacement`, `AttributionPlacement` |
 | **Other** | | |
 | Lifecycle events (`MapReady`, `StyleLoaded`, `CameraChanged`) | ✅ | events + bindable commands (full MVVM parity) |
+| Map load errors (`MapLoadingError`) | ✅ | `MapLoadError` event + command, typed by resource kind |
 | Snapshotter (static map images) | ❌ | |
 | 3D terrain (raster-DEM + sky atmosphere) | ✅ | `TerrainEnabled` + `TerrainExaggeration` |
 | Terrain elevation query (`getElevation`) | ✅ | `QueryTerrainElevation(lat, lon)` |
@@ -788,6 +796,132 @@ meters. The result is independent of `TerrainExaggeration`.
 
 ---
 
+## Label language
+
+Mapbox styles label places in the local language by default — Genève, Zürich, München.
+`MapLanguage` translates the names Mapbox has translations for into one language.
+
+```xml
+<map:MapView MapLanguage="de" />
+```
+
+```csharp
+map.MapLanguage = "fr";                       // Genf -> Genève
+map.MapLanguage = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
+map.MapLanguage = null;                       // back to local names
+```
+
+Takes a BCP-47 tag (`"de"`, `"fr"`, `"pt-BR"`). Only names with a translation in the
+vector tiles change; everything else keeps its local name, so a map is usually a mix.
+The setting is re-applied after every style switch, because loading a style resets the
+labels.
+
+---
+
+## Camera padding
+
+When other UI covers part of the map, the centre of the viewport is not the centre the
+user sees. `CameraPadding` moves the camera's anchor into the visible area, and everything
+positioned by the camera follows: `Camera`, `FlyTo`, the follow-puck and `CurrentCamera`.
+
+```xml
+<map:MapView CameraPadding="0,0,0,420" />
+```
+
+```csharp
+map.CameraPadding = new Thickness(left: 0, top: 0, right: 0, bottom: sheetHeight);
+map.CameraPadding = new Thickness(0);      // back to the viewport centre
+```
+
+Units are device-independent, matching the rest of the MAUI layout. This is separate from
+`FitBoundsPadding`, which is the uniform edge padding used by `FitBounds` /
+`FitBoundsToContent`.
+
+---
+
+## Ornament placement
+
+Each ornament can be anchored to a corner with an offset. The usual reason: a bottom sheet
+or tab bar covers the lower edge, where Mapbox puts the logo and attribution by default.
+
+```csharp
+map.LogoPlacement = new MapOrnamentPlacement(MapOrnamentPosition.TopLeft, offsetX: 8, offsetY: 160);
+map.AttributionPlacement = new MapOrnamentPlacement(MapOrnamentPosition.TopLeft, 150, 160);
+
+map.LogoPlacement = null;        // back to the SDK default
+```
+
+`OffsetX`/`OffsetY` are measured inwards from the chosen corner in device-independent
+units, so the same numbers land in the same place on both platforms. Setting a placement
+to `null` restores the position Mapbox itself used — the facade captures the defaults
+before applying the first override.
+
+> Keep the Mapbox logo and attribution visible unless your plan allows otherwise; moving
+> them is fine, hiding them generally is not. See [Ornaments](#ornaments) for visibility.
+
+---
+
+## Camera constraints
+
+Keeps the camera inside a region and within a zoom/pitch range — useful when your data only
+covers one area, or when zooming out past a certain level makes no sense. All five are plain
+bindable properties; `null` means "SDK default".
+
+```xml
+<map:MapView MinZoom="7" MaxZoom="14" MaxPitch="60" />
+```
+
+```csharp
+map.CameraBounds = new MapBounds(45.80, 5.95, 47.81, 10.50);   // Switzerland
+map.MinZoom = 7;
+map.MaxZoom = 14;
+
+map.CameraBounds = null;                                       // lift the restriction
+```
+
+| Property | Default | Notes |
+|---|---|---|
+| `CameraBounds` | null | pan restriction; `null` resets it to the whole world |
+| `MinZoom` / `MaxZoom` | 0 / 22 | |
+| `MinPitch` / `MaxPitch` | 0 / 85 | degrees |
+
+> The *camera centre* is constrained, not the viewport — zoomed out far enough the visible
+> area still extends past the box. A `FlyTo` outside the box is clamped to its edge rather
+> than rejected, so always read `CurrentCamera` if you need to know where you ended up.
+
+---
+
+## Load errors
+
+Without this the map just stays blank: the SDK logs failures natively, but nothing reaches
+your app. `MapLoadError` surfaces them, typed by the kind of resource that failed.
+
+```csharp
+map.MapLoadError += (_, e) =>
+{
+    if (e.Type == MapLoadErrorType.Tile)
+        return;                       // see the note below
+
+    Status.Text = $"{e.Type}: {e.Message}";
+};
+```
+
+| `MapLoadErrorType` | What is missing | Typical cause |
+|---|---|---|
+| `Style` | the style document — the map stays blank | offline without a style pack, bad `StyleUri`, invalid token |
+| `Source` | a source's metadata — everything from it | offline and the source's TileJSON is not cached |
+| `Tile` | one tile | offline outside a downloaded region |
+| `Sprite` | the sprite sheet — icons | offline without a style pack |
+| `Glyphs` | a glyph range — labels | offline without a style pack |
+
+`SourceId` is set for `Source` and `Tile` errors.
+
+> **Tile errors arrive in bursts.** One fires per failed tile, so panning a single screen
+> offline can raise dozens. Filter on `Type`, or count them, rather than showing each one —
+> the sample's status line counts them and shows other kinds immediately.
+
+---
+
 ## Ornaments
 
 All four map ornaments are individually switchable (default: all visible).
@@ -890,6 +1024,7 @@ Every event has a bindable command counterpart; command parameters are the event
 | `OfflineRegionCompleted` | `OfflineRegionCompletedCommand` | `OfflineRegionCompletedEventArgs` |
 | `AnnotationDragged` | `AnnotationDraggedCommand` | `AnnotationDraggedEventArgs` |
 | `FollowPuckChanged` | `FollowPuckChangedCommand` | `FollowPuckChangedEventArgs` |
+| `MapLoadError` | `MapLoadErrorCommand` | `MapLoadErrorEventArgs` |
 
 ## Sample app
 
