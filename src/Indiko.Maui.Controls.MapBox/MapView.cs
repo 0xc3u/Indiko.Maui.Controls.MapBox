@@ -528,6 +528,26 @@ public class MapView : View
         return request.Bounds;
     }
 
+    /// <summary>
+    /// Returns the terrain elevation in meters above sea level at a coordinate, or null
+    /// when it is not available. Requires <see cref="TerrainEnabled"/> with a
+    /// <see cref="TerrainExaggeration"/> above 0 (the result is corrected for the
+    /// exaggeration), and the elevation tile for the coordinate must be loaded —
+    /// in practice the coordinate is on screen, and offline it lies in a region
+    /// downloaded with <see cref="MapOfflineRegion.IncludeTerrain"/>. With a camera
+    /// pitch of 0 the map still looks flat, so terrain can stay enabled just for
+    /// elevation queries. Typical use: query inside a <see cref="MapClicked"/> handler.
+    /// </summary>
+    public double? QueryTerrainElevation(double latitude, double longitude)
+    {
+        if (Handler is null)
+            return null;
+
+        var request = new TerrainElevationRequest(latitude, longitude);
+        Handler.Invoke(nameof(QueryTerrainElevation), request);
+        return request.Elevation;
+    }
+
     /* ------------------------- Internal event dispatchers ------------------------- */
 
     internal void SendMapReady()
@@ -686,6 +706,20 @@ public sealed class FitBoundsRequest
 public sealed class VisibleBoundsRequest
 {
     public MapBounds? Bounds { get; set; }
+}
+
+/// <summary>Payload for the QueryTerrainElevation command mapper — the handler fills Elevation.</summary>
+public sealed class TerrainElevationRequest
+{
+    public double Latitude { get; }
+    public double Longitude { get; }
+    public double? Elevation { get; set; }
+
+    public TerrainElevationRequest(double latitude, double longitude)
+    {
+        Latitude = latitude;
+        Longitude = longitude;
+    }
 }
 
 /// <summary>Payload for the FlyTo command mapper.</summary>

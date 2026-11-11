@@ -58,6 +58,7 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
             [nameof(MapView.DownloadOfflineRegion)] = MapDownloadOfflineRegion,
             [nameof(MapView.RemoveOfflineRegion)] = MapRemoveOfflineRegion,
             [nameof(MapView.GetVisibleBounds)] = MapGetVisibleBounds,
+            [nameof(MapView.QueryTerrainElevation)] = MapQueryTerrainElevation,
         };
 
     public MapViewHandler() : base(Mapper, Commands)
@@ -250,6 +251,15 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
     {
         if (args is VisibleBoundsRequest request)
             request.Bounds = AnnotationSerializer.ParseBounds(handler.PlatformView.VisibleBoundsJson());
+    }
+
+    private static void MapQueryTerrainElevation(MapViewHandler handler, MapView view, object? args)
+    {
+        if (args is not TerrainElevationRequest request)
+            return;
+
+        var elevation = handler.PlatformView.QueryTerrainElevation(request.Latitude, request.Longitude);
+        request.Elevation = double.IsFinite(elevation) ? elevation : null;
     }
 
     private static void MapFitBounds(MapViewHandler handler, MapView view, object? args)

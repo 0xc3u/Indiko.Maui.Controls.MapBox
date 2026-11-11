@@ -24,6 +24,26 @@ Known issue: after deleting ALL obj/bin folders, the very first sample iOS build
 late for the app link in the same invocation. Simply build a second time. NuGet consumers and CI
 (library-only build) are not affected.
 
+Known issue: the .NET iOS SDK pins an **exact** Xcode version, and the installed workload may
+want one that is not on the machine (e.g. SDK 27.1 wants Xcode 27.1). This is a workload
+problem, not an Xcode problem. `-p:ValidateXcodeVersion=false` is never the answer — it only
+moves the failure to the trimmer (`MT0180`) and then to a missing `mono-aot-cross`. Instead pin
+the target platform version so the manifest picks an SDK pack whose Xcode is installed; restore
+first, because the property would otherwise leak into the Android TFM:
+
+```bash
+dotnet restore samples/Indiko.Maui.Controls.MapBox.Sample/Indiko.Maui.Controls.MapBox.Sample.csproj
+DEVELOPER_DIR=/Applications/Xcode-26.0.0.app/Contents/Developer \
+  dotnet build samples/Indiko.Maui.Controls.MapBox.Sample/Indiko.Maui.Controls.MapBox.Sample.csproj \
+  -f net10.0-ios -c Debug --no-restore \
+  -p:RuntimeIdentifier=iossimulator-arm64 -p:TargetPlatformVersion=26.0
+```
+
+`sdk-manifests/10.0.100/microsoft.net.sdk.ios/<v>/WorkloadManifest.targets` lists which
+`TargetPlatformVersion` values map to which pack. Install/launch via `xcrun simctl`; the iOS
+simulator cannot inject taps, so the sample has `SIMCTL_CHILD_DEMO_*` launch hooks
+(`DEMO_ELEVATION`, `DEMO_OFFLINE`, `DEMO_REGIONS`, `DEMO_GEOJSON`, `DEMO_CLUSTER`, …).
+
 ## Releasing
 
 Semantic Release CI (like Indiko.Maui.Controls.Chat): pushes to main run

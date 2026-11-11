@@ -27,7 +27,8 @@ on the UI thread; command parameters carry the same `EventArgs` object the event
 - 🧩 GeoJSON sources with fill/line/circle/symbol style layers (survive style switches automatically)
 - 🔵 Point clustering with managed layers and tap-to-expand zoom
 - 💬 View annotations — any MAUI view anchored to a coordinate, gestures included
-- 📴 Offline regions (style pack + tiles) with download progress events
+- 📴 Offline regions (style pack + tiles, optionally terrain) with download progress events; list and delete regions without a map (`MapboxOffline`)
+- ⛰️ `QueryTerrainElevation()` returns the ground elevation at any coordinate (works offline with terrain regions)
 - 🧭 Compass on rotation, scale bar, user-location puck, per-gesture configuration
 - 🎛️ Ornament visibility: compass, scale bar, Mapbox logo and attribution individually switchable
 - 🏔️ 3D terrain (Mapbox DEM + sky atmosphere) with configurable exaggeration — switchable, style-switch-safe
@@ -106,8 +107,10 @@ code, and the reason .NET Android no longer reports `XA0141` for this package.
 | Custom puck appearance | ❌ | |
 | **Offline** | | |
 | Style pack + tile region download | ✅ | `DownloadOfflineRegion` with progress/completed events |
-| Cancel / delete regions | ✅ | `RemoveOfflineRegion` |
-| List regions, size estimates | ❌ | |
+| Cancel / delete regions | ✅ | `RemoveOfflineRegion`, `MapboxOffline.RemoveRegion` |
+| Terrain (DEM) in offline regions | ✅ | `MapOfflineRegion.IncludeTerrain` |
+| List regions (size, progress, metadata) | ✅ | `MapboxOffline.GetRegionsAsync()` |
+| Size estimates before download | ❌ | |
 | **Ornaments** | | |
 | Compass (auto-shows on rotation, tap resets north) | ✅ | SDK default behavior, switchable via `ShowCompass` |
 | Scale bar | ✅ | SDK default behavior, switchable via `ShowScaleBar` |
@@ -117,6 +120,7 @@ code, and the reason .NET Android no longer reports `XA0141` for this package.
 | Lifecycle events (`MapReady`, `StyleLoaded`, `CameraChanged`) | ✅ | events + bindable commands (full MVVM parity) |
 | Snapshotter (static map images) | ❌ | |
 | 3D terrain (raster-DEM + sky atmosphere) | ✅ | `TerrainEnabled` + `TerrainExaggeration` |
+| Terrain elevation query (`getElevation`) | ✅ | `QueryTerrainElevation(lat, lon)` |
 | Globe, custom projections | ❌ | whatever the chosen style ships by default |
 | Telemetry opt-out | ✅ | `UseMapbox(token, enableTelemetry: false)` — see [Telemetry](#telemetry) |
 
@@ -608,6 +612,45 @@ Map.DownloadOfflineRegion(new MapOfflineRegion
 Map.RemoveOfflineRegion("zurich");      // cancels a running download / deletes tiles
 ```
 
+**Terrain offline**
+
+Set `IncludeTerrain = true` to download the elevation model (DEM) as well, so 3D terrain
+and `QueryTerrainElevation` keep working without network. The DEM ends at zoom 14; the
+style tiles still use the full `MinZoom`–`MaxZoom` range.
+
+```csharp
+Map.DownloadOfflineRegion(new MapOfflineRegion
+{
+    Id = "eiger",
+    Name = "Eiger / Jungfrau",          // stored with the region, see below
+    StyleUri = MapStyles.Outdoors,
+    MinLatitude = 46.52, MinLongitude = 7.92,
+    MaxLatitude = 46.62, MaxLongitude = 8.08,
+    MinZoom = 10, MaxZoom = 15,
+    IncludeTerrain = true,
+});
+```
+
+> **`StyleUri` must be the style the map actually shows.** The style pack is downloaded
+> per style; a region downloaded for `MapStyles.Streets` leaves a `MapStyles.Outdoors`
+> map blank once the ambient cache is gone.
+
+**Managing regions without a map**
+
+`MapboxOffline` lists and deletes downloaded regions without a `MapView` on screen — e.g.
+on a settings page. Regions downloaded with 1.9 or later carry their request (`Region`:
+name, style, bounds, zoom range, terrain); older ones report `Region == null`.
+
+```csharp
+foreach (var info in await MapboxOffline.GetRegionsAsync())
+{
+    var name = info.Region?.Name ?? info.Id;
+    Console.WriteLine($"{name}: {info.CompletedResourceSize / 1_048_576.0:F1} MB, complete: {info.IsComplete}");
+}
+
+MapboxOffline.RemoveRegion("eiger");    // deletes tiles; a running download is not cancelled
+```
+
 **MVVM**
 
 ```xml
@@ -708,7 +751,39 @@ map.FlyTo(new MapCameraPosition(46.60, 7.91, 12, bearing: 0, pitch: 65), 2500);
 ```
 
 > Terrain tiles are streamed from `mapbox.mapbox-terrain-dem-v1` and are billed
-> like map tiles. Offline regions do not include DEM tiles.
+> like map tiles. Offline regions include DEM tiles only with
+> `MapOfflineRegion.IncludeTerrain = true`.
+
+### Elevation at a coordinate
+
+`QueryTerrainElevation` returns the ground elevation in meters above sea level, corrected
+for `TerrainExaggeration`, or `null` when no elevation data is loaded for that spot
+(terrain disabled, exaggeration 0, coordinate off screen, or offline without a terrain
+region). Terrain must be enabled, but the map stays visually flat at pitch 0, so you can
+keep it on just for elevation queries.
+
+```csharp
+map.TerrainEnabled = true;
+map.MapClicked += (_, e) =>
+{
+    var meters = map.QueryTerrainElevation(e.Latitude, e.Longitude);
+    Status.Text = meters is { } m ? $"{m:F0} m" : "no elevation data";
+};
+```
+
+Measured against known Swiss elevations (Android emulator, Mapbox DEM): Lauterbrunnen
+valley floor 787 m (≈795 m), Zürichsee surface 402 m (406 m), Jungfraujoch 3450 m
+(3466 m) — the DEM is a terrain model, so values differ from survey heights by a few
+meters. The result is independent of `TerrainExaggeration`.
+
+> **Offline caveat.** `IncludeTerrain` downloads the DEM *tiles* for the region, and those
+> work without network. The DEM source's tileset metadata (the TileJSON behind
+> `mapbox://mapbox.mapbox-terrain-dem-v1`) is **not** part of the region or the style pack
+> — it is served from Mapbox' evictable ambient cache. So terrain and elevation queries
+> work offline only once terrain has been enabled at least once while online; if that
+> cache entry is gone, the DEM source fails with `Online connectivity is disabled` and
+> `QueryTerrainElevation` returns `null` even inside a downloaded region. Enabling terrain
+> once on first run (while online) is enough.
 
 ---
 

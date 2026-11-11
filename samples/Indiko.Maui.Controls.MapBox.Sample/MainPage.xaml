@@ -150,13 +150,22 @@
                     </HorizontalStackLayout>
                     <HorizontalStackLayout Spacing="8">
                         <Button x:Name="ChipOrnaments" Text="Ornaments" Style="{StaticResource Chip}" Clicked="OnToggleOrnaments" />
-                        <Button x:Name="ChipOffline" Text="Offline" Style="{StaticResource Chip}" Clicked="OnDownloadOffline" />
                         <Button Text="Bounds" Style="{StaticResource Chip}" Clicked="OnShowVisibleBounds" />
                         <Button Text="Marker ×" Style="{StaticResource Chip}" Clicked="OnClearMarkers" />
                     </HorizontalStackLayout>
                     <HorizontalStackLayout Spacing="8">
                         <!-- Push/pop regression check for issue #1 (black map on reopen). -->
                         <Button Text="Navigation" Style="{StaticResource Chip}" Clicked="OnOpenNavigationTest" />
+                    </HorizontalStackLayout>
+
+                    <Label Text="TERRAIN &amp; OFFLINE" Style="{StaticResource SectionHeader}" />
+                    <HorizontalStackLayout Spacing="8">
+                        <Button x:Name="ChipElevation" Text="Höhen" Style="{StaticResource Chip}" Clicked="OnShowElevationDemo" />
+                        <Button x:Name="ChipOffline" Text="Offline laden" Style="{StaticResource Chip}" Clicked="OnDownloadOffline" />
+                    </HorizontalStackLayout>
+                    <HorizontalStackLayout Spacing="8">
+                        <Button Text="Regionen" Style="{StaticResource Chip}" Clicked="OnShowOfflineRegions" />
+                        <Button Text="Regionen ×" Style="{StaticResource Chip}" Clicked="OnRemoveOfflineRegions" />
                     </HorizontalStackLayout>
 
                     <Label Text="ORTE" Style="{StaticResource SectionHeader}" />

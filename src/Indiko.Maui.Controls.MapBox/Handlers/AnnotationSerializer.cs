@@ -158,6 +158,8 @@ internal static class AnnotationSerializer
     {
         var builder = new StringBuilder("{");
         builder.Append("\"id\":").Append(Quote(region.Id));
+        if (region.Name is not null)
+            builder.Append(",\"name\":").Append(Quote(region.Name));
         builder.Append(",\"styleUri\":").Append(Quote(region.StyleUri));
         builder.Append(",\"minZoom\":").Append(region.MinZoom);
         builder.Append(",\"maxZoom\":").Append(region.MaxZoom);
@@ -165,8 +167,96 @@ internal static class AnnotationSerializer
         builder.Append(",\"minLng\":").Append(Invariant(region.MinLongitude));
         builder.Append(",\"maxLat\":").Append(Invariant(region.MaxLatitude));
         builder.Append(",\"maxLng\":").Append(Invariant(region.MaxLongitude));
+        builder.Append(",\"includeTerrain\":").Append(region.IncludeTerrain ? "true" : "false");
         return builder.Append('}').ToString();
     }
+
+    /// <summary>
+    /// Parses the facade's offline-region list:
+    /// [{"id","requiredResourceCount","completedResourceCount","completedResourceSize","expires","metadata"}].
+    /// Malformed entries are skipped; malformed input yields an empty list.
+    /// </summary>
+    public static IReadOnlyList<MapOfflineRegionInfo> ParseOfflineRegions(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return [];
+
+        try
+        {
+            using var document = System.Text.Json.JsonDocument.Parse(json);
+            if (document.RootElement.ValueKind != System.Text.Json.JsonValueKind.Array)
+                return [];
+
+            var result = new List<MapOfflineRegionInfo>();
+            foreach (var entry in document.RootElement.EnumerateArray())
+            {
+                if (entry.ValueKind != System.Text.Json.JsonValueKind.Object
+                    || !entry.TryGetProperty("id", out var idElement)
+                    || idElement.GetString() is not { Length: > 0 } id)
+                    continue;
+
+                long? expires = GetLong(entry, "expires");
+                result.Add(new MapOfflineRegionInfo
+                {
+                    Id = id,
+                    RequiredResourceCount = GetLong(entry, "requiredResourceCount") ?? 0,
+                    CompletedResourceCount = GetLong(entry, "completedResourceCount") ?? 0,
+                    CompletedResourceSize = GetLong(entry, "completedResourceSize") ?? 0,
+                    Expires = expires is { } ms ? DateTimeOffset.FromUnixTimeMilliseconds(ms) : null,
+                    Region = entry.TryGetProperty("metadata", out var metadata)
+                        ? ParseOfflineRegionMetadata(id, metadata)
+                        : null,
+                });
+            }
+            return result;
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return [];
+        }
+    }
+
+    private static MapOfflineRegion? ParseOfflineRegionMetadata(string id, System.Text.Json.JsonElement metadata)
+    {
+        if (metadata.ValueKind != System.Text.Json.JsonValueKind.Object)
+            return null;
+
+        double? minLat = GetDouble(metadata, "minLat");
+        double? minLng = GetDouble(metadata, "minLng");
+        double? maxLat = GetDouble(metadata, "maxLat");
+        double? maxLng = GetDouble(metadata, "maxLng");
+        if (minLat is null || minLng is null || maxLat is null || maxLng is null)
+            return null;
+
+        return new MapOfflineRegion
+        {
+            Id = id,
+            Name = metadata.TryGetProperty("name", out var name) && name.ValueKind == System.Text.Json.JsonValueKind.String
+                ? name.GetString()
+                : null,
+            StyleUri = metadata.TryGetProperty("styleUri", out var style) && style.ValueKind == System.Text.Json.JsonValueKind.String
+                ? style.GetString() ?? MapStyles.Streets
+                : MapStyles.Streets,
+            MinLatitude = minLat.Value,
+            MinLongitude = minLng.Value,
+            MaxLatitude = maxLat.Value,
+            MaxLongitude = maxLng.Value,
+            MinZoom = (int)(GetDouble(metadata, "minZoom") ?? 6),
+            MaxZoom = (int)(GetDouble(metadata, "maxZoom") ?? 14),
+            IncludeTerrain = metadata.TryGetProperty("includeTerrain", out var terrain)
+                && terrain.ValueKind == System.Text.Json.JsonValueKind.True,
+        };
+    }
+
+    private static double? GetDouble(System.Text.Json.JsonElement element, string name) =>
+        element.TryGetProperty(name, out var value) && value.ValueKind == System.Text.Json.JsonValueKind.Number
+            ? value.GetDouble()
+            : null;
+
+    private static long? GetLong(System.Text.Json.JsonElement element, string name) =>
+        element.TryGetProperty(name, out var value) && value.ValueKind == System.Text.Json.JsonValueKind.Number
+            ? (value.TryGetInt64(out var integer) ? integer : (long)value.GetDouble())
+            : null;
 
     /// <summary>Parses the facade's visible-bounds JSON: {"minLat","minLng","maxLat","maxLng"}.</summary>
     public static MapBounds? ParseBounds(string? json)
