@@ -28,7 +28,7 @@ on the UI thread; command parameters carry the same `EventArgs` object the event
 - 🔵 Point clustering with managed layers and tap-to-expand zoom
 - 💬 View annotations — any MAUI view anchored to a coordinate, gestures included
 - 📴 Offline regions (style pack + tiles, optionally terrain) with download progress events; list and delete regions without a map (`MapboxOffline`)
-- ⛰️ `QueryTerrainElevation()` returns the ground elevation at any coordinate (works offline with terrain regions)
+- ⛰️ `QueryTerrainElevation()` returns the ground elevation at any coordinate, corrected for the terrain exaggeration
 - 🧭 Compass on rotation, scale bar, user-location puck, per-gesture configuration
 - 🎛️ Ornament visibility: compass, scale bar, Mapbox logo and attribution individually switchable
 - 🏔️ 3D terrain (Mapbox DEM + sky atmosphere) with configurable exaggeration — switchable, style-switch-safe
@@ -108,7 +108,7 @@ code, and the reason .NET Android no longer reports `XA0141` for this package.
 | **Offline** | | |
 | Style pack + tile region download | ✅ | `DownloadOfflineRegion` with progress/completed events |
 | Cancel / delete regions | ✅ | `RemoveOfflineRegion`, `MapboxOffline.RemoveRegion` |
-| Terrain (DEM) in offline regions | ✅ | `MapOfflineRegion.IncludeTerrain` |
+| Terrain (DEM) in offline regions | ✅ | `MapOfflineRegion.IncludeTerrain` ([ambient-cache caveat](#elevation-at-a-coordinate)) |
 | List regions (size, progress, metadata) | ✅ | `MapboxOffline.GetRegionsAsync()` |
 | Size estimates before download | ❌ | |
 | **Ornaments** | | |
@@ -776,14 +776,15 @@ valley floor 787 m (≈795 m), Zürichsee surface 402 m (406 m), Jungfraujoch 34
 (3466 m) — the DEM is a terrain model, so values differ from survey heights by a few
 meters. The result is independent of `TerrainExaggeration`.
 
-> **Offline caveat.** `IncludeTerrain` downloads the DEM *tiles* for the region, and those
-> work without network. The DEM source's tileset metadata (the TileJSON behind
-> `mapbox://mapbox.mapbox-terrain-dem-v1`) is **not** part of the region or the style pack
-> — it is served from Mapbox' evictable ambient cache. So terrain and elevation queries
-> work offline only once terrain has been enabled at least once while online; if that
-> cache entry is gone, the DEM source fails with `Online connectivity is disabled` and
-> `QueryTerrainElevation` returns `null` even inside a downloaded region. Enabling terrain
-> once on first run (while online) is enough.
+> **Offline caveat.** `IncludeTerrain` downloads the DEM *tiles* into the tile store, where
+> they are durable. The DEM source's tileset metadata (the TileJSON behind
+> `mapbox://mapbox.mapbox-terrain-dem-v1`) is fetched during that download, but it lands in
+> Mapbox' ambient cache rather than in the region itself, so it is evictable. In practice
+> terrain and elevation queries work offline right after a region finishes downloading —
+> verified on device, without terrain ever having been enabled while online. They fail only
+> if that cache entry is lost while the region survives (clearing the app's ambient cache):
+> the DEM source then reports `Online connectivity is disabled` and `QueryTerrainElevation`
+> returns `null` until the device has been online once.
 
 ---
 
@@ -887,6 +888,8 @@ Every event has a bindable command counterpart; command parameters are the event
 | `CameraChanged` | `CameraChangedCommand` | `CameraChangedEventArgs` |
 | `OfflineRegionProgress` | `OfflineRegionProgressCommand` | `OfflineRegionProgressEventArgs` |
 | `OfflineRegionCompleted` | `OfflineRegionCompletedCommand` | `OfflineRegionCompletedEventArgs` |
+| `AnnotationDragged` | `AnnotationDraggedCommand` | `AnnotationDraggedEventArgs` |
+| `FollowPuckChanged` | `FollowPuckChangedCommand` | `FollowPuckChangedEventArgs` |
 
 ## Sample app
 
