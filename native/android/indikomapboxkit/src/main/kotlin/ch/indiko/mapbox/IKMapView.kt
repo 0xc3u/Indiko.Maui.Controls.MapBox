@@ -36,6 +36,7 @@ import com.mapbox.maps.GlyphsRasterizationMode
 import com.mapbox.maps.MapInitOptions
 import com.mapbox.maps.MapView
 import com.mapbox.maps.OfflineManager
+import com.mapbox.maps.Style
 import com.mapbox.maps.StylePackLoadOptions
 import com.mapbox.maps.TilesetDescriptorOptions
 import com.mapbox.maps.RenderedQueryGeometry
@@ -818,6 +819,27 @@ class IKMapView(
         else
         {
             style.addLayer(layer)
+        }
+
+        applyLayerProperties(style, id, config.optJSONObject("properties"))
+    }
+
+    /**
+     * Applies raw style-spec properties on top of the typed ones. Values arrive as JSON,
+     * so a scalar and an expression take the same path — Mapbox parses both.
+     */
+    private fun applyLayerProperties(style: Style, id: String, properties: JSONObject?)
+    {
+        if (properties == null)
+            return
+
+        for (key in properties.keys())
+        {
+            val node = properties.get(key)
+            // org.json hands back a bare String; everything else already renders as JSON.
+            val json = if (node is String) JSONObject.quote(node) else node.toString()
+            val value = Value.fromJson(json).value ?: continue
+            style.setStyleLayerProperty(id, key, value)
         }
     }
 

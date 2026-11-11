@@ -165,6 +165,7 @@
                     </HorizontalStackLayout>
                     <HorizontalStackLayout Spacing="8">
                         <Button x:Name="ChipLanguage" Text="Sprache: Standard" Style="{StaticResource Chip}" Clicked="OnCycleLanguage" />
+                        <Button x:Name="ChipExpressions" Text="Expressions" Style="{StaticResource Chip}" Clicked="OnToggleExpressions" />
                     </HorizontalStackLayout>
 
                     <Label Text="TERRAIN &amp; OFFLINE" Style="{StaticResource SectionHeader}" />

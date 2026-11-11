@@ -324,6 +324,93 @@ public partial class MainPage : ContentPage
 			: $"Labels auf '{language}' übersetzt";
 	}
 
+	/// <summary>
+	/// One source, one circle layer, no per-feature code: radius interpolates on the
+	/// "magnitude" property and colour matches on "category". The label layer builds its
+	/// text with an expression too, which also shows that a Properties entry overrides the
+	/// typed TextField.
+	/// </summary>
+	private bool expressionsActive;
+
+	private void OnToggleExpressions(object? sender, EventArgs e)
+	{
+		expressionsActive = !expressionsActive;
+		PaintChip(ChipExpressions, expressionsActive);
+
+		if (!expressionsActive)
+		{
+			Map.RemoveLayer("expr-labels");
+			Map.RemoveLayer("expr-circles");
+			Map.RemoveGeoJsonSource("expr-source");
+			StatusLabel.Text = "Expressions-Demo entfernt";
+			return;
+		}
+
+		Map.AddGeoJsonSource("expr-source", ExpressionGeoJson);
+
+		var circles = new MapLayer
+		{
+			Id = "expr-circles",
+			SourceId = "expr-source",
+			Type = MapLayerType.Circle,
+		};
+		circles.Properties["circle-radius"] = MapExpression.Interpolate(
+			MapExpression.Get("magnitude"), (1, 6.0), (6, 30.0));
+		circles.Properties["circle-color"] = MapExpression.Match(
+			MapExpression.Get("category"),
+			[("see", "#2563EB"), ("berg", "#16A34A"), ("stadt", "#F59E0B")],
+			"#9CA3AF");
+		circles.Properties["circle-opacity"] = 0.85;
+		circles.Properties["circle-stroke-width"] = 2.0;
+		circles.Properties["circle-stroke-color"] = "#FFFFFF";
+		Map.AddLayer(circles);
+
+		var labels = new MapLayer
+		{
+			Id = "expr-labels",
+			SourceId = "expr-source",
+			Type = MapLayerType.Symbol,
+			TextField = "name",
+			TextSize = 12,
+			TextColor = "#111827",
+			TextHaloColor = "#FFFFFF",
+			TextHaloWidth = 1.6,
+			AllowOverlap = true,
+		};
+		labels.Properties["text-field"] = MapExpression.Raw(
+			"[\"concat\",[\"get\",\"name\"],\" \\u00b7 \",[\"to-string\",[\"get\",\"magnitude\"]]]");
+		labels.Properties["text-offset"] = MapExpression.Raw("[0,1.6]");
+		Map.AddLayer(labels);
+
+		Map.FlyTo(new MapCameraPosition(47.3769, 8.5400, 11.4), 1200);
+		StatusLabel.Text = "Expressions: Radius nach magnitude, Farbe nach category";
+	}
+
+	/// <summary>Points carrying the properties the expressions above read.</summary>
+	private const string ExpressionGeoJson = """
+	{
+	  "type": "FeatureCollection",
+	  "features": [
+	    {"type":"Feature","properties":{"name":"HB","magnitude":6,"category":"stadt"},
+	     "geometry":{"type":"Point","coordinates":[8.5417,47.3769]}},
+	    {"type":"Feature","properties":{"name":"Enge","magnitude":3,"category":"stadt"},
+	     "geometry":{"type":"Point","coordinates":[8.5310,47.3640]}},
+	    {"type":"Feature","properties":{"name":"Wollishofen","magnitude":2,"category":"see"},
+	     "geometry":{"type":"Point","coordinates":[8.5360,47.3430]}},
+	    {"type":"Feature","properties":{"name":"Oerlikon","magnitude":4,"category":"stadt"},
+	     "geometry":{"type":"Point","coordinates":[8.5500,47.4100]}},
+	    {"type":"Feature","properties":{"name":"Höngg","magnitude":2,"category":"berg"},
+	     "geometry":{"type":"Point","coordinates":[8.4970,47.4010]}},
+	    {"type":"Feature","properties":{"name":"Riesbach","magnitude":5,"category":"see"},
+	     "geometry":{"type":"Point","coordinates":[8.5560,47.3560]}},
+	    {"type":"Feature","properties":{"name":"Affoltern","magnitude":1,"category":"berg"},
+	     "geometry":{"type":"Point","coordinates":[8.5020,47.4210]}},
+	    {"type":"Feature","properties":{"name":"Zürichberg","magnitude":3,"category":"berg"},
+	     "geometry":{"type":"Point","coordinates":[8.5760,47.3830]}}
+	  ]
+	}
+	""";
+
 	private void OnPolylineClicked(object? sender, PolylineClickedEventArgs e)
 	{
 		StatusLabel.Text = $"Polyline: {e.Polyline.Title ?? e.Polyline.Id}";
