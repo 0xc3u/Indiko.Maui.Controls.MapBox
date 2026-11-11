@@ -35,6 +35,7 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
             [nameof(MapView.ZoomEnabled)] = MapGestures,
             [nameof(MapView.RotateEnabled)] = MapGestures,
             [nameof(MapView.PitchEnabled)] = MapGestures,
+            [nameof(MapView.MapLanguage)] = MapLanguage,
             [nameof(MapView.CameraPadding)] = MapCameraPadding,
             [nameof(MapView.CompassPlacement)] = MapOrnamentPlacement,
             [nameof(MapView.ScaleBarPlacement)] = MapOrnamentPlacement,
@@ -189,6 +190,11 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
     {
         handler.PlatformView.SetOrnaments(
             view.ShowCompass, view.ShowScaleBar, view.ShowMapboxLogo, view.ShowAttribution);
+    }
+
+    private static void MapLanguage(MapViewHandler handler, MapView view)
+    {
+        handler.PlatformView.SetMapLanguage(view.MapLanguage ?? string.Empty);
     }
 
     private static void MapCameraPadding(MapViewHandler handler, MapView view)

@@ -197,6 +197,9 @@ interface IKMapView
     [Export("setTerrainEnabled:exaggeration:")]
     void SetTerrain(bool enabled, double exaggeration);
 
+    [Export("setMapLanguage:")]
+    void SetMapLanguage(string language);
+
     [Export("setCameraPaddingLeft:top:right:bottom:")]
     void SetCameraPadding(double left, double top, double right, double bottom);
 

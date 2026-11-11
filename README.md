@@ -32,6 +32,7 @@ on the UI thread; command parameters carry the same `EventArgs` object the event
 - 🚧 Camera constraints — restrict panning to a bounding box and clamp zoom/pitch
 - 📐 Ornament placement — anchor compass, scale bar, logo and attribution to any corner
 - 🪟 `CameraPadding` — keep the camera anchor out from behind a bottom sheet or tab bar
+- 🌍 `MapLanguage` — translate the style's place labels into any supported language
 - ⚠️ `MapLoadError` reports style/source/tile/sprite/glyph load failures instead of failing silently
 - 🧭 Compass on rotation, scale bar, user-location puck, per-gesture configuration
 - 🎛️ Ornament visibility: compass, scale bar, Mapbox logo and attribution individually switchable
@@ -80,6 +81,7 @@ code, and the reason .NET Android no longer reports `XA0141` for this package.
 | Runtime style switching | ✅ | runtime sources/layers/clusters are re-applied automatically |
 | Standard style configuration (light preset, theme, 3D objects) | ❌ | style renders with its defaults |
 | Style JSON strings | ❌ | URIs only |
+| Label localization (`localizeLabels`) | ✅ | `MapLanguage` (BCP-47), re-applied after style switches |
 | **Camera** | | |
 | Set camera (center, zoom, bearing, pitch) | ✅ | `Camera` property (one-way), `CurrentCamera` (live) |
 | Animated camera (`flyTo`) | ✅ | `FlyTo(camera, durationMs)` |
@@ -791,6 +793,28 @@ meters. The result is independent of `TerrainExaggeration`.
 > if that cache entry is lost while the region survives (clearing the app's ambient cache):
 > the DEM source then reports `Online connectivity is disabled` and `QueryTerrainElevation`
 > returns `null` until the device has been online once.
+
+---
+
+## Label language
+
+Mapbox styles label places in the local language by default — Genève, Zürich, München.
+`MapLanguage` translates the names Mapbox has translations for into one language.
+
+```xml
+<map:MapView MapLanguage="de" />
+```
+
+```csharp
+map.MapLanguage = "fr";                       // Genf -> Genève
+map.MapLanguage = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
+map.MapLanguage = null;                       // back to local names
+```
+
+Takes a BCP-47 tag (`"de"`, `"fr"`, `"pt-BR"`). Only names with a translation in the
+vector tiles change; everything else keeps its local name, so a map is usually a mix.
+The setting is re-applied after every style switch, because loading a style resets the
+labels.
 
 ---
 

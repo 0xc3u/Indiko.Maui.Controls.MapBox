@@ -163,6 +163,9 @@
                         <Button x:Name="ChipOrnamentPos" Text="Ornament-Pos" Style="{StaticResource Chip}" Clicked="OnToggleOrnamentPlacement" />
                         <Button x:Name="ChipCameraPadding" Text="Sheet-Padding" Style="{StaticResource Chip}" Clicked="OnToggleCameraPadding" />
                     </HorizontalStackLayout>
+                    <HorizontalStackLayout Spacing="8">
+                        <Button x:Name="ChipLanguage" Text="Sprache: Standard" Style="{StaticResource Chip}" Clicked="OnCycleLanguage" />
+                    </HorizontalStackLayout>
 
                     <Label Text="TERRAIN &amp; OFFLINE" Style="{StaticResource SectionHeader}" />
                     <HorizontalStackLayout Spacing="8">

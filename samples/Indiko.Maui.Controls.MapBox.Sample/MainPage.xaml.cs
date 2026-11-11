@@ -301,6 +301,29 @@ public partial class MainPage : ContentPage
 			: "Camera-Padding aus — Anker in der Viewport-Mitte";
 	}
 
+	/// <summary>
+	/// Cycles the label language and flies to the Geneva area, where the difference is
+	/// obvious: Genève / Genf / Geneva. Only names Mapbox has a translation for change.
+	/// </summary>
+	private static readonly string?[] Languages = [null, "de", "fr", "en"];
+
+	private int languageIndex;
+
+	private void OnCycleLanguage(object? sender, EventArgs e)
+	{
+		languageIndex = (languageIndex + 1) % Languages.Length;
+		var language = Languages[languageIndex];
+
+		Map.MapLanguage = language;
+		PaintChip(ChipLanguage, language is not null);
+		ChipLanguage.Text = $"Sprache: {language ?? "Standard"}";
+
+		Map.FlyTo(new MapCameraPosition(46.35, 6.80, 8), 900);
+		StatusLabel.Text = language is null
+			? "Labels in der Landessprache (Style-Standard)"
+			: $"Labels auf '{language}' übersetzt";
+	}
+
 	private void OnPolylineClicked(object? sender, PolylineClickedEventArgs e)
 	{
 		StatusLabel.Text = $"Polyline: {e.Polyline.Title ?? e.Polyline.Id}";

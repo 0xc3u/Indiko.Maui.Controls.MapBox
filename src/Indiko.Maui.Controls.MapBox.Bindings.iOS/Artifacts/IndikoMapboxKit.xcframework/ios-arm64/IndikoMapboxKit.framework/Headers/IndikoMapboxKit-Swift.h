@@ -413,6 +413,10 @@ SWIFT_CLASS_NAMED("IKMapView")
 /// Shifts the camera’s anchor inside the viewport, in points. Use it when part of the
 /// map is covered by other UI: the centre of the camera then lands in the visible part
 /// instead of the middle of the view.
+/// Translates the style’s name labels into <code>language</code> (a BCP-47 tag such as “de” or
+/// “fr-CH”). An empty string leaves the style’s own labels alone. Re-applied after
+/// every style load, because a style reload resets the labels.
+- (void)setMapLanguage:(NSString * _Nonnull)language;
 - (void)setCameraPaddingLeft:(double)left top:(double)top right:(double)right bottom:(double)bottom;
 - (void)setOrnamentPlacementJson:(NSString * _Nonnull)json;
 - (void)setOrnamentsCompass:(BOOL)compass scaleBar:(BOOL)scaleBar logo:(BOOL)logo attribution:(BOOL)attribution;

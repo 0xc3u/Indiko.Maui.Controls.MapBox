@@ -28,6 +28,7 @@ import com.mapbox.geojson.Point
 import com.mapbox.geojson.Feature
 import com.mapbox.geojson.Polygon
 import com.mapbox.maps.CameraBoundsOptions
+import com.mapbox.maps.extension.localization.localizeLabels
 import com.mapbox.maps.CameraOptions
 import com.mapbox.maps.CoordinateBounds
 import com.mapbox.maps.EdgeInsets
@@ -91,6 +92,7 @@ import com.mapbox.maps.plugin.viewport.viewport
 import com.mapbox.maps.viewannotation.annotationAnchor
 import com.mapbox.maps.viewannotation.geometry
 import com.mapbox.maps.viewannotation.viewAnnotationOptions
+import java.util.Locale
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -334,6 +336,7 @@ class IKMapView(
             layerConfigs.values.forEach { applyLayer(it) }
             clusterConfigs.values.forEach { applyClusteredSource(it) }
             terrainExaggeration?.let { applyTerrain(it) }
+            applyMapLanguage()
             listener?.onStyleLoaded()
         }
         cancelables += mapView.mapboxMap.subscribeCameraChanged { event ->
@@ -1261,6 +1264,28 @@ class IKMapView(
      * is covered by other UI: the centre of the camera then lands in the visible part
      * instead of the middle of the view.
      */
+    /**
+     * Translates the style's name labels into [language] (a BCP-47 tag such as "de" or
+     * "fr-CH"). An empty string leaves the style's own labels alone. Re-applied after
+     * every style load, because a style reload resets the labels.
+     */
+    fun setMapLanguage(language: String)
+    {
+        if (destroyed)
+            return
+
+        mapLanguage = language.ifEmpty { null }
+        applyMapLanguage()
+    }
+
+    private var mapLanguage: String? = null
+
+    private fun applyMapLanguage()
+    {
+        val tag = mapLanguage ?: return
+        mapView.mapboxMap.style?.localizeLabels(Locale.forLanguageTag(tag))
+    }
+
     fun setCameraPadding(left: Double, top: Double, right: Double, bottom: Double)
     {
         if (destroyed)

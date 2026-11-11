@@ -150,6 +150,20 @@ public class MapView : View
         set => SetValue(ShowUserLocationProperty, value);
     }
 
+    public static readonly BindableProperty MapLanguageProperty = BindableProperty.Create(
+        nameof(MapLanguage), typeof(string), typeof(MapView));
+
+    /// <summary>
+    /// Translates the style's name labels into this language — a BCP-47 tag such as
+    /// "de", "fr" or "fr-CH". Null or empty keeps the style's own labels, which are
+    /// local names. Only names Mapbox has a translation for change; the rest stay local.
+    /// </summary>
+    public string? MapLanguage
+    {
+        get => (string?)GetValue(MapLanguageProperty);
+        set => SetValue(MapLanguageProperty, value);
+    }
+
     public static readonly BindableProperty CameraPaddingProperty = BindableProperty.Create(
         nameof(CameraPadding), typeof(Thickness), typeof(MapView), new Thickness(0));
 

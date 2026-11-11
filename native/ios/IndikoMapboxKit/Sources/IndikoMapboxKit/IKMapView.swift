@@ -268,6 +268,7 @@ public class IKMapView: UIView
             {
                 self.applyTerrain(exaggeration: exaggeration)
             }
+            self.applyMapLanguage()
             self.listener?.onStyleLoaded()
         }.store(in: &cancelables)
 
@@ -1095,6 +1096,26 @@ public class IKMapView: UIView
     /// Shifts the camera's anchor inside the viewport, in points. Use it when part of the
     /// map is covered by other UI: the centre of the camera then lands in the visible part
     /// instead of the middle of the view.
+    /// Translates the style's name labels into `language` (a BCP-47 tag such as "de" or
+    /// "fr-CH"). An empty string leaves the style's own labels alone. Re-applied after
+    /// every style load, because a style reload resets the labels.
+    @objc(setMapLanguage:)
+    public func setMapLanguage(language: String)
+    {
+        if destroyed { return }
+
+        mapLanguage = language.isEmpty ? nil : language
+        applyMapLanguage()
+    }
+
+    private var mapLanguage: String?
+
+    private func applyMapLanguage()
+    {
+        guard let tag = mapLanguage else { return }
+        try? mapView.mapboxMap.localizeLabels(into: Locale(identifier: tag))
+    }
+
     @objc(setCameraPaddingLeft:top:right:bottom:)
     public func setCameraPadding(left: Double, top: Double, right: Double, bottom: Double)
     {
