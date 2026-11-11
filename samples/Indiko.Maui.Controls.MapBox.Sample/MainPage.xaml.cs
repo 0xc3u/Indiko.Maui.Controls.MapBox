@@ -141,6 +141,11 @@ public partial class MainPage : ContentPage
 			OnToggleExpressions(this, EventArgs.Empty);
 			CollapseSheet();
 		}
+		if (Environment.GetEnvironmentVariable("DEMO_GLOBE") == "1")
+		{
+			OnToggleGlobe(this, EventArgs.Empty);
+			CollapseSheet();
+		}
 		if (Environment.GetEnvironmentVariable("DEMO_LIGHT") == "1")
 		{
 			Map.StyleUri = MapStyles.Standard;
@@ -737,6 +742,20 @@ public partial class MainPage : ContentPage
 		PaintChip(ChipLight, true);
 		ChipLight.Text = $"Licht: {Map.LightPreset}";
 		StatusLabel.Text = $"Standard-Style, lightPreset = {Map.LightPreset}";
+	}
+
+	/// <summary>
+	/// Switches to the globe projection and zooms far enough out that it is actually a
+	/// globe — at city zoom the globe and mercator look identical.
+	/// </summary>
+	private void OnToggleGlobe(object? sender, EventArgs e)
+	{
+		var globe = Map.Projection != MapProjection.Globe;
+		Map.Projection = globe ? MapProjection.Globe : MapProjection.Mercator;
+		PaintChip(ChipGlobe, globe);
+
+		Map.FlyTo(new MapCameraPosition(30, 10, globe ? 1.4 : 11, bearing: 0, pitch: 0), 1500);
+		StatusLabel.Text = globe ? "Projektion: Globus" : "Projektion: Mercator";
 	}
 
 	private void OnPolylineClicked(object? sender, PolylineClickedEventArgs e)

@@ -178,6 +178,7 @@
                     <HorizontalStackLayout Spacing="8">
                         <Button x:Name="ChipDoubleTap" Text="Doppeltipp-Zoom: an" Style="{StaticResource Chip}" Clicked="OnToggleDoubleTapZoom" />
                         <Button x:Name="ChipLight" Text="Licht: Standard" Style="{StaticResource Chip}" Clicked="OnCycleLightPreset" />
+                        <Button x:Name="ChipGlobe" Text="Globus" Style="{StaticResource Chip}" Clicked="OnToggleGlobe" />
                     </HorizontalStackLayout>
 
                     <Label Text="TERRAIN &amp; OFFLINE" Style="{StaticResource SectionHeader}" />

@@ -205,6 +205,19 @@ public class MapView : View
         set => SetValue(MapLanguageProperty, value);
     }
 
+    public static readonly BindableProperty ProjectionProperty = BindableProperty.Create(
+        nameof(Projection), typeof(MapProjection), typeof(MapView), MapProjection.Default);
+
+    /// <summary>
+    /// Map projection. <see cref="MapProjection.Globe"/> renders a 3D globe when zoomed
+    /// out; <see cref="MapProjection.Default"/> keeps the style's own choice.
+    /// </summary>
+    public MapProjection Projection
+    {
+        get => (MapProjection)GetValue(ProjectionProperty);
+        set => SetValue(ProjectionProperty, value);
+    }
+
     public static readonly BindableProperty LightPresetProperty = BindableProperty.Create(
         nameof(LightPreset), typeof(MapLightPreset), typeof(MapView), MapLightPreset.Default);
 

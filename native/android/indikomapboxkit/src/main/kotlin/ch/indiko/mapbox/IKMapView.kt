@@ -346,6 +346,7 @@ class IKMapView(
             terrainExaggeration?.let { applyTerrain(it) }
             applyMapLanguage()
             applyStyleImportConfig()
+            applyProjection()
             listener?.onStyleLoaded()
         }
         cancelables += mapView.mapboxMap.subscribeCameraChanged { event ->
@@ -1716,6 +1717,29 @@ class IKMapView(
      * Classic styles have no basemap import and ignore this. Re-applied after every
      * style load, because a style reload resets the configuration.
      */
+    /**
+     * Switches the map projection: "globe", "mercator", or "" to keep whatever the style
+     * ships with. Re-applied after every style load, because a style reload resets it.
+     */
+    fun setProjection(name: String)
+    {
+        if (destroyed)
+            return
+
+        projectionName = name.takeIf { it.isNotEmpty() }
+        applyProjection()
+    }
+
+    private var projectionName: String? = null
+
+    private fun applyProjection()
+    {
+        val name = projectionName ?: return
+        val style = mapView.mapboxMap.style ?: return
+        val value = Value.fromJson("{\"name\":\"$name\"}").value ?: return
+        style.setStyleProjection(value)
+    }
+
     fun setStyleImportConfigJson(json: String)
     {
         if (destroyed)

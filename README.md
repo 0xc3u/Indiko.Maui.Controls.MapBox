@@ -35,6 +35,7 @@ on the UI thread; command parameters carry the same `EventArgs` object the event
 - 🌍 `MapLanguage` — translate the style's place labels into any supported language
 - 🔍 `QueryFeaturesAsync()` reports which feature sits under a tap, with its properties
 - ✨ Feature state — selection and hover styling without touching the source data
+- 🌍 Globe projection — a real 3D globe when zoomed out
 - 🌑 Standard-style configuration — `LightPreset` day/dusk/night, theme and 3D objects
 - 🤚 Individual zoom gestures switchable — double-tap, quick-zoom and pinch separately
 - 🔥 Heatmaps and 3D fill extrusions, driven by your feature data
@@ -139,7 +140,8 @@ code, and the reason .NET Android no longer reports `XA0141` for this package.
 | Snapshotter (static map images) | ❌ | |
 | 3D terrain (raster-DEM + sky atmosphere) | ✅ | `TerrainEnabled` + `TerrainExaggeration` |
 | Terrain elevation query (`getElevation`) | ✅ | `QueryTerrainElevation(lat, lon)` |
-| Globe, custom projections | ❌ | whatever the chosen style ships by default |
+| Globe / mercator projection | ✅ | `Projection` |
+| Custom (non-Mapbox) projections | ❌ | globe and mercator only |
 | Telemetry opt-out | ✅ | `UseMapbox(token, enableTelemetry: false)` — see [Telemetry](#telemetry) |
 
 ## Getting started
@@ -838,6 +840,32 @@ Results are ordered top-most first, so `hits[0]` is what the user visually hit.
 
 The `radius` parameter (default 8) widens the hit area in device-independent units — thin
 lines and small circles are otherwise hard to hit with a finger. `0` queries the exact point.
+
+---
+
+## Projection (globe or mercator)
+
+```xml
+<map:MapView Projection="Globe" />
+```
+
+```csharp
+map.Projection = MapProjection.Globe;      // 3D globe when zoomed out
+map.Projection = MapProjection.Mercator;   // always flat
+map.Projection = MapProjection.Default;    // whatever the style ships with
+```
+
+| Value | Effect |
+|---|---|
+| `Default` | the style decides — the Standard styles use a globe above a certain zoom |
+| `Globe` | a 3D globe when zoomed out, flattening into mercator as you zoom in |
+| `Mercator` | the classic flat projection at every zoom |
+
+> The globe is only visibly a globe when zoomed far out — roughly zoom 5 and below. At
+> city zoom the two projections are indistinguishable, which makes a `Projection` change
+> look like it did nothing.
+
+The setting is re-applied after every style switch, because loading a style resets it.
 
 ---
 

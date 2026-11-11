@@ -41,6 +41,7 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
             [nameof(MapView.RotateEnabled)] = MapGestures,
             [nameof(MapView.PitchEnabled)] = MapGestures,
             [nameof(MapView.MapLanguage)] = MapLanguage,
+            [nameof(MapView.Projection)] = MapProjection,
             [nameof(MapView.LightPreset)] = MapStyleImportConfig,
             [nameof(MapView.StyleTheme)] = MapStyleImportConfig,
             [nameof(MapView.Show3dObjects)] = MapStyleImportConfig,
@@ -212,6 +213,16 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
     private static void MapLanguage(MapViewHandler handler, MapView view)
     {
         handler.PlatformView.SetMapLanguage(view.MapLanguage ?? string.Empty);
+    }
+
+    private static void MapProjection(MapViewHandler handler, MapView view)
+    {
+        handler.PlatformView.SetProjection(view.Projection switch
+        {
+            Models.MapProjection.Mercator => "mercator",
+            Models.MapProjection.Globe => "globe",
+            _ => string.Empty,
+        });
     }
 
     private static void MapStyleImportConfig(MapViewHandler handler, MapView view)

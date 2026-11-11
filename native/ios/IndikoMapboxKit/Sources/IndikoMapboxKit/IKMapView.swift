@@ -274,6 +274,7 @@ public class IKMapView: UIView
             }
             self.applyMapLanguage()
             self.applyStyleImportConfig()
+            self.applyProjection()
             self.listener?.onStyleLoaded()
         }.store(in: &cancelables)
 
@@ -1498,6 +1499,27 @@ public class IKMapView: UIView
     /// such as lightPreset, theme and show3dObjects. JSON: {"<key>": <value>, …}.
     /// Classic styles have no basemap import and ignore this. Re-applied after every
     /// style load, because a style reload resets the configuration.
+    /// Switches the map projection: "globe", "mercator", or "" to keep whatever the style
+    /// ships with. Re-applied after every style load, because a style reload resets it.
+    @objc(setProjection:)
+    public func setProjection(name: String)
+    {
+        if destroyed { return }
+
+        projectionName = name.isEmpty ? nil : name
+        applyProjection()
+    }
+
+    private var projectionName: String?
+
+    private func applyProjection()
+    {
+        guard let name = projectionName else { return }
+
+        let projection: StyleProjectionName = name == "globe" ? .globe : .mercator
+        try? mapView.mapboxMap.setProjection(StyleProjection(name: projection))
+    }
+
     @objc(setStyleImportConfigJson:)
     public func setStyleImportConfig(json: String)
     {
