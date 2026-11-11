@@ -1,3 +1,10 @@
+# [1.13.0](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/compare/v1.12.0...v1.13.0) (2026-11-11)
+
+### Features
+
+* heatmap and fill-extrusion layers ([4534076](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/commit/453407675c6ff3e436ceeb440422e92f4e122d8a))
+
+
 # [1.12.0](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/compare/v1.11.0...v1.12.0) (2026-11-11)
 
 ### Features
