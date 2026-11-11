@@ -1,4 +1,5 @@
 using System.Windows.Input;
+using Indiko.Maui.Controls.MapBox.Handlers;
 using Indiko.Maui.Controls.MapBox.Models;
 
 namespace Indiko.Maui.Controls.MapBox;
@@ -141,6 +142,46 @@ public class MapView : View
     /// <summary>Guards the FollowPuck property mapper while syncing state from native.</summary>
     internal bool SuppressFollowPuckSync;
 
+    public static readonly BindableProperty DoubleTapToZoomEnabledProperty = BindableProperty.Create(
+        nameof(DoubleTapToZoomEnabled), typeof(bool), typeof(MapView), true);
+
+    /// <summary>Double-tap to zoom in and two-finger-tap to zoom out. Narrows <see cref="ZoomEnabled"/>; it cannot re-enable a disabled gesture.</summary>
+    public bool DoubleTapToZoomEnabled
+    {
+        get => (bool)GetValue(DoubleTapToZoomEnabledProperty);
+        set => SetValue(DoubleTapToZoomEnabledProperty, value);
+    }
+
+    public static readonly BindableProperty QuickZoomEnabledProperty = BindableProperty.Create(
+        nameof(QuickZoomEnabled), typeof(bool), typeof(MapView), true);
+
+    /// <summary>Double-tap-and-drag to zoom with one finger. Narrows <see cref="ZoomEnabled"/>; it cannot re-enable a disabled gesture.</summary>
+    public bool QuickZoomEnabled
+    {
+        get => (bool)GetValue(QuickZoomEnabledProperty);
+        set => SetValue(QuickZoomEnabledProperty, value);
+    }
+
+    public static readonly BindableProperty PinchToZoomEnabledProperty = BindableProperty.Create(
+        nameof(PinchToZoomEnabled), typeof(bool), typeof(MapView), true);
+
+    /// <summary>Two-finger pinch to zoom. Narrows <see cref="ZoomEnabled"/>; it cannot re-enable a disabled gesture.</summary>
+    public bool PinchToZoomEnabled
+    {
+        get => (bool)GetValue(PinchToZoomEnabledProperty);
+        set => SetValue(PinchToZoomEnabledProperty, value);
+    }
+
+    public static readonly BindableProperty SimultaneousRotateAndZoomEnabledProperty = BindableProperty.Create(
+        nameof(SimultaneousRotateAndZoomEnabled), typeof(bool), typeof(MapView), true);
+
+    /// <summary>Allow rotating and pinch-zooming in the same gesture. Narrows <see cref="ZoomEnabled"/>; it cannot re-enable a disabled gesture.</summary>
+    public bool SimultaneousRotateAndZoomEnabled
+    {
+        get => (bool)GetValue(SimultaneousRotateAndZoomEnabledProperty);
+        set => SetValue(SimultaneousRotateAndZoomEnabledProperty, value);
+    }
+
     public static readonly BindableProperty ShowUserLocationProperty = BindableProperty.Create(
         nameof(ShowUserLocation), typeof(bool), typeof(MapView), false);
 
@@ -162,6 +203,42 @@ public class MapView : View
     {
         get => (string?)GetValue(MapLanguageProperty);
         set => SetValue(MapLanguageProperty, value);
+    }
+
+    public static readonly BindableProperty LightPresetProperty = BindableProperty.Create(
+        nameof(LightPreset), typeof(MapLightPreset), typeof(MapView), MapLightPreset.Default);
+
+    /// <summary>
+    /// Time-of-day lighting — only the Mapbox Standard styles support it; classic styles
+    /// ignore it. See <see cref="MapStyles.Standard"/>.
+    /// </summary>
+    public MapLightPreset LightPreset
+    {
+        get => (MapLightPreset)GetValue(LightPresetProperty);
+        set => SetValue(LightPresetProperty, value);
+    }
+
+    public static readonly BindableProperty StyleThemeProperty = BindableProperty.Create(
+        nameof(StyleTheme), typeof(MapStyleTheme), typeof(MapView), MapStyleTheme.Default);
+
+    /// <summary>Colour treatment of the Mapbox Standard styles.</summary>
+    public MapStyleTheme StyleTheme
+    {
+        get => (MapStyleTheme)GetValue(StyleThemeProperty);
+        set => SetValue(StyleThemeProperty, value);
+    }
+
+    public static readonly BindableProperty Show3dObjectsProperty = BindableProperty.Create(
+        nameof(Show3dObjects), typeof(bool?), typeof(MapView));
+
+    /// <summary>
+    /// Whether the Mapbox Standard styles draw their 3D buildings and landmarks;
+    /// null keeps the style's own setting.
+    /// </summary>
+    public bool? Show3dObjects
+    {
+        get => (bool?)GetValue(Show3dObjectsProperty);
+        set => SetValue(Show3dObjectsProperty, value);
     }
 
     public static readonly BindableProperty CameraPaddingProperty = BindableProperty.Create(
@@ -703,6 +780,69 @@ public class MapView : View
         return request.Elevation;
     }
 
+    /// <summary>
+    /// Reports the rendered features under a coordinate — the way to find out *which*
+    /// feature a <see cref="MapClicked"/> tap hit, for data drawn by your own layers.
+    /// Pass <paramref name="layerIds"/> to restrict the query to your layers, otherwise
+    /// the basemap's own features are included too.
+    /// </summary>
+    /// <param name="radius">
+    /// Hit radius in device-independent units. A few units make thin lines and small
+    /// circles practical to hit; 0 queries the exact point.
+    /// </param>
+    public Task<IReadOnlyList<MapQueriedFeature>> QueryFeaturesAsync(double latitude, double longitude,
+        IEnumerable<string>? layerIds = null, double radius = 8)
+    {
+        var completion = new TaskCompletionSource<IReadOnlyList<MapQueriedFeature>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+
+        if (Handler is null)
+        {
+            completion.TrySetResult([]);
+            return completion.Task;
+        }
+
+        var request = new QueryFeaturesRequest(
+            latitude, longitude, AnnotationSerializer.ToStringArrayJson(layerIds), radius,
+            json => completion.TrySetResult(AnnotationSerializer.ParseQueriedFeatures(json)));
+        Handler.Invoke(nameof(QueryFeaturesAsync), request);
+        return completion.Task;
+    }
+
+    /// <summary>
+    /// Attaches state to a feature — selection, hover, anything your layers should react
+    /// to. Layers read it with the <c>["feature-state", "key"]</c> expression, so the look
+    /// changes without touching the source data.
+    /// </summary>
+    /// <remarks>
+    /// The feature must carry an <c>id</c>: GeoJSON features without one are invisible to
+    /// this. <paramref name="sourceLayer"/> is only needed for vector sources.
+    /// </remarks>
+    public void SetFeatureState(string sourceId, string featureId, IDictionary<string, object?> state,
+        string? sourceLayer = null)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(sourceId);
+        ArgumentException.ThrowIfNullOrEmpty(featureId);
+        ArgumentNullException.ThrowIfNull(state);
+
+        InvokeOrQueue(nameof(SetFeatureState), new FeatureStateRequest(
+            sourceId, sourceLayer ?? string.Empty, featureId, AnnotationSerializer.ToStateJson(state)));
+    }
+
+    /// <summary>
+    /// Removes one state key from a feature, or its whole state when
+    /// <paramref name="stateKey"/> is null.
+    /// </summary>
+    public void RemoveFeatureState(string sourceId, string featureId, string? stateKey = null,
+        string? sourceLayer = null)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(sourceId);
+        ArgumentException.ThrowIfNullOrEmpty(featureId);
+
+        InvokeOrQueue(nameof(RemoveFeatureState), new FeatureStateRequest(
+            sourceId, sourceLayer ?? string.Empty, featureId, stateKey ?? string.Empty));
+    }
+
     /* ------------------------- Internal event dispatchers ------------------------- */
 
     internal void SendMapReady()
@@ -879,6 +1019,46 @@ public sealed class FitBoundsRequest
 public sealed class VisibleBoundsRequest
 {
     public MapBounds? Bounds { get; set; }
+}
+
+/// <summary>Payload for the feature-state command mappers. Payload is the state JSON for
+/// SetFeatureState and the state key (possibly empty) for RemoveFeatureState.</summary>
+public sealed class FeatureStateRequest
+{
+    public string SourceId { get; }
+    public string SourceLayer { get; }
+    public string FeatureId { get; }
+    public string Payload { get; }
+
+    public FeatureStateRequest(string sourceId, string sourceLayer, string featureId, string payload)
+    {
+        SourceId = sourceId;
+        SourceLayer = sourceLayer;
+        FeatureId = featureId;
+        Payload = payload;
+    }
+}
+
+/// <summary>Payload for the QueryFeaturesAsync command mapper.</summary>
+public sealed class QueryFeaturesRequest
+{
+    public double Latitude { get; }
+    public double Longitude { get; }
+    public string LayerIdsJson { get; }
+    public double Radius { get; }
+
+    /// <summary>Invoked with the facade's JSON array, on an arbitrary thread.</summary>
+    public Action<string> OnResult { get; }
+
+    public QueryFeaturesRequest(double latitude, double longitude, string layerIdsJson, double radius,
+        Action<string> onResult)
+    {
+        Latitude = latitude;
+        Longitude = longitude;
+        LayerIdsJson = layerIdsJson;
+        Radius = radius;
+        OnResult = onResult;
+    }
 }
 
 /// <summary>Payload for the QueryTerrainElevation command mapper — the handler fills Elevation.</summary>

@@ -273,6 +273,7 @@ public class IKMapView: UIView
                 self.applyTerrain(exaggeration: exaggeration)
             }
             self.applyMapLanguage()
+            self.applyStyleImportConfig()
             self.listener?.onStyleLoaded()
         }.store(in: &cancelables)
 
@@ -1373,6 +1374,184 @@ public class IKMapView: UIView
             minZoom: minZoom.isNaN ? nil : minZoom,
             maxPitch: maxPitch.isNaN ? nil : maxPitch,
             minPitch: minPitch.isNaN ? nil : minPitch))
+    }
+
+    /// Reports the rendered features under a coordinate. `layerIdsJson` is a JSON array of
+    /// layer ids to restrict the query to, or empty for every layer; `radius` widens the hit
+    /// area in points, which matters for thin lines and small circles. The completion
+    /// receives a JSON array (on an arbitrary thread):
+    /// [{"id","layerId","source","sourceLayer","geometryType","properties"}]
+    @objc(queryRenderedFeatures:longitude:layerIds:radius:completion:)
+    public func queryRenderedFeatures(
+        latitude: Double,
+        longitude: Double,
+        layerIdsJson: String,
+        radius: Double,
+        completion: @escaping (String) -> Void)
+    {
+        if destroyed
+        {
+            completion("[]")
+            return
+        }
+
+        let layerIds: [String]?
+        if let data = layerIdsJson.data(using: .utf8),
+           let parsed = try? JSONSerialization.jsonObject(with: data) as? [String],
+           !parsed.isEmpty
+        {
+            layerIds = parsed
+        }
+        else
+        {
+            layerIds = nil
+        }
+
+        let point = mapView.mapboxMap.point(
+            for: CLLocationCoordinate2D(latitude: latitude, longitude: longitude))
+        let options = RenderedQueryOptions(layerIds: layerIds, filter: nil)
+
+        // CGPoint and CGRect are the query geometries Mapbox accepts directly.
+        let handler: (Result<[QueriedRenderedFeature], Error>) -> Void = { result in
+            guard case let .success(items) = result
+            else
+            {
+                completion("[]")
+                return
+            }
+
+            var entries: [[String: Any]] = []
+            for item in items
+            {
+                let queried = item.queriedFeature
+                var entry: [String: Any] = ["source": queried.source]
+                if let sourceLayer = queried.sourceLayer { entry["sourceLayer"] = sourceLayer }
+                if let layerId = item.layers.first { entry["layerId"] = layerId }
+
+                // Round-trip the feature through GeoJSON so properties and geometry type
+                // come out in the same shape the Kotlin side produces.
+                if let data = try? JSONEncoder().encode(queried.feature),
+                   let geo = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+                {
+                    entry["properties"] = geo["properties"] ?? [String: Any]()
+                    if let id = geo["id"] { entry["id"] = id }
+                    if let geometry = geo["geometry"] as? [String: Any], let type = geometry["type"]
+                    {
+                        entry["geometryType"] = type
+                    }
+                }
+                entries.append(entry)
+            }
+
+            let data = (try? JSONSerialization.data(withJSONObject: entries)) ?? Data("[]".utf8)
+            completion(String(data: data, encoding: .utf8) ?? "[]")
+        }
+
+        if radius > 0
+        {
+            let box = CGRect(x: point.x - radius, y: point.y - radius,
+                             width: radius * 2, height: radius * 2)
+            mapView.mapboxMap.queryRenderedFeatures(with: box, options: options, completion: handler)
+        }
+        else
+        {
+            mapView.mapboxMap.queryRenderedFeatures(with: point, options: options, completion: handler)
+        }
+    }
+
+    /// Attaches state to a feature, readable from expressions as
+    /// ["feature-state", "<key>"]. The feature must carry an id — GeoJSON without one is
+    /// invisible to this. `sourceLayer` is only used by vector sources; pass "" otherwise.
+    @objc(setFeatureState:sourceLayer:featureId:stateJson:)
+    public func setFeatureState(sourceId: String, sourceLayer: String, featureId: String, stateJson: String)
+    {
+        if destroyed { return }
+
+        guard let data = stateJson.data(using: .utf8),
+              let state = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { return }
+
+        mapView.mapboxMap.setFeatureState(
+            sourceId: sourceId,
+            sourceLayerId: sourceLayer.isEmpty ? nil : sourceLayer,
+            featureId: featureId,
+            state: state) { _ in }
+    }
+
+    /// Removes one state key, or the feature's whole state when `stateKey` is empty.
+    @objc(removeFeatureState:sourceLayer:featureId:stateKey:)
+    public func removeFeatureState(sourceId: String, sourceLayer: String, featureId: String, stateKey: String)
+    {
+        if destroyed { return }
+
+        mapView.mapboxMap.removeFeatureState(
+            sourceId: sourceId,
+            sourceLayerId: sourceLayer.isEmpty ? nil : sourceLayer,
+            featureId: featureId,
+            stateKey: stateKey.isEmpty ? nil : stateKey) { _ in }
+    }
+
+    /// Full gesture configuration in one call, so the order properties arrive in does not
+    /// matter. JSON: {"scroll","zoom","rotate","pitch","doubleTapToZoom","quickZoom",
+    /// "pinchToZoom","rotateAndZoom"} — all booleans, missing keys default to true.
+    /// Configures the style's "basemap" import — the Mapbox Standard style's own options
+    /// such as lightPreset, theme and show3dObjects. JSON: {"<key>": <value>, …}.
+    /// Classic styles have no basemap import and ignore this. Re-applied after every
+    /// style load, because a style reload resets the configuration.
+    @objc(setStyleImportConfigJson:)
+    public func setStyleImportConfig(json: String)
+    {
+        if destroyed { return }
+
+        if json.isEmpty || json == "{}"
+        {
+            styleImportConfig = nil
+        }
+        else if let data = json.data(using: .utf8),
+                let config = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        {
+            styleImportConfig = config
+        }
+        applyStyleImportConfig()
+    }
+
+    private var styleImportConfig: [String: Any]?
+
+    private func applyStyleImportConfig()
+    {
+        guard let config = styleImportConfig else { return }
+
+        for (key, value) in config
+        {
+            try? mapView.mapboxMap.setStyleImportConfigProperty(
+                for: "basemap", config: key, value: value)
+        }
+    }
+
+    @objc(setGestureOptionsJson:)
+    public func setGestureOptions(json: String)
+    {
+        if destroyed { return }
+
+        guard let data = json.data(using: .utf8),
+              let config = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { return }
+
+        func flag(_ key: String) -> Bool { config[key] as? Bool ?? true }
+        let zoom = flag("zoom")
+
+        var options = mapView.gestures.options
+        options.panEnabled = flag("scroll")
+        options.rotateEnabled = flag("rotate")
+        options.pitchEnabled = flag("pitch")
+
+        // The fine flags only ever narrow the coarse "zoom" switch.
+        options.pinchZoomEnabled = zoom && flag("pinchToZoom")
+        options.quickZoomEnabled = zoom && flag("quickZoom")
+        options.doubleTapToZoomInEnabled = zoom && flag("doubleTapToZoom")
+        options.doubleTouchToZoomOutEnabled = zoom && flag("doubleTapToZoom")
+        options.simultaneousRotateAndPinchZoomEnabled = flag("rotateAndZoom")
+        mapView.gestures.options = options
     }
 
     @objc(setGesturesScroll:zoom:rotate:pitch:)

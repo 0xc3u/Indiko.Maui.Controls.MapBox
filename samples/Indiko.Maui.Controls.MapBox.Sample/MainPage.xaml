@@ -175,6 +175,10 @@
                         <Button x:Name="ChipHeatmap" Text="Heatmap" Style="{StaticResource Chip}" Clicked="OnToggleHeatmap" />
                         <Button x:Name="ChipExtrusion" Text="3D-Gebäude" Style="{StaticResource Chip}" Clicked="OnToggleExtrusion" />
                     </HorizontalStackLayout>
+                    <HorizontalStackLayout Spacing="8">
+                        <Button x:Name="ChipDoubleTap" Text="Doppeltipp-Zoom: an" Style="{StaticResource Chip}" Clicked="OnToggleDoubleTapZoom" />
+                        <Button x:Name="ChipLight" Text="Licht: Standard" Style="{StaticResource Chip}" Clicked="OnCycleLightPreset" />
+                    </HorizontalStackLayout>
 
                     <Label Text="TERRAIN &amp; OFFLINE" Style="{StaticResource SectionHeader}" />
                     <HorizontalStackLayout Spacing="8">

@@ -33,10 +33,17 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
             [nameof(MapView.FollowPuckZoom)] = MapFollowPuck,
             [nameof(MapView.FollowPuckTrackBearing)] = MapFollowPuck,
             [nameof(MapView.ScrollEnabled)] = MapGestures,
+            [nameof(MapView.SimultaneousRotateAndZoomEnabled)] = MapGestures,
+            [nameof(MapView.PinchToZoomEnabled)] = MapGestures,
+            [nameof(MapView.QuickZoomEnabled)] = MapGestures,
+            [nameof(MapView.DoubleTapToZoomEnabled)] = MapGestures,
             [nameof(MapView.ZoomEnabled)] = MapGestures,
             [nameof(MapView.RotateEnabled)] = MapGestures,
             [nameof(MapView.PitchEnabled)] = MapGestures,
             [nameof(MapView.MapLanguage)] = MapLanguage,
+            [nameof(MapView.LightPreset)] = MapStyleImportConfig,
+            [nameof(MapView.StyleTheme)] = MapStyleImportConfig,
+            [nameof(MapView.Show3dObjects)] = MapStyleImportConfig,
             [nameof(MapView.CameraPadding)] = MapCameraPadding,
             [nameof(MapView.CompassPlacement)] = MapOrnamentPlacement,
             [nameof(MapView.ScaleBarPlacement)] = MapOrnamentPlacement,
@@ -72,6 +79,9 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
             [nameof(MapView.RemoveOfflineRegion)] = MapRemoveOfflineRegion,
             [nameof(MapView.GetVisibleBounds)] = MapGetVisibleBounds,
             [nameof(MapView.QueryTerrainElevation)] = MapQueryTerrainElevation,
+            [nameof(MapView.QueryFeaturesAsync)] = MapQueryFeatures,
+            [nameof(MapView.SetFeatureState)] = MapSetFeatureState,
+            [nameof(MapView.RemoveFeatureState)] = MapRemoveFeatureState,
         };
 
     public MapViewHandler() : base(Mapper, Commands)
@@ -186,7 +196,11 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
 
     private static void MapGestures(MapViewHandler handler, MapView view)
     {
-        handler.PlatformView.SetGestures(view.ScrollEnabled, view.ZoomEnabled, view.RotateEnabled, view.PitchEnabled);
+        // One call for every gesture property, so the mapper order cannot matter.
+        handler.PlatformView.SetGestureOptionsJson(AnnotationSerializer.ToGestureOptionsJson(
+            view.ScrollEnabled, view.ZoomEnabled, view.RotateEnabled, view.PitchEnabled,
+            view.DoubleTapToZoomEnabled, view.QuickZoomEnabled, view.PinchToZoomEnabled,
+            view.SimultaneousRotateAndZoomEnabled));
     }
 
     private static void MapOrnaments(MapViewHandler handler, MapView view)
@@ -198,6 +212,12 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
     private static void MapLanguage(MapViewHandler handler, MapView view)
     {
         handler.PlatformView.SetMapLanguage(view.MapLanguage ?? string.Empty);
+    }
+
+    private static void MapStyleImportConfig(MapViewHandler handler, MapView view)
+    {
+        handler.PlatformView.SetStyleImportConfigJson(AnnotationSerializer.ToStyleImportConfigJson(
+            view.LightPreset, view.StyleTheme, view.Show3dObjects));
     }
 
     private static void MapCameraPadding(MapViewHandler handler, MapView view)
@@ -310,6 +330,34 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
     {
         if (args is VisibleBoundsRequest request)
             request.Bounds = AnnotationSerializer.ParseBounds(handler.PlatformView.VisibleBoundsJson());
+    }
+
+    private static void MapSetFeatureState(MapViewHandler handler, MapView view, object? args)
+    {
+        if (args is FeatureStateRequest request)
+        {
+            handler.PlatformView.SetFeatureState(
+                request.SourceId, request.SourceLayer, request.FeatureId, request.Payload);
+        }
+    }
+
+    private static void MapRemoveFeatureState(MapViewHandler handler, MapView view, object? args)
+    {
+        if (args is FeatureStateRequest request)
+        {
+            handler.PlatformView.RemoveFeatureState(
+                request.SourceId, request.SourceLayer, request.FeatureId, request.Payload);
+        }
+    }
+
+    private static void MapQueryFeatures(MapViewHandler handler, MapView view, object? args)
+    {
+        if (args is QueryFeaturesRequest request)
+        {
+            handler.PlatformView.QueryRenderedFeatures(
+                request.Latitude, request.Longitude, request.LayerIdsJson, request.Radius,
+                json => request.OnResult(json));
+        }
     }
 
     private static void MapQueryTerrainElevation(MapViewHandler handler, MapView view, object? args)

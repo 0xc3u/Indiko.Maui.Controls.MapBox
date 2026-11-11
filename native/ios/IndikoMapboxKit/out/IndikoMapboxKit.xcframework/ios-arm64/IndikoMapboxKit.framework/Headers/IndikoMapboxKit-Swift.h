@@ -439,6 +439,27 @@ SWIFT_CLASS_NAMED("IKMapView")
 /// default”. The four bounds values are all-or-nothing: pass NaN for all of them to
 /// lift a pan restriction.
 - (void)setCameraBoundsMinLat:(double)minLat minLng:(double)minLng maxLat:(double)maxLat maxLng:(double)maxLng minZoom:(double)minZoom maxZoom:(double)maxZoom minPitch:(double)minPitch maxPitch:(double)maxPitch;
+/// Reports the rendered features under a coordinate. <code>layerIdsJson</code> is a JSON array of
+/// layer ids to restrict the query to, or empty for every layer; <code>radius</code> widens the hit
+/// area in points, which matters for thin lines and small circles. The completion
+/// receives a JSON array (on an arbitrary thread):
+/// [{“id”,“layerId”,“source”,“sourceLayer”,“geometryType”,“properties”}]
+- (void)queryRenderedFeatures:(double)latitude longitude:(double)longitude layerIds:(NSString * _Nonnull)layerIdsJson radius:(double)radius completion:(void (^ _Nonnull)(NSString * _Nonnull))completion;
+/// Attaches state to a feature, readable from expressions as
+/// [“feature-state”, “<key>”]. The feature must carry an id — GeoJSON without one is
+/// invisible to this. <code>sourceLayer</code> is only used by vector sources; pass “” otherwise.
+- (void)setFeatureState:(NSString * _Nonnull)sourceId sourceLayer:(NSString * _Nonnull)sourceLayer featureId:(NSString * _Nonnull)featureId stateJson:(NSString * _Nonnull)stateJson;
+/// Removes one state key, or the feature’s whole state when <code>stateKey</code> is empty.
+- (void)removeFeatureState:(NSString * _Nonnull)sourceId sourceLayer:(NSString * _Nonnull)sourceLayer featureId:(NSString * _Nonnull)featureId stateKey:(NSString * _Nonnull)stateKey;
+/// Full gesture configuration in one call, so the order properties arrive in does not
+/// matter. JSON: {“scroll”,“zoom”,“rotate”,“pitch”,“doubleTapToZoom”,“quickZoom”,
+/// “pinchToZoom”,“rotateAndZoom”} — all booleans, missing keys default to true.
+/// Configures the style’s “basemap” import — the Mapbox Standard style’s own options
+/// such as lightPreset, theme and show3dObjects. JSON: {”<key>”: <value>, …}.
+/// Classic styles have no basemap import and ignore this. Re-applied after every
+/// style load, because a style reload resets the configuration.
+- (void)setStyleImportConfigJson:(NSString * _Nonnull)json;
+- (void)setGestureOptionsJson:(NSString * _Nonnull)json;
 - (void)setGesturesScroll:(BOOL)scroll zoom:(BOOL)zoom rotate:(BOOL)rotate pitch:(BOOL)pitch;
 - (void)didMoveToWindow;
 /// Teardown request from the MAUI handler’s DisconnectHandler. Deferred until the

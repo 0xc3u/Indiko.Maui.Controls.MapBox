@@ -33,6 +33,10 @@ on the UI thread; command parameters carry the same `EventArgs` object the event
 - 📐 Ornament placement — anchor compass, scale bar, logo and attribution to any corner
 - 🪟 `CameraPadding` — keep the camera anchor out from behind a bottom sheet or tab bar
 - 🌍 `MapLanguage` — translate the style's place labels into any supported language
+- 🔍 `QueryFeaturesAsync()` reports which feature sits under a tap, with its properties
+- ✨ Feature state — selection and hover styling without touching the source data
+- 🌑 Standard-style configuration — `LightPreset` day/dusk/night, theme and 3D objects
+- 🤚 Individual zoom gestures switchable — double-tap, quick-zoom and pinch separately
 - 🔥 Heatmaps and 3D fill extrusions, driven by your feature data
 - 🗺️ Raster, vector and image sources — bring your own tile server alongside the Mapbox basemap
 - 🎨 Data-driven styling — `MapExpression` drives any style-spec layer property from feature data or zoom
@@ -82,7 +86,7 @@ code, and the reason .NET Android no longer reports `XA0141` for this package.
 | **Map display & styles** | | |
 | Style URIs (Standard, Classic, custom `mapbox://styles/…`) | ✅ | `StyleUri`, `MapStyles` constants |
 | Runtime style switching | ✅ | runtime sources/layers/clusters are re-applied automatically |
-| Standard style configuration (light preset, theme, 3D objects) | ❌ | style renders with its defaults |
+| Standard style configuration (light preset, theme, 3D objects) | ✅ | `LightPreset`, `StyleTheme`, `Show3dObjects` |
 | Style JSON strings | ❌ | URIs only |
 | Label localization (`localizeLabels`) | ✅ | `MapLanguage` (BCP-47), re-applied after style switches |
 | **Camera** | | |
@@ -111,7 +115,9 @@ code, and the reason .NET Android no longer reports `XA0141` for this package.
 | **Gestures & interaction** | | |
 | Map tap / long-press with coordinates | ✅ | events + commands; taps on markers/shapes/clusters are consumed |
 | Per-gesture enable/disable | ✅ | `ScrollEnabled`, `ZoomEnabled`, `RotateEnabled`, `PitchEnabled` |
-| `queryRenderedFeatures` | 🔶 | used internally (cluster tap); not exposed as API |
+| Individual zoom gestures | ✅ | `DoubleTapToZoomEnabled`, `QuickZoomEnabled`, `PinchToZoomEnabled`, `SimultaneousRotateAndZoomEnabled` |
+| `queryRenderedFeatures` | ✅ | `QueryFeaturesAsync(lat, lon, layerIds, radius)` |
+| Feature state (selection, hover) | ✅ | `SetFeatureState` / `RemoveFeatureState` + the `feature-state` expression |
 | **Location** | | |
 | Location puck | ✅ | `ShowUserLocation` (2D puck with bearing) |
 | Follow-puck viewport | ✅ | `FollowPuck` (+ zoom/bearing options), state synced back on user pan |
@@ -797,6 +803,145 @@ meters. The result is independent of `TerrainExaggeration`.
 > if that cache entry is lost while the region survives (clearing the app's ambient cache):
 > the DEM source then reports `Online connectivity is disabled` and `QueryTerrainElevation`
 > returns `null` until the device has been online once.
+
+---
+
+## Finding the feature under a tap
+
+`MapClicked` only reports a coordinate. For data you drew yourself — a GeoJSON polygon, a
+building from a vector source — `QueryFeaturesAsync` reports *which* feature is there.
+
+```csharp
+map.MapClicked += async (_, e) =>
+{
+    var hits = await map.QueryFeaturesAsync(e.Latitude, e.Longitude, ["my-circles", "buildings"]);
+    if (hits.Count == 0)
+        return;
+
+    var hit = hits[0];
+    Status.Text = $"{hit.LayerId}: {hit.Properties["name"]}";
+};
+```
+
+| Member | Meaning |
+|---|---|
+| `Id` | the feature's own id, when the data carries one |
+| `LayerId` | the style layer that drew it — how you tell your layers apart |
+| `Source` / `SourceLayer` | where it came from; `SourceLayer` is set for vector sources |
+| `GeometryType` | `"Point"`, `"LineString"`, `"Polygon"`, … |
+| `Properties` | the feature's properties; values are `string`, `double`, `bool` or null |
+
+Results are ordered top-most first, so `hits[0]` is what the user visually hit.
+
+> **Pass the layer ids you care about.** Without them the basemap's own roads, labels and
+> landuse polygons answer too, and they will usually win.
+
+The `radius` parameter (default 8) widens the hit area in device-independent units — thin
+lines and small circles are otherwise hard to hit with a finger. `0` queries the exact point.
+
+---
+
+## Standard style configuration
+
+The Mapbox **Standard** styles expose their own options — time-of-day lighting, a colour
+theme, whether 3D buildings are drawn. They are configuration of the style, not layers,
+so they survive style reloads and cost nothing to change.
+
+```xml
+<map:MapView StyleUri="{x:Static mapModels:MapStyles.Standard}"
+             LightPreset="Night"
+             Show3dObjects="True" />
+```
+
+```csharp
+map.StyleUri = MapStyles.Standard;
+map.LightPreset = MapLightPreset.Dusk;     // Dawn, Day, Dusk, Night
+map.StyleTheme = MapStyleTheme.Monochrome; // Default, Faded, Monochrome
+map.Show3dObjects = false;
+```
+
+| Property | Values | Default |
+|---|---|---|
+| `LightPreset` | `Dawn`, `Day`, `Dusk`, `Night` | `Default` — keep the style's own |
+| `StyleTheme` | `Faded`, `Monochrome` | `Default` — keep the style's own |
+| `Show3dObjects` | `true` / `false` | null — keep the style's own |
+
+> **Standard styles only.** `MapStyles.Standard` and `MapStyles.StandardSatellite` carry the
+> `basemap` import these settings configure. The classic styles (`Streets`, `Outdoors`,
+> `Dark`, …) have no such import and ignore them — switching to a classic style silently
+> drops the configuration until you switch back.
+
+Leaving a property at its default omits it from the payload entirely, so the style keeps
+whatever it ships with rather than being reset to a library-chosen value.
+
+---
+
+## Gesture detail
+
+Beyond the four coarse switches (`ScrollEnabled`, `ZoomEnabled`, `RotateEnabled`,
+`PitchEnabled`) the individual zoom gestures can be turned off separately — useful when a
+gesture clashes with your own UI.
+
+```xml
+<map:MapView DoubleTapToZoomEnabled="False" QuickZoomEnabled="False" />
+```
+
+| Property | Gesture | Default |
+|---|---|---|
+| `DoubleTapToZoomEnabled` | double-tap in, two-finger-tap out | true |
+| `QuickZoomEnabled` | double-tap-and-drag, one finger | true |
+| `PinchToZoomEnabled` | two-finger pinch | true |
+| `SimultaneousRotateAndZoomEnabled` | rotating while pinching | true |
+
+> These **narrow** `ZoomEnabled`; they cannot re-enable it. With `ZoomEnabled="False"` the
+> map does not zoom regardless of the fine flags.
+
+All eight properties are applied in a single call to the native facade, so the order MAUI
+happens to set them in cannot leave the map in a half-configured state.
+
+---
+
+## Feature state (selection, hover)
+
+Feature state attaches transient flags to a feature — selected, hovered, visited — that
+layers read through the `["feature-state", …]` expression. The source data is never
+touched, so selection costs no re-upload and no second layer.
+
+```csharp
+// a layer that reacts to the state
+circles.Properties["circle-stroke-width"] = MapExpression.Raw(
+    "[\"case\",[\"boolean\",[\"feature-state\",\"selected\"],false],6,2]");
+
+// set it from a tap
+map.SetFeatureState("my-source", featureId, new Dictionary<string, object?> { ["selected"] = true });
+
+map.RemoveFeatureState("my-source", featureId, "selected");   // one key
+map.RemoveFeatureState("my-source", featureId);               // the whole state
+```
+
+> **The feature needs an `id`.** A GeoJSON feature without a top-level `"id"` cannot carry
+> state — the call is silently ignored. Add ids to your GeoJSON, or use a source that
+> generates them.
+
+Wrap the lookup in `["boolean", …, false]` as above: the state is undefined until you set
+it the first time, and `case` needs a defined boolean.
+
+For vector sources, pass the `sourceLayer` argument as well — the same layer name the
+layer itself uses.
+
+Together with [`QueryFeaturesAsync`](#finding-the-feature-under-a-tap) this is the
+tap → identify → highlight loop:
+
+```csharp
+var hits = await map.QueryFeaturesAsync(e.Latitude, e.Longitude, ["my-circles"]);
+if (hits is [{ Id: { } id }, ..])
+{
+    if (previous is { } old)
+        map.RemoveFeatureState("my-source", old, "selected");
+    map.SetFeatureState("my-source", id, new Dictionary<string, object?> { ["selected"] = true });
+    previous = id;
+}
+```
 
 ---
 

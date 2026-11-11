@@ -136,6 +136,31 @@ public partial class MainPage : ContentPage
 		// device offline (the iOS simulator has no airplane mode).
 		if (Environment.GetEnvironmentVariable("DEMO_LOADERROR") == "1")
 			Map.StyleUri = "mapbox://styles/mapbox/this-style-does-not-exist";
+		if (Environment.GetEnvironmentVariable("DEMO_EXPRESSIONS") == "1")
+		{
+			OnToggleExpressions(this, EventArgs.Empty);
+			CollapseSheet();
+		}
+		if (Environment.GetEnvironmentVariable("DEMO_LIGHT") == "1")
+		{
+			Map.StyleUri = MapStyles.Standard;
+			Map.LightPreset = MapLightPreset.Night;
+			ChipLight.Text = "Licht: Night";
+			PaintChip(ChipLight, true);
+			StatusLabel.Text = "Standard-Style, lightPreset = Night";
+			CollapseSheet();
+		}
+		if (Environment.GetEnvironmentVariable("DEMO_GESTURES") == "1")
+		{
+			OnToggleDoubleTapZoom(this, EventArgs.Empty);
+			CollapseSheet();
+		}
+		if (Environment.GetEnvironmentVariable("DEMO_QUERY") == "1")
+		{
+			OnToggleExpressions(this, EventArgs.Empty);
+			CollapseSheet();
+			_ = RunFeatureQueryDemoAsync();
+		}
 		if (Environment.GetEnvironmentVariable("DEMO_HEATMAP") == "1")
 		{
 			OnToggleHeatmap(this, EventArgs.Empty);
@@ -379,8 +404,11 @@ public partial class MainPage : ContentPage
 			[("see", "#2563EB"), ("berg", "#16A34A"), ("stadt", "#F59E0B")],
 			"#9CA3AF");
 		circles.Properties["circle-opacity"] = 0.85;
-		circles.Properties["circle-stroke-width"] = 2.0;
-		circles.Properties["circle-stroke-color"] = "#FFFFFF";
+		// Selection lives in feature state, so picking a circle never touches the source data.
+		circles.Properties["circle-stroke-width"] = MapExpression.Raw(
+			"[\"case\",[\"boolean\",[\"feature-state\",\"selected\"],false],6,2]");
+		circles.Properties["circle-stroke-color"] = MapExpression.Raw(
+			"[\"case\",[\"boolean\",[\"feature-state\",\"selected\"],false],\"#111827\",\"#FFFFFF\"]");
 		Map.AddLayer(circles);
 
 		var labels = new MapLayer
@@ -409,21 +437,21 @@ public partial class MainPage : ContentPage
 	{
 	  "type": "FeatureCollection",
 	  "features": [
-	    {"type":"Feature","properties":{"name":"HB","magnitude":6,"category":"stadt"},
+	    {"type":"Feature","id":1,"properties":{"name":"HB","magnitude":6,"category":"stadt"},
 	     "geometry":{"type":"Point","coordinates":[8.5417,47.3769]}},
-	    {"type":"Feature","properties":{"name":"Enge","magnitude":3,"category":"stadt"},
+	    {"type":"Feature","id":2,"properties":{"name":"Enge","magnitude":3,"category":"stadt"},
 	     "geometry":{"type":"Point","coordinates":[8.5310,47.3640]}},
-	    {"type":"Feature","properties":{"name":"Wollishofen","magnitude":2,"category":"see"},
+	    {"type":"Feature","id":3,"properties":{"name":"Wollishofen","magnitude":2,"category":"see"},
 	     "geometry":{"type":"Point","coordinates":[8.5360,47.3430]}},
-	    {"type":"Feature","properties":{"name":"Oerlikon","magnitude":4,"category":"stadt"},
+	    {"type":"Feature","id":4,"properties":{"name":"Oerlikon","magnitude":4,"category":"stadt"},
 	     "geometry":{"type":"Point","coordinates":[8.5500,47.4100]}},
-	    {"type":"Feature","properties":{"name":"Höngg","magnitude":2,"category":"berg"},
+	    {"type":"Feature","id":5,"properties":{"name":"Höngg","magnitude":2,"category":"berg"},
 	     "geometry":{"type":"Point","coordinates":[8.4970,47.4010]}},
-	    {"type":"Feature","properties":{"name":"Riesbach","magnitude":5,"category":"see"},
+	    {"type":"Feature","id":6,"properties":{"name":"Riesbach","magnitude":5,"category":"see"},
 	     "geometry":{"type":"Point","coordinates":[8.5560,47.3560]}},
-	    {"type":"Feature","properties":{"name":"Affoltern","magnitude":1,"category":"berg"},
+	    {"type":"Feature","id":7,"properties":{"name":"Affoltern","magnitude":1,"category":"berg"},
 	     "geometry":{"type":"Point","coordinates":[8.5020,47.4210]}},
-	    {"type":"Feature","properties":{"name":"Zürichberg","magnitude":3,"category":"berg"},
+	    {"type":"Feature","id":8,"properties":{"name":"Zürichberg","magnitude":3,"category":"berg"},
 	     "geometry":{"type":"Point","coordinates":[8.5760,47.3830]}}
 	  ]
 	}
@@ -632,6 +660,85 @@ public partial class MainPage : ContentPage
 		StatusLabel.Text = "Fill-Extrusion: Höhe aus den Gebäudedaten";
 	}
 
+	/// <summary>
+	/// Queries the Oerlikon circle by coordinate instead of by tap — the same call
+	/// OnMapClicked makes, but reproducible from a launch hook.
+	/// </summary>
+	private async Task RunFeatureQueryDemoAsync()
+	{
+		await Task.Delay(4000);
+
+		var hits = await Map.QueryFeaturesAsync(47.4100, 8.5500, ["expr-circles"]);
+		if (hits.Count == 0)
+		{
+			StatusLabel.Text = "Query: kein Feature gefunden";
+			return;
+		}
+
+		var hit = hits[0];
+		var name = hit.Properties.TryGetValue("name", out var value) ? value : null;
+		SelectExpressionFeature(hit);
+		StatusLabel.Text = $"Query: '{name}' in '{hit.LayerId}' (id {hit.Id}) — selektiert";
+	}
+
+	/// <summary>Moves the "selected" feature state to the tapped circle.</summary>
+	private string? selectedFeatureId;
+
+	private void SelectExpressionFeature(MapQueriedFeature hit)
+	{
+		if (hit.LayerId != "expr-circles" || hit.Id is not { Length: > 0 } id)
+			return;
+
+		if (selectedFeatureId is { } previous)
+			Map.RemoveFeatureState("expr-source", previous, "selected");
+
+		Map.SetFeatureState("expr-source", id, new Dictionary<string, object?> { ["selected"] = true });
+		selectedFeatureId = id;
+	}
+
+	/// <summary>
+	/// Turns the double-tap zoom off while leaving pinch-to-zoom alone — the fine gesture
+	/// flags narrow ZoomEnabled instead of replacing it.
+	/// </summary>
+	private void OnToggleDoubleTapZoom(object? sender, EventArgs e)
+	{
+		Map.DoubleTapToZoomEnabled = !Map.DoubleTapToZoomEnabled;
+		PaintChip(ChipDoubleTap, !Map.DoubleTapToZoomEnabled);
+		ChipDoubleTap.Text = $"Doppeltipp-Zoom: {(Map.DoubleTapToZoomEnabled ? "an" : "aus")}";
+
+		var zoom = Map.CurrentCamera?.Zoom ?? 0;
+		StatusLabel.Text = Map.DoubleTapToZoomEnabled
+			? $"Doppeltipp-Zoom an — Zoom {zoom:F1}"
+			: $"Doppeltipp-Zoom aus — Zoom {zoom:F1}, Pinch bleibt aktiv";
+	}
+
+	/// <summary>
+	/// Cycles the Standard style's lightPreset. The style is switched to Standard first —
+	/// the classic styles have no basemap import and ignore the configuration.
+	/// </summary>
+	private static readonly MapLightPreset[] LightPresets =
+	[
+		MapLightPreset.Dawn, MapLightPreset.Day, MapLightPreset.Dusk, MapLightPreset.Night,
+	];
+
+	private int lightIndex = -1;
+
+	private void OnCycleLightPreset(object? sender, EventArgs e)
+	{
+		if (Map.StyleUri != MapStyles.Standard)
+		{
+			Map.StyleUri = MapStyles.Standard;
+			foreach (var candidate in new[] { ChipOutdoor, ChipStreets, ChipSatellite, ChipDark })
+				PaintChip(candidate, false);
+		}
+
+		lightIndex = (lightIndex + 1) % LightPresets.Length;
+		Map.LightPreset = LightPresets[lightIndex];
+		PaintChip(ChipLight, true);
+		ChipLight.Text = $"Licht: {Map.LightPreset}";
+		StatusLabel.Text = $"Standard-Style, lightPreset = {Map.LightPreset}";
+	}
+
 	private void OnPolylineClicked(object? sender, PolylineClickedEventArgs e)
 	{
 		StatusLabel.Text = $"Polyline: {e.Polyline.Title ?? e.Polyline.Id}";
@@ -642,8 +749,23 @@ public partial class MainPage : ContentPage
 		StatusLabel.Text = $"Polygon: {e.Polygon.Title ?? e.Polygon.Id}";
 	}
 
-	private void OnMapClicked(object? sender, MapClickedEventArgs e)
+	private async void OnMapClicked(object? sender, MapClickedEventArgs e)
 	{
+		// Which feature was hit? Only our own demo layers are queried — without the filter
+		// the basemap's own roads and labels would answer first.
+		var hits = await Map.QueryFeaturesAsync(e.Latitude, e.Longitude,
+			["expr-circles", "buildings-layer", "demo-circles", "demo-route"]);
+		if (hits.Count > 0)
+		{
+			var hit = hits[0];
+			SelectExpressionFeature(hit);
+			var detail = hit.Properties.TryGetValue("name", out var name) ? $" '{name}'"
+				: hit.Properties.TryGetValue("height", out var height) ? $" {height} m hoch"
+				: string.Empty;
+			StatusLabel.Text = $"Feature in '{hit.LayerId}'{detail} ({hit.Properties.Count} Properties)";
+			return;
+		}
+
 		var elevation = Map.QueryTerrainElevation(e.Latitude, e.Longitude);
 		StatusLabel.Text = elevation is { } meters
 			? $"Klick: {e.Latitude:F5}, {e.Longitude:F5} · {meters:F0} m ü. M."
