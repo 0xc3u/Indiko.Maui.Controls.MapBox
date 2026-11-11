@@ -252,6 +252,10 @@ public class IKMapView: UIView
 
         mapView.mapboxMap.onStyleLoaded.observe { [weak self] _ in
             guard let self, !self.destroyed else { return }
+            for entry in self.tileSources
+            {
+                self.applyTileSource(entry.config)
+            }
             for (id, geoJson) in self.geoJsonSources
             {
                 self.applyGeoJsonSource(id: id, geoJson: geoJson)
@@ -552,6 +556,61 @@ public class IKMapView: UIView
     // MARK: - GeoJSON sources & layers
 
     /// Adds a GeoJSON source or replaces the data of an existing one.
+    /// Adds or replaces a raster, vector, raster-dem or image source. JSON:
+    /// {"id","type","url"|"tiles",[minZoom],[maxZoom],[tileSize],[attribution],
+    ///  [coordinates] ([[lng,lat] x4], image sources)}
+    /// The source is handed to Mapbox as raw style-spec JSON, so nothing has to be
+    /// modelled per property. Re-applied after every style load.
+    @objc(addSourceJson:)
+    public func addSource(json: String)
+    {
+        if destroyed { return }
+
+        guard let data = json.data(using: .utf8),
+              let config = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let id = config["id"] as? String, !id.isEmpty
+        else { return }
+
+        tileSources.removeAll { $0.id == id }
+        tileSources.append((id, config))
+        applyTileSource(config)
+    }
+
+    @objc(removeSource:)
+    public func removeSource(id: String)
+    {
+        if destroyed { return }
+
+        tileSources.removeAll { $0.id == id }
+        try? mapView.mapboxMap.removeSource(withId: id)
+    }
+
+    private var tileSources: [(id: String, config: [String: Any])] = []
+
+    private func applyTileSource(_ config: [String: Any])
+    {
+        guard let id = config["id"] as? String, let type = config["type"] as? String else { return }
+
+        if mapView.mapboxMap.sourceExists(withId: id)
+        {
+            try? mapView.mapboxMap.removeSource(withId: id)
+        }
+
+        var spec: [String: Any] = ["type": type]
+        if let url = config["url"] as? String, !url.isEmpty { spec["url"] = url }
+        if let tiles = config["tiles"] as? [Any] { spec["tiles"] = tiles }
+        if let minZoom = config["minZoom"] { spec["minzoom"] = minZoom }
+        if let maxZoom = config["maxZoom"] { spec["maxzoom"] = maxZoom }
+        if let tileSize = config["tileSize"] { spec["tileSize"] = tileSize }
+        if let attribution = config["attribution"] as? String, !attribution.isEmpty
+        {
+            spec["attribution"] = attribution
+        }
+        if let coordinates = config["coordinates"] as? [Any] { spec["coordinates"] = coordinates }
+
+        try? mapView.mapboxMap.addSource(withId: id, properties: spec)
+    }
+
     @objc(addGeoJsonSource:geoJson:)
     public func addGeoJsonSource(id: String, geoJson: String)
     {
@@ -634,28 +693,41 @@ public class IKMapView: UIView
         let color = StyleColor(UIColor(hex: config["color"] as? String ?? "") ?? .systemBlue)
         let opacity = config["opacity"] as? Double ?? 1.0
 
+        // Vector sources need the tileset's internal layer name; every other kind ignores it.
+        let sourceLayer = (config["sourceLayer"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+
         let layer: Layer
         switch type
         {
         case "fill":
             var fill = FillLayer(id: id, source: sourceId)
+            fill.sourceLayer = sourceLayer
             fill.fillColor = .constant(color)
             fill.fillOpacity = .constant(opacity)
             layer = fill
         case "line":
             var line = LineLayer(id: id, source: sourceId)
+            line.sourceLayer = sourceLayer
             line.lineColor = .constant(color)
             line.lineOpacity = .constant(opacity)
             line.lineWidth = .constant(config["lineWidth"] as? Double ?? 3.0)
             layer = line
         case "circle":
             var circle = CircleLayer(id: id, source: sourceId)
+            circle.sourceLayer = sourceLayer
             circle.circleColor = .constant(color)
             circle.circleOpacity = .constant(opacity)
             circle.circleRadius = .constant(config["circleRadius"] as? Double ?? 6.0)
             layer = circle
         case "symbol":
-            layer = buildSymbolLayer(id: id, sourceId: sourceId, config: config)
+            var symbol = buildSymbolLayer(id: id, sourceId: sourceId, config: config)
+            symbol.sourceLayer = sourceLayer
+            layer = symbol
+        // Raster and hillshade carry no typed options — style them via "properties".
+        case "raster":
+            layer = RasterLayer(id: id, source: sourceId)
+        case "hillshade":
+            layer = HillshadeLayer(id: id, source: sourceId)
         default:
             return
         }

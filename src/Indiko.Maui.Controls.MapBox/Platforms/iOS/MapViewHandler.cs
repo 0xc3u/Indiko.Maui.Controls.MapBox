@@ -60,6 +60,8 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
         {
             [nameof(MapView.FlyTo)] = MapFlyTo,
             [nameof(MapView.FitBounds)] = MapFitBounds,
+            [nameof(MapView.AddSource)] = MapAddSource,
+            [nameof(MapView.RemoveSource)] = MapRemoveSource,
             [nameof(MapView.AddGeoJsonSource)] = MapAddGeoJsonSource,
             [nameof(MapView.RemoveGeoJsonSource)] = MapRemoveGeoJsonSource,
             [nameof(MapView.AddLayer)] = MapAddLayer,
@@ -242,6 +244,18 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
         handler.PlatformView.FlyTo(
             request.Camera.Latitude, request.Camera.Longitude, request.Camera.Zoom,
             request.Camera.Bearing, request.Camera.Pitch, request.DurationMs);
+    }
+
+    private static void MapAddSource(MapViewHandler handler, MapView view, object? args)
+    {
+        if (args is MapSource source)
+            handler.PlatformView.AddSourceJson(AnnotationSerializer.ToSourceJson(source));
+    }
+
+    private static void MapRemoveSource(MapViewHandler handler, MapView view, object? args)
+    {
+        if (args is string sourceId)
+            handler.PlatformView.RemoveSource(sourceId);
     }
 
     private static void MapAddGeoJsonSource(MapViewHandler handler, MapView view, object? args)

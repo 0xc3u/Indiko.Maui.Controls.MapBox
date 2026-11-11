@@ -33,6 +33,7 @@ on the UI thread; command parameters carry the same `EventArgs` object the event
 - 📐 Ornament placement — anchor compass, scale bar, logo and attribution to any corner
 - 🪟 `CameraPadding` — keep the camera anchor out from behind a bottom sheet or tab bar
 - 🌍 `MapLanguage` — translate the style's place labels into any supported language
+- 🗺️ Raster, vector and image sources — bring your own tile server alongside the Mapbox basemap
 - 🎨 Data-driven styling — `MapExpression` drives any style-spec layer property from feature data or zoom
 - ⚠️ `MapLoadError` reports style/source/tile/sprite/glyph load failures instead of failing silently
 - 🧭 Compass on rotation, scale bar, user-location puck, per-gesture configuration
@@ -101,8 +102,8 @@ code, and the reason .NET Android no longer reports `XA0141` for this package.
 | GeoJSON sources (add / live-update / remove) | ✅ | `AddGeoJsonSource` (add-or-update semantics) |
 | Fill / line / circle layers | ✅ | `AddLayer(MapLayer)` with color, opacity, width, radius, insert position |
 | Symbol layers (data-driven labels + icons) | ✅ | `MapLayerType.Symbol`: `TextField` property labels, halo, icon bytes, overlap |
-| Heatmap, fill-extrusion, raster, hillshade, sky layers | ❌ | |
-| Vector / raster / image sources | ❌ | GeoJSON only |
+| Heatmap, fill-extrusion, raster, hillshade, sky layers | 🔶 | raster and hillshade via `MapLayerType`; heatmap, fill-extrusion and sky still missing |
+| Vector / raster / image sources | ✅ | `MapSource` + `AddSource` — TileJSON or XYZ templates, `SourceLayer` for vector |
 | Expressions | ✅ | `MapExpression` + `MapLayer.Properties` — any style-spec property, data- or zoom-driven |
 | Clustering | ✅ | `AddClusteredSource` — managed layers, counts, tap-to-expand zoom |
 | **Gestures & interaction** | | |
@@ -794,6 +795,88 @@ meters. The result is independent of `TerrainExaggeration`.
 > if that cache entry is lost while the region survives (clearing the app's ambient cache):
 > the DEM source then reports `Online connectivity is disabled` and `QueryTerrainElevation`
 > returns `null` until the device has been online once.
+
+---
+
+## Raster, vector and image sources
+
+Besides GeoJSON, the map can read tiles from any provider — official cartography, your own
+tile server, a vector tileset. A source renders nothing on its own: add a `MapLayer` that
+reads it.
+
+**Raster tiles** (a third-party XYZ tile server):
+
+```csharp
+var swisstopo = new MapSource
+{
+    Id = "swisstopo",
+    Type = MapSourceType.Raster,
+    TileSize = 256,                     // 256 for most providers, 512 for Mapbox' own
+    MaxZoom = 18,
+    Attribution = "© swisstopo",        // most providers require this
+};
+swisstopo.Tiles.Add("https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.pixelkarte-farbe/default/current/3857/{z}/{x}/{y}.jpeg");
+map.AddSource(swisstopo);
+
+var layer = new MapLayer { Id = "swisstopo-layer", SourceId = "swisstopo", Type = MapLayerType.Raster };
+layer.Properties["raster-opacity"] = 0.9;
+map.AddLayer(layer);
+```
+
+**Vector tiles** — these need `SourceLayer`, the layer *inside* the tileset:
+
+```csharp
+map.AddSource(new MapSource
+{
+    Id = "mapbox-streets",
+    Type = MapSourceType.Vector,
+    Url = "mapbox://mapbox.mapbox-streets-v8",   // TileJSON, instead of Tiles
+});
+
+var buildings = new MapLayer
+{
+    Id = "buildings",
+    SourceId = "mapbox-streets",
+    SourceLayer = "building",                    // required for vector sources
+    Type = MapLayerType.Fill,
+};
+buildings.Properties["fill-color"] = "#DC2626";
+map.AddLayer(buildings);
+```
+
+**Elevation tiles** work the same way with `MapSourceType.RasterDem` and a
+`MapLayerType.Hillshade` layer. **Image sources** pin one hosted image to four corners:
+
+```csharp
+var overlay = new MapSource { Id = "plan", Type = MapSourceType.Image, Url = "https://example.com/plan.png" };
+// clockwise from the top-left corner
+overlay.Coordinates.Add((47.390, 8.520));
+overlay.Coordinates.Add((47.390, 8.560));
+overlay.Coordinates.Add((47.370, 8.560));
+overlay.Coordinates.Add((47.370, 8.520));
+map.AddSource(overlay);
+map.AddLayer(new MapLayer { Id = "plan-layer", SourceId = "plan", Type = MapLayerType.Raster });
+```
+
+| Property | Applies to | Notes |
+|---|---|---|
+| `Url` | all | TileJSON URL, `mapbox://…`, or the image URL for image sources |
+| `Tiles` | raster, vector, raster-dem | XYZ templates with `{z}`/`{x}`/`{y}`; use instead of `Url` |
+| `TileSize` | raster, raster-dem | wrong values render the map at half or double scale |
+| `MinZoom` / `MaxZoom` | tile sources | zooms past `MaxZoom` reuse (overzoom) the deepest tiles |
+| `Attribution` | all | shown in the attribution dialog |
+| `Coordinates` | image | four corners, clockwise from top-left |
+
+Notes:
+
+- `AddSource` replaces a source with the same id, so calling it again swaps the data.
+- Sources survive style switches — the facade re-applies them after every style load,
+  together with the layers that read them.
+- A tile server that is unreachable or returns errors raises
+  [`MapLoadError`](#load-errors) with `Type == MapLoadErrorType.Tile`, which is the quickest way
+  to spot a wrong template or a missing API key.
+- Image sources take a **URL**; raw image bytes are not supported, because Mapbox v11 has no
+  cross-platform API to replace an image source's bitmap.
 
 ---
 

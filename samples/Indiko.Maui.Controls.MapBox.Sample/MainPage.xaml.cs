@@ -411,6 +411,91 @@ public partial class MainPage : ContentPage
 	}
 	""";
 
+	/// <summary>
+	/// A third-party raster tile server (swisstopo) drawn over the basemap — the usual
+	/// reason to add a source: official maps a style does not ship.
+	/// </summary>
+	private bool rasterSourceActive;
+
+	private void OnToggleRasterSource(object? sender, EventArgs e)
+	{
+		rasterSourceActive = !rasterSourceActive;
+		PaintChip(ChipSwisstopo, rasterSourceActive);
+
+		if (!rasterSourceActive)
+		{
+			Map.RemoveLayer("swisstopo-layer");
+			Map.RemoveSource("swisstopo");
+			StatusLabel.Text = "Swisstopo-Raster entfernt";
+			return;
+		}
+
+		var source = new MapSource
+		{
+			Id = "swisstopo",
+			Type = MapSourceType.Raster,
+			TileSize = 256,
+			MaxZoom = 18,
+			Attribution = "\u00a9 swisstopo",
+		};
+		source.Tiles.Add("https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.pixelkarte-farbe/" +
+			"default/current/3857/{z}/{x}/{y}.jpeg");
+		Map.AddSource(source);
+
+		var layer = new MapLayer
+		{
+			Id = "swisstopo-layer",
+			SourceId = "swisstopo",
+			Type = MapLayerType.Raster,
+		};
+		layer.Properties["raster-opacity"] = 0.9;
+		Map.AddLayer(layer);
+
+		Map.FlyTo(new MapCameraPosition(46.80, 8.22, 8), 1200);
+		StatusLabel.Text = "Swisstopo-Raster-Source über dem Basemap";
+	}
+
+	/// <summary>
+	/// Mapbox' own vector tileset. Vector sources need SourceLayer — the layer inside the
+	/// tileset — which is what separates them from raster and GeoJSON.
+	/// </summary>
+	private bool vectorSourceActive;
+
+	private void OnToggleVectorSource(object? sender, EventArgs e)
+	{
+		vectorSourceActive = !vectorSourceActive;
+		PaintChip(ChipVectorTiles, vectorSourceActive);
+
+		if (!vectorSourceActive)
+		{
+			Map.RemoveLayer("buildings-layer");
+			Map.RemoveSource("mapbox-streets");
+			StatusLabel.Text = "Vector-Source entfernt";
+			return;
+		}
+
+		Map.AddSource(new MapSource
+		{
+			Id = "mapbox-streets",
+			Type = MapSourceType.Vector,
+			Url = "mapbox://mapbox.mapbox-streets-v8",
+		});
+
+		var buildings = new MapLayer
+		{
+			Id = "buildings-layer",
+			SourceId = "mapbox-streets",
+			SourceLayer = "building",
+			Type = MapLayerType.Fill,
+		};
+		buildings.Properties["fill-color"] = "#DC2626";
+		buildings.Properties["fill-opacity"] = 0.55;
+		Map.AddLayer(buildings);
+
+		Map.FlyTo(new MapCameraPosition(47.3769, 8.5400, 15.5), 1200);
+		StatusLabel.Text = "Vector-Source: Mapbox Streets, Layer 'building'";
+	}
+
 	private void OnPolylineClicked(object? sender, PolylineClickedEventArgs e)
 	{
 		StatusLabel.Text = $"Polyline: {e.Polyline.Title ?? e.Polyline.Id}";

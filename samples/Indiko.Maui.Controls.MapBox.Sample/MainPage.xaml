@@ -167,6 +167,10 @@
                         <Button x:Name="ChipLanguage" Text="Sprache: Standard" Style="{StaticResource Chip}" Clicked="OnCycleLanguage" />
                         <Button x:Name="ChipExpressions" Text="Expressions" Style="{StaticResource Chip}" Clicked="OnToggleExpressions" />
                     </HorizontalStackLayout>
+                    <HorizontalStackLayout Spacing="8">
+                        <Button x:Name="ChipSwisstopo" Text="Swisstopo" Style="{StaticResource Chip}" Clicked="OnToggleRasterSource" />
+                        <Button x:Name="ChipVectorTiles" Text="Vector-Tiles" Style="{StaticResource Chip}" Clicked="OnToggleVectorSource" />
+                    </HorizontalStackLayout>
 
                     <Label Text="TERRAIN &amp; OFFLINE" Style="{StaticResource SectionHeader}" />
                     <HorizontalStackLayout Spacing="8">
