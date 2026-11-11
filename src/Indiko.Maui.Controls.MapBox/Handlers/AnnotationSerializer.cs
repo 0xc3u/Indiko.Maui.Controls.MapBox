@@ -166,6 +166,8 @@ internal static class AnnotationSerializer
             MapLayerType.Symbol => "symbol",
             MapLayerType.Raster => "raster",
             MapLayerType.Hillshade => "hillshade",
+            MapLayerType.Heatmap => "heatmap",
+            MapLayerType.FillExtrusion => "fill-extrusion",
             _ => "fill",
         }));
         builder.Append(",\"color\":").Append(Quote(layer.Color));

@@ -723,11 +723,19 @@ public class IKMapView: UIView
             var symbol = buildSymbolLayer(id: id, sourceId: sourceId, config: config)
             symbol.sourceLayer = sourceLayer
             layer = symbol
-        // Raster and hillshade carry no typed options — style them via "properties".
+        // These carry no typed options — style them via "properties".
         case "raster":
             layer = RasterLayer(id: id, source: sourceId)
         case "hillshade":
             layer = HillshadeLayer(id: id, source: sourceId)
+        case "heatmap":
+            var heatmap = HeatmapLayer(id: id, source: sourceId)
+            heatmap.sourceLayer = sourceLayer
+            layer = heatmap
+        case "fill-extrusion":
+            var extrusion = FillExtrusionLayer(id: id, source: sourceId)
+            extrusion.sourceLayer = sourceLayer
+            layer = extrusion
         default:
             return
         }

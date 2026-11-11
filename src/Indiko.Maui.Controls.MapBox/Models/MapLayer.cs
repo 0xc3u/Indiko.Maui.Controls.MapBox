@@ -12,6 +12,18 @@ public enum MapLayerType
 
     /// <summary>Shades a <see cref="MapSourceType.RasterDem"/> source as relief.</summary>
     Hillshade,
+
+    /// <summary>
+    /// Density surface over point features. Weight it per feature with
+    /// <c>"heatmap-weight"</c>, otherwise every point counts the same.
+    /// </summary>
+    Heatmap,
+
+    /// <summary>
+    /// Extrudes polygons into 3D. Needs <c>"fill-extrusion-height"</c> — usually read from
+    /// the feature — and a pitched camera to be visible as anything but a flat fill.
+    /// </summary>
+    FillExtrusion,
 }
 
 /// <summary>

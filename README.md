@@ -33,6 +33,7 @@ on the UI thread; command parameters carry the same `EventArgs` object the event
 - 📐 Ornament placement — anchor compass, scale bar, logo and attribution to any corner
 - 🪟 `CameraPadding` — keep the camera anchor out from behind a bottom sheet or tab bar
 - 🌍 `MapLanguage` — translate the style's place labels into any supported language
+- 🔥 Heatmaps and 3D fill extrusions, driven by your feature data
 - 🗺️ Raster, vector and image sources — bring your own tile server alongside the Mapbox basemap
 - 🎨 Data-driven styling — `MapExpression` drives any style-spec layer property from feature data or zoom
 - ⚠️ `MapLoadError` reports style/source/tile/sprite/glyph load failures instead of failing silently
@@ -102,7 +103,8 @@ code, and the reason .NET Android no longer reports `XA0141` for this package.
 | GeoJSON sources (add / live-update / remove) | ✅ | `AddGeoJsonSource` (add-or-update semantics) |
 | Fill / line / circle layers | ✅ | `AddLayer(MapLayer)` with color, opacity, width, radius, insert position |
 | Symbol layers (data-driven labels + icons) | ✅ | `MapLayerType.Symbol`: `TextField` property labels, halo, icon bytes, overlap |
-| Heatmap, fill-extrusion, raster, hillshade, sky layers | 🔶 | raster and hillshade via `MapLayerType`; heatmap, fill-extrusion and sky still missing |
+| Heatmap, fill-extrusion, raster, hillshade layers | ✅ | `MapLayerType`, styled through `MapLayer.Properties` |
+| Sky layer | ❌ | the terrain feature adds one internally |
 | Vector / raster / image sources | ✅ | `MapSource` + `AddSource` — TileJSON or XYZ templates, `SourceLayer` for vector |
 | Expressions | ✅ | `MapExpression` + `MapLayer.Properties` — any style-spec property, data- or zoom-driven |
 | Clustering | ✅ | `AddClusteredSource` — managed layers, counts, tap-to-expand zoom |
@@ -795,6 +797,62 @@ meters. The result is independent of `TerrainExaggeration`.
 > if that cache entry is lost while the region survives (clearing the app's ambient cache):
 > the DEM source then reports `Online connectivity is disabled` and `QueryTerrainElevation`
 > returns `null` until the device has been online once.
+
+---
+
+## Heatmaps and 3D extrusions
+
+Two layer types that only make sense with [expressions](#data-driven-styling-expressions),
+because both read their shape from the data.
+
+**Heatmap** — a density surface over point features:
+
+```csharp
+var heat = new MapLayer { Id = "heat", SourceId = "points", Type = MapLayerType.Heatmap };
+
+// how much each point counts
+heat.Properties["heatmap-weight"] = MapExpression.Interpolate(
+    MapExpression.Get("magnitude"), (1, 0.2), (5, 1.0));
+
+// radius and intensity usually follow the zoom level
+heat.Properties["heatmap-radius"] = MapExpression.Interpolate(
+    MapExpression.Zoom(), (9, 12.0), (15, 36.0));
+
+// the colour ramp runs over heatmap-density, not over your data
+heat.Properties["heatmap-color"] = MapExpression.Raw(
+    "[\"interpolate\",[\"linear\"],[\"heatmap-density\"]," +
+    "0,\"rgba(37,99,235,0)\",0.4,\"#22C55E\",0.7,\"#FACC15\",1,\"#DC2626\"]");
+
+map.AddLayer(heat);
+```
+
+The first stop of `heatmap-color` must be fully transparent, otherwise the whole map is
+tinted instead of just the dense areas.
+
+**Fill extrusion** — polygons pushed up into 3D:
+
+```csharp
+// not every building carries a height
+const string height = "[\"coalesce\",[\"get\",\"height\"],12]";
+
+var buildings = new MapLayer
+{
+    Id = "buildings", SourceId = "mapbox-streets",
+    SourceLayer = "building", Type = MapLayerType.FillExtrusion,
+};
+buildings.Properties["fill-extrusion-height"] = MapExpression.Raw(height);
+buildings.Properties["fill-extrusion-base"] = MapExpression.Raw("[\"coalesce\",[\"get\",\"min_height\"],0]");
+buildings.Properties["fill-extrusion-color"] = MapExpression.Interpolate(
+    MapExpression.Raw(height), (0, "#CBD5E1"), (25, "#F59E0B"), (60, "#DC2626"));
+map.AddLayer(buildings);
+
+// without pitch an extrusion is indistinguishable from a flat fill
+map.FlyTo(new MapCameraPosition(47.3735, 8.5400, 16, bearing: 20, pitch: 60), 1500);
+```
+
+Both layer types carry no typed properties — everything goes through `Properties`, which is
+also how you reach the rest of the style spec (`heatmap-intensity`,
+`fill-extrusion-vertical-gradient`, …).
 
 ---
 

@@ -171,6 +171,10 @@
                         <Button x:Name="ChipSwisstopo" Text="Swisstopo" Style="{StaticResource Chip}" Clicked="OnToggleRasterSource" />
                         <Button x:Name="ChipVectorTiles" Text="Vector-Tiles" Style="{StaticResource Chip}" Clicked="OnToggleVectorSource" />
                     </HorizontalStackLayout>
+                    <HorizontalStackLayout Spacing="8">
+                        <Button x:Name="ChipHeatmap" Text="Heatmap" Style="{StaticResource Chip}" Clicked="OnToggleHeatmap" />
+                        <Button x:Name="ChipExtrusion" Text="3D-Gebäude" Style="{StaticResource Chip}" Clicked="OnToggleExtrusion" />
+                    </HorizontalStackLayout>
 
                     <Label Text="TERRAIN &amp; OFFLINE" Style="{StaticResource SectionHeader}" />
                     <HorizontalStackLayout Spacing="8">

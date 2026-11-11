@@ -1,3 +1,4 @@
+using System.Globalization;
 using Indiko.Maui.Controls.MapBox.Models;
 
 namespace Indiko.Maui.Controls.MapBox.Sample;
@@ -29,6 +30,13 @@ public partial class MainPage : ContentPage
 		sheetCollapsed = !sheetCollapsed;
 		SheetChevron.Text = sheetCollapsed ? "⌃" : "⌄";
 		SheetBody.IsVisible = !sheetCollapsed;
+	}
+
+	/// <summary>Collapses the sheet so a launch-hook demo is actually visible.</summary>
+	private void CollapseSheet()
+	{
+		if (!sheetCollapsed)
+			OnSheetHandleTapped(this, new TappedEventArgs(null));
 	}
 
 	private void OnStyleChipClicked(object? sender, EventArgs e)
@@ -128,6 +136,16 @@ public partial class MainPage : ContentPage
 		// device offline (the iOS simulator has no airplane mode).
 		if (Environment.GetEnvironmentVariable("DEMO_LOADERROR") == "1")
 			Map.StyleUri = "mapbox://styles/mapbox/this-style-does-not-exist";
+		if (Environment.GetEnvironmentVariable("DEMO_HEATMAP") == "1")
+		{
+			OnToggleHeatmap(this, EventArgs.Empty);
+			CollapseSheet();
+		}
+		if (Environment.GetEnvironmentVariable("DEMO_EXTRUSION") == "1")
+		{
+			OnToggleExtrusion(this, EventArgs.Empty);
+			CollapseSheet();
+		}
 		if (Environment.GetEnvironmentVariable("DEMO_AUTOFIT") == "1")
 			OnToggleAutoFit(this, EventArgs.Empty);
 		if (Environment.GetEnvironmentVariable("DEMO_FOLLOW") == "1")
@@ -494,6 +512,124 @@ public partial class MainPage : ContentPage
 
 		Map.FlyTo(new MapCameraPosition(47.3769, 8.5400, 15.5), 1200);
 		StatusLabel.Text = "Vector-Source: Mapbox Streets, Layer 'building'";
+	}
+
+	/// <summary>
+	/// A heatmap needs many points to look like anything, so this generates a deterministic
+	/// cloud around three hotspots. Weight, intensity and radius are all expressions —
+	/// weight from the feature, the other two from the zoom level.
+	/// </summary>
+	private bool heatmapActive;
+
+	private void OnToggleHeatmap(object? sender, EventArgs e)
+	{
+		heatmapActive = !heatmapActive;
+		PaintChip(ChipHeatmap, heatmapActive);
+
+		if (!heatmapActive)
+		{
+			Map.RemoveLayer("heat-layer");
+			Map.RemoveGeoJsonSource("heat-source");
+			StatusLabel.Text = "Heatmap entfernt";
+			return;
+		}
+
+		Map.AddGeoJsonSource("heat-source", BuildHeatmapGeoJson());
+
+		var heat = new MapLayer { Id = "heat-layer", SourceId = "heat-source", Type = MapLayerType.Heatmap };
+		heat.Properties["heatmap-weight"] = MapExpression.Interpolate(
+			MapExpression.Get("magnitude"), (1, 0.2), (5, 1.0));
+		heat.Properties["heatmap-intensity"] = MapExpression.Interpolate(
+			MapExpression.Zoom(), (9, 1.0), (15, 3.0));
+		heat.Properties["heatmap-radius"] = MapExpression.Interpolate(
+			MapExpression.Zoom(), (9, 12.0), (15, 36.0));
+		heat.Properties["heatmap-color"] = MapExpression.Raw(
+			"[\"interpolate\",[\"linear\"],[\"heatmap-density\"]," +
+			"0,\"rgba(37,99,235,0)\",0.2,\"#2563EB\",0.4,\"#22C55E\"," +
+			"0.6,\"#FACC15\",0.8,\"#F97316\",1,\"#DC2626\"]");
+		heat.Properties["heatmap-opacity"] = 0.85;
+		Map.AddLayer(heat);
+
+		Map.FlyTo(new MapCameraPosition(47.3769, 8.5400, 11.5), 1200);
+		StatusLabel.Text = "Heatmap: Gewicht aus magnitude, Radius aus dem Zoom";
+	}
+
+	/// <summary>Deterministic point cloud around three hotspots, with a magnitude each.</summary>
+	private static string BuildHeatmapGeoJson()
+	{
+		(double Lat, double Lon, int Count)[] hotspots =
+		[
+			(47.3769, 8.5417, 70),
+			(47.4100, 8.5500, 45),
+			(47.3560, 8.5560, 35),
+		];
+
+		var random = new Random(42);
+		var features = new List<string>();
+		foreach (var spot in hotspots)
+		{
+			for (var index = 0; index < spot.Count; index++)
+			{
+				// Gaussian-ish spread: the sum of two uniforms clusters towards the centre.
+				var lat = spot.Lat + (random.NextDouble() + random.NextDouble() - 1) * 0.020;
+				var lon = spot.Lon + (random.NextDouble() + random.NextDouble() - 1) * 0.030;
+				var magnitude = random.Next(1, 6);
+				features.Add(
+					$"{{\"type\":\"Feature\",\"properties\":{{\"magnitude\":{magnitude}}}," +
+					$"\"geometry\":{{\"type\":\"Point\",\"coordinates\":[{lon.ToString(CultureInfo.InvariantCulture)}," +
+					$"{lat.ToString(CultureInfo.InvariantCulture)}]}}}}");
+			}
+		}
+
+		return $"{{\"type\":\"FeatureCollection\",\"features\":[{string.Join(",", features)}]}}";
+	}
+
+	/// <summary>
+	/// Extrudes Mapbox Streets' buildings to their real height. Height and base come from
+	/// the feature, the colour is interpolated over the height — and the camera is pitched,
+	/// because without pitch an extrusion looks like a plain fill.
+	/// </summary>
+	private bool extrusionActive;
+
+	private void OnToggleExtrusion(object? sender, EventArgs e)
+	{
+		extrusionActive = !extrusionActive;
+		PaintChip(ChipExtrusion, extrusionActive);
+
+		if (!extrusionActive)
+		{
+			Map.RemoveLayer("extrusion-layer");
+			Map.RemoveSource("extrusion-streets");
+			StatusLabel.Text = "Fill-Extrusion entfernt";
+			return;
+		}
+
+		Map.AddSource(new MapSource
+		{
+			Id = "extrusion-streets",
+			Type = MapSourceType.Vector,
+			Url = "mapbox://mapbox.mapbox-streets-v8",
+		});
+
+		// Not every building carries a height, so fall back to a storey-ish default.
+		const string height = "[\"coalesce\",[\"get\",\"height\"],12]";
+
+		var extrusion = new MapLayer
+		{
+			Id = "extrusion-layer",
+			SourceId = "extrusion-streets",
+			SourceLayer = "building",
+			Type = MapLayerType.FillExtrusion,
+		};
+		extrusion.Properties["fill-extrusion-height"] = MapExpression.Raw(height);
+		extrusion.Properties["fill-extrusion-base"] = MapExpression.Raw("[\"coalesce\",[\"get\",\"min_height\"],0]");
+		extrusion.Properties["fill-extrusion-color"] = MapExpression.Interpolate(
+			MapExpression.Raw(height), (0, "#CBD5E1"), (25, "#F59E0B"), (60, "#DC2626"));
+		extrusion.Properties["fill-extrusion-opacity"] = 0.9;
+		Map.AddLayer(extrusion);
+
+		Map.FlyTo(new MapCameraPosition(47.3735, 8.5400, 16, bearing: 20, pitch: 60), 1500);
+		StatusLabel.Text = "Fill-Extrusion: Höhe aus den Gebäudedaten";
 	}
 
 	private void OnPolylineClicked(object? sender, PolylineClickedEventArgs e)
