@@ -1,3 +1,10 @@
+# [1.11.0](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/compare/v1.10.0...v1.11.0) (2026-11-11)
+
+### Features
+
+* data-driven layer styling with expressions ([91faae8](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/commit/91faae891b9855a5ac0fe1faff98fe83c6acb5a8))
+
+
 # [1.10.0](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/compare/v1.9.0...v1.10.0) (2026-11-11)
 
 ### Features
