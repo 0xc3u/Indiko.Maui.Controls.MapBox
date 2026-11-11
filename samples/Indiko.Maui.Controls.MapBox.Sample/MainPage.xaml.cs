@@ -141,6 +141,11 @@ public partial class MainPage : ContentPage
 			OnToggleExpressions(this, EventArgs.Empty);
 			CollapseSheet();
 		}
+		if (Environment.GetEnvironmentVariable("DEMO_GESTURES") == "1")
+		{
+			OnToggleDoubleTapZoom(this, EventArgs.Empty);
+			CollapseSheet();
+		}
 		if (Environment.GetEnvironmentVariable("DEMO_QUERY") == "1")
 		{
 			OnToggleExpressions(this, EventArgs.Empty);
@@ -680,6 +685,22 @@ public partial class MainPage : ContentPage
 
 		Map.SetFeatureState("expr-source", id, new Dictionary<string, object?> { ["selected"] = true });
 		selectedFeatureId = id;
+	}
+
+	/// <summary>
+	/// Turns the double-tap zoom off while leaving pinch-to-zoom alone — the fine gesture
+	/// flags narrow ZoomEnabled instead of replacing it.
+	/// </summary>
+	private void OnToggleDoubleTapZoom(object? sender, EventArgs e)
+	{
+		Map.DoubleTapToZoomEnabled = !Map.DoubleTapToZoomEnabled;
+		PaintChip(ChipDoubleTap, !Map.DoubleTapToZoomEnabled);
+		ChipDoubleTap.Text = $"Doppeltipp-Zoom: {(Map.DoubleTapToZoomEnabled ? "an" : "aus")}";
+
+		var zoom = Map.CurrentCamera?.Zoom ?? 0;
+		StatusLabel.Text = Map.DoubleTapToZoomEnabled
+			? $"Doppeltipp-Zoom an — Zoom {zoom:F1}"
+			: $"Doppeltipp-Zoom aus — Zoom {zoom:F1}, Pinch bleibt aktiv";
 	}
 
 	private void OnPolylineClicked(object? sender, PolylineClickedEventArgs e)

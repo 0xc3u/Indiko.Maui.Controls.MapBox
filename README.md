@@ -35,6 +35,7 @@ on the UI thread; command parameters carry the same `EventArgs` object the event
 - 🌍 `MapLanguage` — translate the style's place labels into any supported language
 - 🔍 `QueryFeaturesAsync()` reports which feature sits under a tap, with its properties
 - ✨ Feature state — selection and hover styling without touching the source data
+- 🤚 Individual zoom gestures switchable — double-tap, quick-zoom and pinch separately
 - 🔥 Heatmaps and 3D fill extrusions, driven by your feature data
 - 🗺️ Raster, vector and image sources — bring your own tile server alongside the Mapbox basemap
 - 🎨 Data-driven styling — `MapExpression` drives any style-spec layer property from feature data or zoom
@@ -113,6 +114,7 @@ code, and the reason .NET Android no longer reports `XA0141` for this package.
 | **Gestures & interaction** | | |
 | Map tap / long-press with coordinates | ✅ | events + commands; taps on markers/shapes/clusters are consumed |
 | Per-gesture enable/disable | ✅ | `ScrollEnabled`, `ZoomEnabled`, `RotateEnabled`, `PitchEnabled` |
+| Individual zoom gestures | ✅ | `DoubleTapToZoomEnabled`, `QuickZoomEnabled`, `PinchToZoomEnabled`, `SimultaneousRotateAndZoomEnabled` |
 | `queryRenderedFeatures` | ✅ | `QueryFeaturesAsync(lat, lon, layerIds, radius)` |
 | Feature state (selection, hover) | ✅ | `SetFeatureState` / `RemoveFeatureState` + the `feature-state` expression |
 | **Location** | | |
@@ -835,6 +837,31 @@ Results are ordered top-most first, so `hits[0]` is what the user visually hit.
 
 The `radius` parameter (default 8) widens the hit area in device-independent units — thin
 lines and small circles are otherwise hard to hit with a finger. `0` queries the exact point.
+
+---
+
+## Gesture detail
+
+Beyond the four coarse switches (`ScrollEnabled`, `ZoomEnabled`, `RotateEnabled`,
+`PitchEnabled`) the individual zoom gestures can be turned off separately — useful when a
+gesture clashes with your own UI.
+
+```xml
+<map:MapView DoubleTapToZoomEnabled="False" QuickZoomEnabled="False" />
+```
+
+| Property | Gesture | Default |
+|---|---|---|
+| `DoubleTapToZoomEnabled` | double-tap in, two-finger-tap out | true |
+| `QuickZoomEnabled` | double-tap-and-drag, one finger | true |
+| `PinchToZoomEnabled` | two-finger pinch | true |
+| `SimultaneousRotateAndZoomEnabled` | rotating while pinching | true |
+
+> These **narrow** `ZoomEnabled`; they cannot re-enable it. With `ZoomEnabled="False"` the
+> map does not zoom regardless of the fine flags.
+
+All eight properties are applied in a single call to the native facade, so the order MAUI
+happens to set them in cannot leave the map in a half-configured state.
 
 ---
 

@@ -1704,6 +1704,33 @@ class IKMapView(
         }
     }
 
+    /**
+     * Full gesture configuration in one call, so the order properties arrive in does not
+     * matter. JSON: {"scroll","zoom","rotate","pitch","doubleTapToZoom","quickZoom",
+     * "pinchToZoom","rotateAndZoom"} — all booleans, missing keys default to true.
+     */
+    fun setGestureOptionsJson(json: String)
+    {
+        if (destroyed)
+            return
+
+        val config = runCatching { JSONObject(json) }.getOrNull() ?: return
+        val zoom = config.optBoolean("zoom", true)
+
+        mapView.gestures.updateSettings {
+            scrollEnabled = config.optBoolean("scroll", true)
+            rotateEnabled = config.optBoolean("rotate", true)
+            pitchEnabled = config.optBoolean("pitch", true)
+
+            // The fine flags only ever narrow the coarse "zoom" switch.
+            pinchToZoomEnabled = zoom && config.optBoolean("pinchToZoom", true)
+            quickZoomEnabled = zoom && config.optBoolean("quickZoom", true)
+            doubleTapToZoomInEnabled = zoom && config.optBoolean("doubleTapToZoom", true)
+            doubleTouchToZoomOutEnabled = zoom && config.optBoolean("doubleTapToZoom", true)
+            simultaneousRotateAndPinchToZoomEnabled = config.optBoolean("rotateAndZoom", true)
+        }
+    }
+
     fun setGestures(scroll: Boolean, zoom: Boolean, rotate: Boolean, pitch: Boolean)
     {
         if (destroyed)

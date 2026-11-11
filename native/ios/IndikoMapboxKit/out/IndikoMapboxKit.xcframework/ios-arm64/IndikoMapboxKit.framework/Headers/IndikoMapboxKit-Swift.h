@@ -451,6 +451,10 @@ SWIFT_CLASS_NAMED("IKMapView")
 - (void)setFeatureState:(NSString * _Nonnull)sourceId sourceLayer:(NSString * _Nonnull)sourceLayer featureId:(NSString * _Nonnull)featureId stateJson:(NSString * _Nonnull)stateJson;
 /// Removes one state key, or the feature’s whole state when <code>stateKey</code> is empty.
 - (void)removeFeatureState:(NSString * _Nonnull)sourceId sourceLayer:(NSString * _Nonnull)sourceLayer featureId:(NSString * _Nonnull)featureId stateKey:(NSString * _Nonnull)stateKey;
+/// Full gesture configuration in one call, so the order properties arrive in does not
+/// matter. JSON: {“scroll”,“zoom”,“rotate”,“pitch”,“doubleTapToZoom”,“quickZoom”,
+/// “pinchToZoom”,“rotateAndZoom”} — all booleans, missing keys default to true.
+- (void)setGestureOptionsJson:(NSString * _Nonnull)json;
 - (void)setGesturesScroll:(BOOL)scroll zoom:(BOOL)zoom rotate:(BOOL)rotate pitch:(BOOL)pitch;
 - (void)didMoveToWindow;
 /// Teardown request from the MAUI handler’s DisconnectHandler. Deferred until the

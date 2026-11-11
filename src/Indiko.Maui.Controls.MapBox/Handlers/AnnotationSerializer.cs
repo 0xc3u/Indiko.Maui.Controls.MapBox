@@ -294,6 +294,22 @@ internal static class AnnotationSerializer
         writer.WriteEndObject();
     }
 
+    /// <summary>Serializes every gesture flag into the payload the facades expect.</summary>
+    public static string ToGestureOptionsJson(bool scroll, bool zoom, bool rotate, bool pitch,
+        bool doubleTapToZoom, bool quickZoom, bool pinchToZoom, bool rotateAndZoom)
+    {
+        static string Flag(bool value) => value ? "true" : "false";
+        return "{\"scroll\":" + Flag(scroll)
+            + ",\"zoom\":" + Flag(zoom)
+            + ",\"rotate\":" + Flag(rotate)
+            + ",\"pitch\":" + Flag(pitch)
+            + ",\"doubleTapToZoom\":" + Flag(doubleTapToZoom)
+            + ",\"quickZoom\":" + Flag(quickZoom)
+            + ",\"pinchToZoom\":" + Flag(pinchToZoom)
+            + ",\"rotateAndZoom\":" + Flag(rotateAndZoom)
+            + "}";
+    }
+
     /// <summary>Serializes a feature-state bag; values reuse the style-spec encoder.</summary>
     public static string ToStateJson(IDictionary<string, object?> state)
     {

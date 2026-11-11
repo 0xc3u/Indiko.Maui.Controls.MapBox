@@ -1490,6 +1490,35 @@ public class IKMapView: UIView
             stateKey: stateKey.isEmpty ? nil : stateKey) { _ in }
     }
 
+    /// Full gesture configuration in one call, so the order properties arrive in does not
+    /// matter. JSON: {"scroll","zoom","rotate","pitch","doubleTapToZoom","quickZoom",
+    /// "pinchToZoom","rotateAndZoom"} — all booleans, missing keys default to true.
+    @objc(setGestureOptionsJson:)
+    public func setGestureOptions(json: String)
+    {
+        if destroyed { return }
+
+        guard let data = json.data(using: .utf8),
+              let config = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { return }
+
+        func flag(_ key: String) -> Bool { config[key] as? Bool ?? true }
+        let zoom = flag("zoom")
+
+        var options = mapView.gestures.options
+        options.panEnabled = flag("scroll")
+        options.rotateEnabled = flag("rotate")
+        options.pitchEnabled = flag("pitch")
+
+        // The fine flags only ever narrow the coarse "zoom" switch.
+        options.pinchZoomEnabled = zoom && flag("pinchToZoom")
+        options.quickZoomEnabled = zoom && flag("quickZoom")
+        options.doubleTapToZoomInEnabled = zoom && flag("doubleTapToZoom")
+        options.doubleTouchToZoomOutEnabled = zoom && flag("doubleTapToZoom")
+        options.simultaneousRotateAndPinchZoomEnabled = flag("rotateAndZoom")
+        mapView.gestures.options = options
+    }
+
     @objc(setGesturesScroll:zoom:rotate:pitch:)
     public func setGestures(scroll: Bool, zoom: Bool, rotate: Bool, pitch: Bool)
     {

@@ -235,6 +235,9 @@ interface IKMapView
     [Export("removeFeatureState:sourceLayer:featureId:stateKey:")]
     void RemoveFeatureState(string sourceId, string sourceLayer, string featureId, string stateKey);
 
+    [Export("setGestureOptionsJson:")]
+    void SetGestureOptionsJson(string json);
+
     [Export("setGesturesScroll:zoom:rotate:pitch:")]
     void SetGestures(bool scroll, bool zoom, bool rotate, bool pitch);
 

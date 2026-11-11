@@ -33,6 +33,10 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
             [nameof(MapView.FollowPuckZoom)] = MapFollowPuck,
             [nameof(MapView.FollowPuckTrackBearing)] = MapFollowPuck,
             [nameof(MapView.ScrollEnabled)] = MapGestures,
+            [nameof(MapView.SimultaneousRotateAndZoomEnabled)] = MapGestures,
+            [nameof(MapView.PinchToZoomEnabled)] = MapGestures,
+            [nameof(MapView.QuickZoomEnabled)] = MapGestures,
+            [nameof(MapView.DoubleTapToZoomEnabled)] = MapGestures,
             [nameof(MapView.ZoomEnabled)] = MapGestures,
             [nameof(MapView.RotateEnabled)] = MapGestures,
             [nameof(MapView.PitchEnabled)] = MapGestures,
@@ -189,7 +193,11 @@ public class MapViewHandler : ViewHandler<MapView, IKMapView>
 
     private static void MapGestures(MapViewHandler handler, MapView view)
     {
-        handler.PlatformView.SetGestures(view.ScrollEnabled, view.ZoomEnabled, view.RotateEnabled, view.PitchEnabled);
+        // One call for every gesture property, so the mapper order cannot matter.
+        handler.PlatformView.SetGestureOptionsJson(AnnotationSerializer.ToGestureOptionsJson(
+            view.ScrollEnabled, view.ZoomEnabled, view.RotateEnabled, view.PitchEnabled,
+            view.DoubleTapToZoomEnabled, view.QuickZoomEnabled, view.PinchToZoomEnabled,
+            view.SimultaneousRotateAndZoomEnabled));
     }
 
     private static void MapOrnaments(MapViewHandler handler, MapView view)

@@ -142,6 +142,46 @@ public class MapView : View
     /// <summary>Guards the FollowPuck property mapper while syncing state from native.</summary>
     internal bool SuppressFollowPuckSync;
 
+    public static readonly BindableProperty DoubleTapToZoomEnabledProperty = BindableProperty.Create(
+        nameof(DoubleTapToZoomEnabled), typeof(bool), typeof(MapView), true);
+
+    /// <summary>Double-tap to zoom in and two-finger-tap to zoom out. Narrows <see cref="ZoomEnabled"/>; it cannot re-enable a disabled gesture.</summary>
+    public bool DoubleTapToZoomEnabled
+    {
+        get => (bool)GetValue(DoubleTapToZoomEnabledProperty);
+        set => SetValue(DoubleTapToZoomEnabledProperty, value);
+    }
+
+    public static readonly BindableProperty QuickZoomEnabledProperty = BindableProperty.Create(
+        nameof(QuickZoomEnabled), typeof(bool), typeof(MapView), true);
+
+    /// <summary>Double-tap-and-drag to zoom with one finger. Narrows <see cref="ZoomEnabled"/>; it cannot re-enable a disabled gesture.</summary>
+    public bool QuickZoomEnabled
+    {
+        get => (bool)GetValue(QuickZoomEnabledProperty);
+        set => SetValue(QuickZoomEnabledProperty, value);
+    }
+
+    public static readonly BindableProperty PinchToZoomEnabledProperty = BindableProperty.Create(
+        nameof(PinchToZoomEnabled), typeof(bool), typeof(MapView), true);
+
+    /// <summary>Two-finger pinch to zoom. Narrows <see cref="ZoomEnabled"/>; it cannot re-enable a disabled gesture.</summary>
+    public bool PinchToZoomEnabled
+    {
+        get => (bool)GetValue(PinchToZoomEnabledProperty);
+        set => SetValue(PinchToZoomEnabledProperty, value);
+    }
+
+    public static readonly BindableProperty SimultaneousRotateAndZoomEnabledProperty = BindableProperty.Create(
+        nameof(SimultaneousRotateAndZoomEnabled), typeof(bool), typeof(MapView), true);
+
+    /// <summary>Allow rotating and pinch-zooming in the same gesture. Narrows <see cref="ZoomEnabled"/>; it cannot re-enable a disabled gesture.</summary>
+    public bool SimultaneousRotateAndZoomEnabled
+    {
+        get => (bool)GetValue(SimultaneousRotateAndZoomEnabledProperty);
+        set => SetValue(SimultaneousRotateAndZoomEnabledProperty, value);
+    }
+
     public static readonly BindableProperty ShowUserLocationProperty = BindableProperty.Create(
         nameof(ShowUserLocation), typeof(bool), typeof(MapView), false);
 
