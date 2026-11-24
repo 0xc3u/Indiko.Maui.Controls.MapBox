@@ -62,12 +62,28 @@ every style reload.
 
 ## Releasing
 
-Semantic Release CI (like Indiko.Maui.Controls.Chat): pushes to main run
-`.github/workflows/semanticrelease.yml` (build on macOS incl. cached native artifacts, then
-semantic-release creates the version tag + CHANGELOG from conventional commits). The tag push
-triggers `.github/workflows/release-nuget.yml`, which packs and pushes to nuget.org.
-Required repo secrets: `GH_TOKEN` (environment "Release") and `NUGET_API_KEY`.
-Do not bump versions by hand — `PackageVersion` is injected from the tag at pack time.
+One workflow does all of it: `.github/workflows/release.yml` runs on every push to main
+(docs-only commits are skipped via `paths-ignore: **.md`) and has three chained jobs —
+**Build** (macOS, native artifacts from cache or rebuilt when `native/**` or `scripts/**`
+changed), **Version and release** (`.github/scripts/next-version.sh` works the next version
+out of the tags and the conventional commits since the last one, writes CHANGELOG.md, tags
+and creates the GitHub release) and **Publish to NuGet** (packs at that version and pushes).
+
+It replaces a pair of workflows (`semanticrelease.yml` tagging, `release-nuget.yml` meant to
+publish on that tag), and the comment at the top of the file says why: a tag pushed by a
+workflow does not start another one, so the publish never ran by itself and waited for a
+manual dispatch. `needs` takes the trigger out of the question — the version is computed once
+and handed down.
+
+No long-lived NuGet key: the publish job uses **trusted publishing** (nuget.org trusts this
+repository and this workflow, policy owner INDIKO), trades an OIDC token for a key that lives
+about an hour, and only needs `secrets.NUGET_USER` — the nuget.org profile name, not a key.
+Tagging uses the run's own `GITHUB_TOKEN`.
+
+`workflow_dispatch` takes a `republish` input (e.g. `1.8.0`) to push an existing version to
+NuGet again without releasing a new one.
+
+Do not bump versions by hand — `PackageVersion` is injected at pack time.
 
 Packaging: the binding projects are IsPackable=false; `PackBindingOutputs` in the main csproj
 packs their DLLs, all native AARs and the iOS `.resources.zip` sidecar into lib/. The
