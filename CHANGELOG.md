@@ -1,3 +1,10 @@
+## [1.15.1](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/compare/v1.15.0...v1.15.1) (2026-11-24)
+
+### Bug Fixes
+
+* **layers:** honour Opacity on raster, heatmap and fill-extrusion, and replace a source a layer holds ([9ac0e90](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/commit/9ac0e904ff52a1810c5ffd915ffdfbd2fe0171fe))
+
+
 # [1.15.0](https://github.com/0xc3u/Indiko.Maui.Controls.MapBox/compare/v1.14.0...v1.15.0) (2026-11-11)
 
 ### Features
