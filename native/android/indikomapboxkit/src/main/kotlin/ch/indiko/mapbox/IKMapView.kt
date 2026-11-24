@@ -711,8 +711,22 @@ class IKMapView(
     {
         val style = mapView.mapboxMap.style ?: return
         val id = config.optString("id")
+
+        // Mapbox refuses to remove a source a layer still renders ("Source is
+        // in use, cannot remove"), and the replacement then never lands: the
+        // layer keeps showing the old tiles, so a refreshed URL - a new access
+        // token, say - would never take effect. The layers reading it therefore
+        // step aside and are put back once the source is in place.
+        val dependents = if (style.styleSourceExists(id))
+            layerConfigs.values.filter { it.optString("sourceId") == id }.toList()
+        else
+            emptyList()
+
         if (style.styleSourceExists(id))
+        {
+            dependents.forEach { style.removeStyleLayer(it.optString("id")) }
             style.removeStyleSource(id)
+        }
 
         val type = config.optString("type")
         val spec = JSONObject().put("type", type)
@@ -727,6 +741,8 @@ class IKMapView(
 
         val value = Value.fromJson(spec.toString()).value ?: return
         style.addStyleSource(id, value)
+
+        dependents.forEach { applyLayer(it) }
     }
 
     fun addGeoJsonSource(id: String, geoJson: String)
@@ -881,12 +897,18 @@ class IKMapView(
                 .also { l -> sourceLayer?.let { l.sourceLayer(it) } }
             "symbol" -> buildSymbolLayer(style, id, sourceId, config)
                 .also { l -> sourceLayer?.let { l.sourceLayer(it) } }
-            // These carry no typed options — style them via "properties".
+            // Each of these spells opacity its own way; everything else about
+            // them is styled via "properties".
             "raster" -> RasterLayer(id, sourceId)
+                .rasterOpacity(opacity)
+            // The style spec gives hillshade no opacity at all - it is shaded
+            // through its three colours instead.
             "hillshade" -> HillshadeLayer(id, sourceId)
             "heatmap" -> HeatmapLayer(id, sourceId)
+                .heatmapOpacity(opacity)
                 .also { l -> sourceLayer?.let { l.sourceLayer(it) } }
             "fill-extrusion" -> FillExtrusionLayer(id, sourceId)
+                .fillExtrusionOpacity(opacity)
                 .also { l -> sourceLayer?.let { l.sourceLayer(it) } }
             else -> return
         }

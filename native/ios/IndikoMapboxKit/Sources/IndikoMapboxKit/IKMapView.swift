@@ -595,8 +595,27 @@ public class IKMapView: UIView
     {
         guard let id = config["id"] as? String, let type = config["type"] as? String else { return }
 
+        // Mapbox refuses to remove a source a layer still renders, and the
+        // replacement then never lands: the layer keeps showing the old tiles,
+        // so a refreshed URL - a new access token, say - would never take
+        // effect. The layers reading it therefore step aside and are put back
+        // once the source is in place.
+        var dependents: [[String: Any]] = []
+
         if mapView.mapboxMap.sourceExists(withId: id)
         {
+            dependents = layerConfigs
+                .filter { ($0.config["sourceId"] as? String) == id }
+                .map { $0.config }
+
+            for config in dependents
+            {
+                if let layerId = config["id"] as? String
+                {
+                    try? mapView.mapboxMap.removeLayer(withId: layerId)
+                }
+            }
+
             try? mapView.mapboxMap.removeSource(withId: id)
         }
 
@@ -613,6 +632,11 @@ public class IKMapView: UIView
         if let coordinates = config["coordinates"] as? [Any] { spec["coordinates"] = coordinates }
 
         try? mapView.mapboxMap.addSource(withId: id, properties: spec)
+
+        for config in dependents
+        {
+            applyLayer(config)
+        }
     }
 
     @objc(addGeoJsonSource:geoJson:)
@@ -727,18 +751,25 @@ public class IKMapView: UIView
             var symbol = buildSymbolLayer(id: id, sourceId: sourceId, config: config)
             symbol.sourceLayer = sourceLayer
             layer = symbol
-        // These carry no typed options — style them via "properties".
+        // Each of these spells opacity its own way; everything else about them
+        // is styled via "properties".
         case "raster":
-            layer = RasterLayer(id: id, source: sourceId)
+            var raster = RasterLayer(id: id, source: sourceId)
+            raster.rasterOpacity = .constant(opacity)
+            layer = raster
+        // The style spec gives hillshade no opacity at all - it is shaded
+        // through its three colours instead.
         case "hillshade":
             layer = HillshadeLayer(id: id, source: sourceId)
         case "heatmap":
             var heatmap = HeatmapLayer(id: id, source: sourceId)
             heatmap.sourceLayer = sourceLayer
+            heatmap.heatmapOpacity = .constant(opacity)
             layer = heatmap
         case "fill-extrusion":
             var extrusion = FillExtrusionLayer(id: id, source: sourceId)
             extrusion.sourceLayer = sourceLayer
+            extrusion.fillExtrusionOpacity = .constant(opacity)
             layer = extrusion
         default:
             return

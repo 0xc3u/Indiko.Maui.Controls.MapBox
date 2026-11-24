@@ -525,6 +525,10 @@ timer.Tick += (_, _) => Map.AddGeoJsonSource("live-vehicles", FetchLatestGeoJson
 `MapLayer` options: `Type` (`Fill` | `Line` | `Circle` | `Symbol`), `Color`, `Opacity`,
 `LineWidth`, `CircleRadius`, `BelowLayerId` (insert position in the style).
 
+`Opacity` reaches every layer type that has one — fill, line, circle, raster, heatmap and
+fill-extrusion. Hillshade is the exception: the style specification gives it no opacity,
+only its shadow, highlight and accent colours.
+
 **Symbol layers** render data-driven labels (and optionally icons) from feature properties:
 
 ```csharp

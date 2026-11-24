@@ -43,7 +43,15 @@ public class MapLayer
     /// <summary>Fill/line/circle color as #RRGGBB hex string.</summary>
     public string Color { get; set; } = "#3B82F6";
 
-    /// <summary>Opacity between 0.0 and 1.0.</summary>
+    /// <summary>
+    /// Opacity between 0.0 and 1.0, applied to whichever opacity the layer type
+    /// has: fill, line, circle, raster, heatmap and fill-extrusion.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="MapLayerType.Hillshade"/> is the exception - the style
+    /// specification gives it no opacity at all; it is shaded through its
+    /// shadow, highlight and accent colours instead.
+    /// </remarks>
     public double Opacity { get; set; } = 1.0;
 
     /// <summary>Line width in density-independent pixels (line layers only).</summary>

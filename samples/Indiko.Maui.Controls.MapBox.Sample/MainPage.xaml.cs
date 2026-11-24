@@ -508,8 +508,8 @@ public partial class MainPage : ContentPage
 			Id = "swisstopo-layer",
 			SourceId = "swisstopo",
 			Type = MapLayerType.Raster,
+			Opacity = 0.9,
 		};
-		layer.Properties["raster-opacity"] = 0.9;
 		Map.AddLayer(layer);
 
 		Map.FlyTo(new MapCameraPosition(46.80, 8.22, 8), 1200);
